@@ -2,3 +2,4 @@
 # Add patch paths relative to patches/, one per line.
 
 mode/0001-mode-worktree.patch
+mode/0002-feat-provider-add-Droid-SDK-provider.patch

@@ -1,61 +1,5 @@
-From 586543556586e620608f647ce71cfd65611e0f0a Mon Sep 17 00:00:00 2001
-From: maria <maria@kuuro.net>
-Date: Fri, 5 Jun 2026 22:28:32 +0000
-Subject: [PATCH 2/2] feat(provider): add Droid SDK provider
-
-Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
----
- apps/server/package.json                      |    1 +
- .../src/provider/Drivers/DroidDriver.ts       |  157 ++
- .../provider/Layers/CodexSessionRuntime.ts    |    2 +
- .../src/provider/Layers/DroidAdapter.test.ts  | 1357 +++++++++++++++++
- .../src/provider/Layers/DroidAdapter.ts       |  519 +++++++
- .../src/provider/Layers/DroidProvider.test.ts |  104 ++
- .../src/provider/Layers/DroidProvider.ts      |  383 +++++
- .../provider/Layers/ProviderRegistry.test.ts  |    1 +
- apps/server/src/provider/builtInDrivers.ts    |    3 +
- .../src/provider/droid/DroidAdapterTypes.ts   |   64 +
- .../provider/droid/DroidAttachmentResolver.ts |   72 +
- .../src/provider/droid/DroidEnvironment.ts    |    9 +
- .../src/provider/droid/DroidRuntimeEvents.ts  |  259 ++++
- .../src/provider/droid/DroidSdkMappings.ts    |  203 +++
- .../web/src/components/ChatView.logic.test.ts |   58 +
- apps/web/src/components/ChatView.logic.ts     |   15 +
- apps/web/src/components/ChatView.tsx          |   61 +-
- apps/web/src/components/Icons.tsx             |    9 +
- .../components/KeybindingsToast.browser.tsx   |    1 +
- apps/web/src/components/chat/ChatComposer.tsx |   64 +-
- .../CompactComposerControlsMenu.browser.tsx   |    2 +
- .../chat/CompactComposerControlsMenu.tsx      |   15 +-
- .../components/chat/MessagesTimeline.test.tsx |    2 +-
- .../src/components/chat/providerIconUtils.ts  |    3 +-
- .../chat/runtimeModePresentation.test.ts      |   23 +
- .../chat/runtimeModePresentation.ts           |   87 ++
- .../components/settings/providerDriverMeta.ts |   10 +-
- apps/web/src/providerInstances.test.ts        |   24 +-
- apps/web/src/providerInstances.ts             |    3 +-
- apps/web/src/session-logic.ts                 |    6 +
- bun.lock                                      |  807 ++++++++--
- packages/contracts/src/model.ts               |    5 +
- packages/contracts/src/orchestration.ts       |    1 +
- packages/contracts/src/providerRuntime.ts     |    2 +
- packages/contracts/src/settings.ts            |   32 +
- 35 files changed, 4146 insertions(+), 218 deletions(-)
- create mode 100644 apps/server/src/provider/Drivers/DroidDriver.ts
- create mode 100644 apps/server/src/provider/Layers/DroidAdapter.test.ts
- create mode 100644 apps/server/src/provider/Layers/DroidAdapter.ts
- create mode 100644 apps/server/src/provider/Layers/DroidProvider.test.ts
- create mode 100644 apps/server/src/provider/Layers/DroidProvider.ts
- create mode 100644 apps/server/src/provider/droid/DroidAdapterTypes.ts
- create mode 100644 apps/server/src/provider/droid/DroidAttachmentResolver.ts
- create mode 100644 apps/server/src/provider/droid/DroidEnvironment.ts
- create mode 100644 apps/server/src/provider/droid/DroidRuntimeEvents.ts
- create mode 100644 apps/server/src/provider/droid/DroidSdkMappings.ts
- create mode 100644 apps/web/src/components/chat/runtimeModePresentation.test.ts
- create mode 100644 apps/web/src/components/chat/runtimeModePresentation.ts
-
 diff --git a/apps/server/package.json b/apps/server/package.json
-index fac1b924..653c30d4 100644
+index fac1b924c2b64eda09fb79062378a67816978b34..653c30d43d6a14972362e0e08799d300ca8af798 100644
 --- a/apps/server/package.json
 +++ b/apps/server/package.json
 @@ -28,6 +28,7 @@
@@ -68,7 +12,7 @@ index fac1b924..653c30d4 100644
      "effect": "catalog:",
 diff --git a/apps/server/src/provider/Drivers/DroidDriver.ts b/apps/server/src/provider/Drivers/DroidDriver.ts
 new file mode 100644
-index 00000000..0fab3b30
+index 0000000000000000000000000000000000000000..0fab3b308782705b54150ebf1af0ad0d7a6f9b9a
 --- /dev/null
 +++ b/apps/server/src/provider/Drivers/DroidDriver.ts
 @@ -0,0 +1,157 @@
@@ -230,7 +174,7 @@ index 00000000..0fab3b30
 +    }),
 +};
 diff --git a/apps/server/src/provider/Layers/CodexSessionRuntime.ts b/apps/server/src/provider/Layers/CodexSessionRuntime.ts
-index f9b9c6ab..2cd9c524 100644
+index f9b9c6ab4fba29b5a662d9e32b21cf1791579266..2cd9c524fdd32a0db48b5143909ece8026393e0e 100644
 --- a/apps/server/src/provider/Layers/CodexSessionRuntime.ts
 +++ b/apps/server/src/provider/Layers/CodexSessionRuntime.ts
 @@ -269,6 +269,7 @@ function runtimeModeToThreadConfig(input: RuntimeMode): {
@@ -251,7 +195,7 @@ index f9b9c6ab..2cd9c524 100644
        };
 diff --git a/apps/server/src/provider/Layers/DroidAdapter.test.ts b/apps/server/src/provider/Layers/DroidAdapter.test.ts
 new file mode 100644
-index 00000000..46fc12b7
+index 0000000000000000000000000000000000000000..46fc12b7e84380f20d804f750ade1defc820e327
 --- /dev/null
 +++ b/apps/server/src/provider/Layers/DroidAdapter.test.ts
 @@ -0,0 +1,1357 @@
@@ -1614,7 +1558,7 @@ index 00000000..46fc12b7
 +);
 diff --git a/apps/server/src/provider/Layers/DroidAdapter.ts b/apps/server/src/provider/Layers/DroidAdapter.ts
 new file mode 100644
-index 00000000..45755642
+index 0000000000000000000000000000000000000000..457556422ecb41ad59ffa5327e72a882f71e8d5b
 --- /dev/null
 +++ b/apps/server/src/provider/Layers/DroidAdapter.ts
 @@ -0,0 +1,519 @@
@@ -2139,7 +2083,7 @@ index 00000000..45755642
 +}
 diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
 new file mode 100644
-index 00000000..837deb2b
+index 0000000000000000000000000000000000000000..837deb2ba1d086184e325321fb9c4090153c255d
 --- /dev/null
 +++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
 @@ -0,0 +1,104 @@
@@ -2249,7 +2193,7 @@ index 00000000..837deb2b
 +});
 diff --git a/apps/server/src/provider/Layers/DroidProvider.ts b/apps/server/src/provider/Layers/DroidProvider.ts
 new file mode 100644
-index 00000000..e4fc931b
+index 0000000000000000000000000000000000000000..e4fc931bb4f243ae3fb205882186a3b41f5af05d
 --- /dev/null
 +++ b/apps/server/src/provider/Layers/DroidProvider.ts
 @@ -0,0 +1,383 @@
@@ -2637,7 +2581,7 @@ index 00000000..e4fc931b
 +  });
 +}
 diff --git a/apps/server/src/provider/Layers/ProviderRegistry.test.ts b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
-index fb6eb3b4..52465fdc 100644
+index fb6eb3b443d8bd8a993c9f9eb1724e09b011f42b..52465fdc386bf85bce511884bb7c1a539186f723 100644
 --- a/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 +++ b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 @@ -1300,6 +1300,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest(), T
@@ -2649,7 +2593,7 @@ index fb6eb3b4..52465fdc 100644
                ]);
                assert.strictEqual(cursorProvider?.enabled, false);
 diff --git a/apps/server/src/provider/builtInDrivers.ts b/apps/server/src/provider/builtInDrivers.ts
-index 5af56dc6..3c5dce31 100644
+index 5af56dc6b0e819bbadc9691d6d100daa051eef1b..3c5dce319136400cab1ddd906dad7103392e3121 100644
 --- a/apps/server/src/provider/builtInDrivers.ts
 +++ b/apps/server/src/provider/builtInDrivers.ts
 @@ -23,6 +23,7 @@
@@ -2677,7 +2621,7 @@ index 5af56dc6..3c5dce31 100644
  ];
 diff --git a/apps/server/src/provider/droid/DroidAdapterTypes.ts b/apps/server/src/provider/droid/DroidAdapterTypes.ts
 new file mode 100644
-index 00000000..dd7c2121
+index 0000000000000000000000000000000000000000..dd7c2121a84f7c7dd44bc7057d36542795147a30
 --- /dev/null
 +++ b/apps/server/src/provider/droid/DroidAdapterTypes.ts
 @@ -0,0 +1,64 @@
@@ -2747,7 +2691,7 @@ index 00000000..dd7c2121
 +export type DroidAdapterShape = ProviderAdapterShape<ProviderAdapterError>;
 diff --git a/apps/server/src/provider/droid/DroidAttachmentResolver.ts b/apps/server/src/provider/droid/DroidAttachmentResolver.ts
 new file mode 100644
-index 00000000..29bcf83f
+index 0000000000000000000000000000000000000000..29bcf83f6b698e6e2bb1c4a5eed4c0328b2b1af7
 --- /dev/null
 +++ b/apps/server/src/provider/droid/DroidAttachmentResolver.ts
 @@ -0,0 +1,72 @@
@@ -2825,7 +2769,7 @@ index 00000000..29bcf83f
 +}
 diff --git a/apps/server/src/provider/droid/DroidEnvironment.ts b/apps/server/src/provider/droid/DroidEnvironment.ts
 new file mode 100644
-index 00000000..aad4d9b9
+index 0000000000000000000000000000000000000000..aad4d9b91215cdc914a011357cbce80786dc5b8e
 --- /dev/null
 +++ b/apps/server/src/provider/droid/DroidEnvironment.ts
 @@ -0,0 +1,9 @@
@@ -2840,7 +2784,7 @@ index 00000000..aad4d9b9
 +}
 diff --git a/apps/server/src/provider/droid/DroidRuntimeEvents.ts b/apps/server/src/provider/droid/DroidRuntimeEvents.ts
 new file mode 100644
-index 00000000..aa89f80b
+index 0000000000000000000000000000000000000000..aa89f80bbd2b08d4c3a3b87637145290acf69d4f
 --- /dev/null
 +++ b/apps/server/src/provider/droid/DroidRuntimeEvents.ts
 @@ -0,0 +1,259 @@
@@ -3105,7 +3049,7 @@ index 00000000..aa89f80b
 +}
 diff --git a/apps/server/src/provider/droid/DroidSdkMappings.ts b/apps/server/src/provider/droid/DroidSdkMappings.ts
 new file mode 100644
-index 00000000..4e476473
+index 0000000000000000000000000000000000000000..4e476473c830de1815628b909846d7d95e338748
 --- /dev/null
 +++ b/apps/server/src/provider/droid/DroidSdkMappings.ts
 @@ -0,0 +1,203 @@
@@ -3313,7 +3257,7 @@ index 00000000..4e476473
 +  };
 +}
 diff --git a/apps/web/src/components/ChatView.logic.test.ts b/apps/web/src/components/ChatView.logic.test.ts
-index 83c90eda..01e06fe3 100644
+index 83c90edaddcbf3231922077c51ba931fde8a1677..01e06fe3ef608645c13ca2d8a304045cb6d2a523 100644
 --- a/apps/web/src/components/ChatView.logic.test.ts
 +++ b/apps/web/src/components/ChatView.logic.test.ts
 @@ -14,6 +14,7 @@ import { type Thread } from "../types";
@@ -3389,7 +3333,7 @@ index 83c90eda..01e06fe3 100644
    it("treats expired terminal pills as non-sendable content", () => {
      const state = deriveComposerSendState({
 diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
-index bf87add2..687d965b 100644
+index bf87add28d9fa9b10cbda79cddd5f31b60e2622c..687d965b7e33e44fab0df582d2c6ecc241902244 100644
 --- a/apps/web/src/components/ChatView.logic.ts
 +++ b/apps/web/src/components/ChatView.logic.ts
 @@ -4,6 +4,7 @@ import {
@@ -3422,7 +3366,7 @@ index bf87add2..687d965b 100644
    threadId: ThreadId,
    draftThread: DraftThreadState,
 diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index 7fc7669f..b545fbf3 100644
+index 7fc7669fe60dad69fe80f6b6654b0ce6f2df354f..b545fbf34b361d6ba2ee00baf6c3ecb2c6686e08 100644
 --- a/apps/web/src/components/ChatView.tsx
 +++ b/apps/web/src/components/ChatView.tsx
 @@ -116,7 +116,11 @@ import {
@@ -3536,7 +3480,7 @@ index 7fc7669f..b545fbf3 100644
                    lockedProvider={lockedProvider}
                    providerStatuses={providerStatuses as ServerProvider[]}
 diff --git a/apps/web/src/components/Icons.tsx b/apps/web/src/components/Icons.tsx
-index b3211e17..597fd8e2 100644
+index b3211e17753abcf2953ff6527e4c81df1568bb0b..597fd8e2029361cfafcadc8af8e59cd17d1d745c 100644
 --- a/apps/web/src/components/Icons.tsx
 +++ b/apps/web/src/components/Icons.tsx
 @@ -651,6 +651,15 @@ export const OpenCodeIcon: Icon = (props) => (
@@ -3556,7 +3500,7 @@ index b3211e17..597fd8e2 100644
    <svg
      {...props}
 diff --git a/apps/web/src/components/KeybindingsToast.browser.tsx b/apps/web/src/components/KeybindingsToast.browser.tsx
-index 4320f6ec..a3e5af1d 100644
+index 4320f6ecf4a637b211fa0d62f6274e72cb418fc8..a3e5af1de53036036721ba1064aac6fdd13c55a7 100644
 --- a/apps/web/src/components/KeybindingsToast.browser.tsx
 +++ b/apps/web/src/components/KeybindingsToast.browser.tsx
 @@ -149,6 +149,7 @@ function createBaseServerConfig(): ServerConfig {
@@ -3568,18 +3512,10 @@ index 4320f6ec..a3e5af1d 100644
            enabled: true,
            binaryPath: "",
 diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
-index d6677fa1..408e8cf5 100644
+index d6677fa172ada4e6035a2d9971ce54529d412ae7..e93b24e2dfccbbba4a5a914031a139dfd9458b35 100644
 --- a/apps/web/src/components/chat/ChatComposer.tsx
 +++ b/apps/web/src/components/chat/ChatComposer.tsx
-@@ -2,6 +2,7 @@ import type {
-   ApprovalRequestId,
-   EnvironmentId,
-   ModelSelection,
-+  ProjectEntry,
-   ProviderApprovalDecision,
-   ProviderInteractionMode,
-   ResolvedKeybindingsConfig,
-@@ -81,16 +82,7 @@ import { Button } from "../ui/button";
+@@ -81,16 +81,7 @@ import { Button } from "../ui/button";
  import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
  import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
  import { toastManager } from "../ui/toast";
@@ -3597,7 +3533,7 @@ index d6677fa1..408e8cf5 100644
  import { proposedPlanTitle } from "../../proposedPlan";
  import { getProviderInteractionModeToggle } from "../../providerModels";
  import {
-@@ -108,31 +100,12 @@ import { deriveLatestContextWindowSnapshot } from "../../lib/contextWindow";
+@@ -108,31 +99,10 @@ import { deriveLatestContextWindowSnapshot } from "../../lib/contextWindow";
  import { formatProviderSkillDisplayName } from "../../providerSkillPresentation";
  import { searchProviderSkills } from "../../providerSkillSearch";
  import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -3627,12 +3563,10 @@ index d6677fa1..408e8cf5 100644
 -};
 -
 -const runtimeModeOptions = Object.keys(runtimeModeConfig) as RuntimeMode[];
-+const COMPOSER_PATH_QUERY_DEBOUNCE_MS = 120;
-+const EMPTY_PROJECT_ENTRIES: ProjectEntry[] = [];
  const COMPOSER_FLOATING_LAYER_SELECTOR = [
    '[data-slot="popover-popup"]',
    '[data-slot="menu-popup"]',
-@@ -176,6 +149,7 @@ function isInsideComposerFloatingLayer(element: Element): boolean {
+@@ -176,6 +146,7 @@ function isInsideComposerFloatingLayer(element: Element): boolean {
  const ComposerFooterModeControls = memo(function ComposerFooterModeControls(props: {
    showInteractionModeToggle: boolean;
    interactionMode: ProviderInteractionMode;
@@ -3640,7 +3574,7 @@ index d6677fa1..408e8cf5 100644
    runtimeMode: RuntimeMode;
    showPlanToggle: boolean;
    planSidebarLabel: string;
-@@ -184,6 +158,8 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+@@ -184,6 +155,8 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
    onRuntimeModeChange: (mode: RuntimeMode) => void;
    onTogglePlanSidebar: () => void;
  }) {
@@ -3649,7 +3583,7 @@ index d6677fa1..408e8cf5 100644
    const runtimeModeOption = runtimeModeConfig[props.runtimeMode];
    const RuntimeModeIcon = runtimeModeOption.icon;
  
-@@ -421,6 +397,7 @@ export interface ChatComposerProps {
+@@ -421,6 +394,7 @@ export interface ChatComposerProps {
  
    // Mode
    runtimeMode: RuntimeMode;
@@ -3657,7 +3591,7 @@ index d6677fa1..408e8cf5 100644
    interactionMode: ProviderInteractionMode;
  
    // Provider / model
-@@ -517,6 +494,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -517,6 +491,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
      planSidebarLabel,
      planSidebarOpen,
      runtimeMode,
@@ -3665,7 +3599,7 @@ index d6677fa1..408e8cf5 100644
      interactionMode,
      lockedProvider,
      providerStatuses,
-@@ -601,13 +579,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -601,13 +576,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
      null;
    const explicitSelectedInstanceId = selectedProviderByThreadId ?? threadProvider;
  
@@ -3692,7 +3626,7 @@ index d6677fa1..408e8cf5 100644
    const lockedContinuationGroupKey = useMemo((): string | null => {
      if (!lockedProvider || !activeThread) return null;
      const lockedInstanceId =
-@@ -2336,6 +2320,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2336,6 +2317,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                      interactionMode={interactionMode}
                      planSidebarLabel={planSidebarLabel}
                      planSidebarOpen={planSidebarOpen}
@@ -3700,7 +3634,7 @@ index d6677fa1..408e8cf5 100644
                      runtimeMode={runtimeMode}
                      showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
                      traitsMenuContent={providerTraitsMenuContent}
-@@ -2354,6 +2339,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2354,6 +2336,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                      <ComposerFooterModeControls
                        showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
                        interactionMode={interactionMode}
@@ -3709,7 +3643,7 @@ index d6677fa1..408e8cf5 100644
                        showPlanToggle={showPlanSidebarToggle}
                        planSidebarLabel={planSidebarLabel}
 diff --git a/apps/web/src/components/chat/CompactComposerControlsMenu.browser.tsx b/apps/web/src/components/chat/CompactComposerControlsMenu.browser.tsx
-index 49eb5fbb..54029841 100644
+index 49eb5fbb94b9c739f5d3520ec661810e5ef8860d..540298411eeae70f01d5844f2369a523bf05e6b5 100644
 --- a/apps/web/src/components/chat/CompactComposerControlsMenu.browser.tsx
 +++ b/apps/web/src/components/chat/CompactComposerControlsMenu.browser.tsx
 @@ -139,6 +139,7 @@ async function mountMenu(props?: { modelSelection?: ModelSelection; prompt?: str
@@ -3729,7 +3663,7 @@ index 49eb5fbb..54029841 100644
          showInteractionModeToggle={false}
          onToggleInteractionMode={vi.fn()}
 diff --git a/apps/web/src/components/chat/CompactComposerControlsMenu.tsx b/apps/web/src/components/chat/CompactComposerControlsMenu.tsx
-index f1fbd193..4348378d 100644
+index f1fbd193a63cf2fb2912fad41bb5d05fd4d3d1bd..4348378d67a0f17856f921da52669e5d89eff61e 100644
 --- a/apps/web/src/components/chat/CompactComposerControlsMenu.tsx
 +++ b/apps/web/src/components/chat/CompactComposerControlsMenu.tsx
 @@ -1,4 +1,4 @@
@@ -3779,7 +3713,7 @@ index f1fbd193..4348378d 100644
          {props.activePlan ? (
            <>
 diff --git a/apps/web/src/components/chat/MessagesTimeline.test.tsx b/apps/web/src/components/chat/MessagesTimeline.test.tsx
-index cbafa09a..be16f857 100644
+index cbafa09ac4842d53ffdb4fcbf44c3b74d472b3d1..be16f857e724408f7dd5e4a6a6984fa9b138355e 100644
 --- a/apps/web/src/components/chat/MessagesTimeline.test.tsx
 +++ b/apps/web/src/components/chat/MessagesTimeline.test.tsx
 @@ -150,7 +150,7 @@ describe("MessagesTimeline", () => {
@@ -3792,7 +3726,7 @@ index cbafa09a..be16f857 100644
    it("does not render collapse controls for short user messages", async () => {
      const { MessagesTimeline } = await import("./MessagesTimeline");
 diff --git a/apps/web/src/components/chat/providerIconUtils.ts b/apps/web/src/components/chat/providerIconUtils.ts
-index 88b56295..88b64463 100644
+index 88b56295f360301fa0369ff1dc5d367726848c0b..88b64463cd7eeefa45addc956b3faacc91d39e5d 100644
 --- a/apps/web/src/components/chat/providerIconUtils.ts
 +++ b/apps/web/src/components/chat/providerIconUtils.ts
 @@ -1,5 +1,5 @@
@@ -3812,7 +3746,7 @@ index 88b56295..88b64463 100644
  function isAvailableProviderOption(option: (typeof PROVIDER_OPTIONS)[number]): option is {
 diff --git a/apps/web/src/components/chat/runtimeModePresentation.test.ts b/apps/web/src/components/chat/runtimeModePresentation.test.ts
 new file mode 100644
-index 00000000..e3a613f6
+index 0000000000000000000000000000000000000000..e3a613f6c54eceef789e1ff5b88efc6e0d43b23c
 --- /dev/null
 +++ b/apps/web/src/components/chat/runtimeModePresentation.test.ts
 @@ -0,0 +1,23 @@
@@ -3841,7 +3775,7 @@ index 00000000..e3a613f6
 +});
 diff --git a/apps/web/src/components/chat/runtimeModePresentation.ts b/apps/web/src/components/chat/runtimeModePresentation.ts
 new file mode 100644
-index 00000000..283e1d08
+index 0000000000000000000000000000000000000000..283e1d08df81a597bb16e1105955c27bb72dd1b7
 --- /dev/null
 +++ b/apps/web/src/components/chat/runtimeModePresentation.ts
 @@ -0,0 +1,87 @@
@@ -3933,7 +3867,7 @@ index 00000000..283e1d08
 +  return getRuntimeModeOptions(provider).includes(runtimeMode) ? runtimeMode : "auto-accept-edits";
 +}
 diff --git a/apps/web/src/components/settings/providerDriverMeta.ts b/apps/web/src/components/settings/providerDriverMeta.ts
-index 8d3d7482..84a97b31 100644
+index 8d3d7482f62a771af61c72bb366bacaa82e5d8f0..84a97b314d130bd1f0c600dd0b57af573e6b2d34 100644
 --- a/apps/web/src/components/settings/providerDriverMeta.ts
 +++ b/apps/web/src/components/settings/providerDriverMeta.ts
 @@ -2,11 +2,12 @@ import {
@@ -3965,7 +3899,7 @@ index 8d3d7482..84a97b31 100644
  
  export const PROVIDER_CLIENT_DEFINITION_BY_VALUE: Partial<
 diff --git a/apps/web/src/providerInstances.test.ts b/apps/web/src/providerInstances.test.ts
-index 7104f365..54c46a9d 100644
+index 7104f365ebff18aa85e810b57b33f926fd0ddcd4..54c46a9d0b2be64c2cdd1acdac86d8e2d056f657 100644
 --- a/apps/web/src/providerInstances.test.ts
 +++ b/apps/web/src/providerInstances.test.ts
 @@ -108,12 +108,33 @@ describe("resolveProviderDriverKindForInstanceSelection", () => {
@@ -4012,7 +3946,7 @@ index 7104f365..54c46a9d 100644
        ),
      ).toBeUndefined();
 diff --git a/apps/web/src/providerInstances.ts b/apps/web/src/providerInstances.ts
-index 3ec67c9e..61781ac5 100644
+index 3ec67c9e25eebf220f376357134a189c3c5f367d..61781ac5973d647fe90acb83af201e2d81cd13d6 100644
 --- a/apps/web/src/providerInstances.ts
 +++ b/apps/web/src/providerInstances.ts
 @@ -239,11 +239,10 @@ export function resolveSelectableProviderInstance(
@@ -4029,7 +3963,7 @@ index 3ec67c9e..61781ac5 100644
    }
    return undefined;
 diff --git a/apps/web/src/session-logic.ts b/apps/web/src/session-logic.ts
-index 5feffe15..fc9e3528 100644
+index 5feffe15b092c42742eef073fc79388a382470a2..fc9e352889b146e7eda0569777131ce32acfd859 100644
 --- a/apps/web/src/session-logic.ts
 +++ b/apps/web/src/session-logic.ts
 @@ -45,6 +45,12 @@ export const PROVIDER_OPTIONS: Array<{
@@ -4046,7 +3980,7 @@ index 5feffe15..fc9e3528 100644
  
  export interface WorkLogEntry {
 diff --git a/bun.lock b/bun.lock
-index 29c54444..a3a35a8d 100644
+index 29c54444357da4f753b4aebbbed4ff352411ef9a..a3a35a8d55b100ffd46a125f65ab307dbce5aa56 100644
 --- a/bun.lock
 +++ b/bun.lock
 @@ -126,6 +126,7 @@
@@ -5415,7 +5349,7 @@ index 29c54444..a3a35a8d 100644
  
      "ora/chalk/ansi-styles/color-convert/color-name": ["color-name@1.1.3", "", {}, "sha512-72fSenhMw2HZMTVHeCA9KCmpEIbzWiQsjN+BHcBbS9vr1mtt+vJjPdksIBNUmKAW8TFUDPJK5SUU3QhE9NEXDw=="],
 diff --git a/packages/contracts/src/model.ts b/packages/contracts/src/model.ts
-index 5b1363f5..a5d38a7c 100644
+index 5b1363f55443363438b2a2688221fa1002f8484e..a5d38a7c387c2fe7fb8058dc3889fccfb2e8902e 100644
 --- a/packages/contracts/src/model.ts
 +++ b/packages/contracts/src/model.ts
 @@ -130,6 +130,7 @@ export type ModelCapabilities = typeof ModelCapabilities.Type;
@@ -5458,7 +5392,7 @@ index 5b1363f5..a5d38a7c 100644
    [OPENCODE_DRIVER_KIND]: "OpenCode",
  };
 diff --git a/packages/contracts/src/orchestration.ts b/packages/contracts/src/orchestration.ts
-index 40192817..2e1a3407 100644
+index 401928171c8bb90a399e3ade7243e415466e60f8..2e1a3407833e0a075a32d02bf2cb58b26a84507a 100644
 --- a/packages/contracts/src/orchestration.ts
 +++ b/packages/contracts/src/orchestration.ts
 @@ -117,6 +117,7 @@ export type ModelSelection = typeof ModelSelection.Type;
@@ -5470,7 +5404,7 @@ index 40192817..2e1a3407 100644
  ]);
  export type RuntimeMode = typeof RuntimeMode.Type;
 diff --git a/packages/contracts/src/providerRuntime.ts b/packages/contracts/src/providerRuntime.ts
-index 5032dc4e..9ba336f7 100644
+index 5032dc4eb4158311503feec71022c0f838828006..9ba336f78c840f36041d34b15ac0c3bc2a85ce37 100644
 --- a/packages/contracts/src/providerRuntime.ts
 +++ b/packages/contracts/src/providerRuntime.ts
 @@ -24,6 +24,8 @@ const RuntimeEventRawSource = Schema.Union([
@@ -5483,7 +5417,7 @@ index 5032dc4e..9ba336f7 100644
    Schema.Literal("opencode.sdk.event"),
    Schema.Literal("acp.jsonrpc"),
 diff --git a/packages/contracts/src/settings.ts b/packages/contracts/src/settings.ts
-index 2d115eed..271181ee 100644
+index 2d115eed98e15e8993f87bfdf3b86788eb322401..271181ee26f71b420e2f3cb94e9235d81b601722 100644
 --- a/packages/contracts/src/settings.ts
 +++ b/packages/contracts/src/settings.ts
 @@ -331,6 +331,30 @@ export const OpenCodeSettings = makeProviderSettingsSchema(
@@ -5546,6 +5480,3 @@ index 2d115eed..271181ee 100644
        opencode: Schema.optionalKey(OpenCodeSettingsPatch),
      }),
    ),
--- 
-2.34.1
-

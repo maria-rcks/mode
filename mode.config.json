@@ -1,0 +1,15 @@
+{
+  "name": "mode",
+  "upstream": {
+    "repo": "https://github.com/pingdotgg/t3code.git",
+    "ref": "main",
+    "localSeed": "/Users/maria/.codex/worktrees/4116/t3code",
+    "worktree": ".mode/t3code",
+    "branch": "mode/dev"
+  },
+  "patches": {
+    "dir": "patches",
+    "series": "patches/series",
+    "exportDir": "patches/mode"
+  }
+}

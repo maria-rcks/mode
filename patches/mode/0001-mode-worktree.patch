@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index 8bd251ce3508385378b346a01db0c01f0407e280..099e5cc9e572e3f255638d4855c5eda289b9e440 100644
+--- a/package.json
++++ b/package.json
+@@ -30,7 +30,7 @@
+   "type": "module",
+   "scripts": {
+     "prepare": "effect-tsgo patch",
+-    "dev": "node scripts/dev-runner.ts dev",
++    "dev": "node scripts/dev-runner.ts dev:desktop",
+     "dev:server": "node scripts/dev-runner.ts dev:server",
+     "dev:web": "node scripts/dev-runner.ts dev:web",
+     "dev:marketing": "turbo run dev --filter=@t3tools/marketing",

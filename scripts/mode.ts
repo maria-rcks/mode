@@ -38,7 +38,7 @@ function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(resolve(root, path), "utf8")) as T;
 }
 
-function run(command: string, args: string[], options: { cwd?: string; quiet?: boolean } = {}) {
+function run(command: string, args: string[], options: { cwd?: string; quiet?: boolean; trim?: boolean } = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     encoding: "utf8",
@@ -53,10 +53,11 @@ function run(command: string, args: string[], options: { cwd?: string; quiet?: b
     throw new Error(`${command} ${args.join(" ")} failed`);
   }
 
-  return typeof result.stdout === "string" ? result.stdout.trim() : "";
+  if (typeof result.stdout !== "string") return "";
+  return options.trim === false ? result.stdout : result.stdout.trim();
 }
 
-function git(args: string[], options: { cwd?: string; quiet?: boolean } = {}) {
+function git(args: string[], options: { cwd?: string; quiet?: boolean; trim?: boolean } = {}) {
   return run("git", args, options);
 }
 
@@ -138,7 +139,18 @@ function applyPatchStack() {
       git(["am", "--3way", "--keep-cr", patchPath], { cwd: checkout });
     } else {
       git(["apply", "--index", "--3way", patchPath], { cwd: checkout });
-      git(["commit", "-m", `mode: apply ${entry}`], { cwd: checkout });
+      git(
+        [
+          "-c",
+          "user.name=Mode Bot",
+          "-c",
+          "user.email=mode-bot@example.invalid",
+          "commit",
+          "-m",
+          `mode: apply ${entry}`,
+        ],
+        { cwd: checkout },
+      );
     }
   }
 
@@ -168,7 +180,7 @@ function exportPatchStack() {
   } else if (status) {
     const patchName = "0001-mode-worktree.patch";
     const patchPath = join(exportDir, patchName);
-    const diff = git(["diff", "--binary", "--full-index"], { cwd: checkout, quiet: true });
+    const diff = git(["diff", "--binary", "--full-index"], { cwd: checkout, quiet: true, trim: false });
     writeFileSync(patchPath, diff);
     exported = [relative(patchesDir, patchPath)];
   }

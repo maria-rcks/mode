@@ -3,3 +3,4 @@
 
 mode/0001-mode-worktree.patch
 mode/0002-feat-provider-add-Droid-SDK-provider.patch
+mode/0003-feat-mode-use-Mode-runtime-namespace.patch

@@ -1,98 +1,5 @@
-From 68f60170350becf2ea033740da8ead03a97364c2 Mon Sep 17 00:00:00 2001
-From: maria <maria@kuuro.net>
-Date: Sat, 6 Jun 2026 00:49:58 +0000
-Subject: [PATCH 3/3] feat(mode): use Mode runtime namespace
-
-Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
----
- .docs/quick-start.md                          |  2 +-
- .docs/scripts.md                              | 10 +--
- .github/workflows/release.yml                 | 12 +--
- KEYBINDINGS.md                                |  2 +-
- REMOTE.md                                     |  4 +-
- apps/desktop/scripts/dev-electron.mjs         |  4 +-
- apps/desktop/scripts/electron-launcher.mjs    |  2 +-
- apps/desktop/src/app/DesktopApp.ts            |  2 +-
- .../src/app/DesktopAppIdentity.test.ts        |  2 +-
- apps/desktop/src/app/DesktopAppIdentity.ts    |  4 +-
- apps/desktop/src/app/DesktopConfig.ts         | 24 +++---
- .../src/app/DesktopEnvironment.test.ts        | 18 ++---
- apps/desktop/src/app/DesktopEnvironment.ts    | 10 +--
- .../src/app/DesktopObservability.test.ts      |  2 +-
- .../DesktopBackendConfiguration.test.ts       | 14 ++--
- .../backend/DesktopBackendConfiguration.ts    | 20 ++---
- .../src/backend/DesktopServerExposure.test.ts | 10 +--
- .../src/settings/DesktopAppSettings.test.ts   |  2 +-
- .../settings/DesktopClientSettings.test.ts    |  2 +-
- .../settings/DesktopSavedEnvironments.test.ts |  2 +-
- .../src/shell/DesktopShellEnvironment.test.ts |  6 +-
- .../src/shell/DesktopShellEnvironment.ts      |  4 +-
- .../src/updates/DesktopUpdates.test.ts        | 12 +--
- apps/desktop/src/updates/DesktopUpdates.ts    |  2 +-
- apps/desktop/src/window/DesktopWindow.test.ts |  2 +-
- apps/mobile/app.config.ts                     | 18 ++---
- .../src/features/connection/pairing.test.ts   |  2 +-
- .../mobile/src/features/connection/pairing.ts |  2 +-
- apps/server/src/cli/config.test.ts            | 58 +++++++-------
- apps/server/src/cli/config.ts                 | 48 ++++++------
- .../Layers/ProviderRuntimeIngestion.ts        |  2 +-
- apps/server/src/os-jank.ts                    |  2 +-
- .../Layers/ProjectSetupScriptRunner.test.ts   |  4 +-
- .../provider/Layers/ProviderRegistry.test.ts  |  4 +-
- .../src/sourceControl/BitbucketApi.test.ts    |  6 +-
- apps/server/src/sourceControl/BitbucketApi.ts | 10 +--
- .../BitbucketSourceControlProvider.ts         |  2 +-
- .../SourceControlDiscovery.test.ts            |  2 +-
- apps/server/src/telemetry/Identify.ts         |  2 +-
- .../telemetry/Layers/AnalyticsService.test.ts |  8 +-
- .../src/telemetry/Layers/AnalyticsService.ts  | 10 +--
- .../src/terminal/Layers/Manager.test.ts       | 16 ++--
- apps/server/src/terminal/Layers/Manager.ts    |  2 +-
- .../CodexTextGeneration.test.ts               |  4 +-
- apps/server/src/vcs/GitVcsDriver.ts           |  4 +-
- apps/server/src/vcs/VcsProjectConfig.test.ts  |  4 +-
- apps/server/src/vcs/VcsProjectConfig.ts       |  2 +-
- apps/web/index.html                           |  2 +-
- apps/web/src/clientPersistenceStorage.ts      |  4 +-
- .../components/BranchToolbar.logic.test.ts    | 30 +++----
- apps/web/src/components/ChatView.browser.tsx  | 22 +++---
- apps/web/src/components/ChatView.logic.ts     |  2 +-
- .../components/KeybindingsToast.browser.tsx   |  4 +-
- apps/web/src/components/Sidebar.logic.test.ts |  4 +-
- .../chat/ProviderModelPicker.browser.tsx      | 16 ++--
- .../settings/SettingsPanels.browser.tsx       | 10 +--
- apps/web/src/composerDraftStore.ts            |  2 +-
- apps/web/src/editorPreferences.ts             |  2 +-
- apps/web/src/hooks/useLocalStorage.ts         |  2 +-
- apps/web/src/hooks/useTheme.ts                |  2 +-
- apps/web/src/hostedPairing.test.ts            |  2 +-
- apps/web/src/hostedPairing.ts                 |  2 +-
- apps/web/src/projectScripts.test.ts           | 10 +--
- apps/web/src/providerUpdateDismissal.ts       |  2 +-
- apps/web/src/terminalUiStateStore.ts          |  2 +-
- apps/web/src/uiStateStore.ts                  | 14 ++--
- apps/web/src/versionSkew.ts                   |  2 +-
- apps/web/src/worktreeCleanup.test.ts          |  4 +-
- apps/web/vercel.ts                            |  6 +-
- apps/web/vite.config.ts                       |  2 +-
- docs/observability.md                         | 62 +++++++--------
- docs/release.md                               | 18 ++---
- docs/source-control-providers.md              |  4 +-
- packages/contracts/src/terminal.test.ts       | 12 +--
- packages/shared/src/projectScripts.ts         |  4 +-
- packages/shared/src/shell.test.ts             | 36 ++++-----
- packages/shared/src/shell.ts                  |  8 +-
- packages/ssh/src/tunnel.ts                    | 14 ++--
- scripts/build-desktop-artifact.test.ts        | 10 +--
- scripts/build-desktop-artifact.ts             | 54 ++++++-------
- scripts/dev-runner.test.ts                    | 54 ++++++-------
- scripts/dev-runner.ts                         | 78 +++++++++----------
- scripts/mock-update-server.ts                 |  4 +-
- turbo.json                                    | 38 ++++-----
- 84 files changed, 462 insertions(+), 468 deletions(-)
-
 diff --git a/.docs/quick-start.md b/.docs/quick-start.md
-index 2206d53e..c6e768e2 100644
+index 2206d53ee580bde5e6cc33e1b83cb940152f0a57..c6e768e211632b30b95710854a918fe4b8d21972 100644
 --- a/.docs/quick-start.md
 +++ b/.docs/quick-start.md
 @@ -8,7 +8,7 @@ bun run dev
@@ -105,7 +12,7 @@ index 2206d53e..c6e768e2 100644
  # Production
  bun run build
 diff --git a/.docs/scripts.md b/.docs/scripts.md
-index b3fcd4b3..f3304b89 100644
+index b3fcd4b30e98cced3d59c8c54e7d3da54dcd67f2..f3304b892c172b8e608e8e258bb27943977b47ed 100644
 --- a/.docs/scripts.md
 +++ b/.docs/scripts.md
 @@ -3,7 +3,7 @@
@@ -133,7 +40,7 @@ index b3fcd4b3..f3304b89 100644
 -If you want full control instead of hashing, set `T3CODE_PORT_OFFSET` to a numeric offset.
 +If you want full control instead of hashing, set `MODE_PORT_OFFSET` to a numeric offset.
 diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
-index 2a23e0d1..2f81de62 100644
+index 2a23e0d197a980f8025c85e03ae2bfeb7e2d9c80..2f81de62d781e599e23d42329a797f7998cb7107 100644
 --- a/.github/workflows/release.yml
 +++ b/.github/workflows/release.yml
 @@ -594,9 +594,9 @@ jobs:
@@ -163,7 +70,7 @@ index 2a23e0d1..2f81de62 100644
            router_domain="${router_domain#https://}"
            router_domain="${router_domain%%/*}"
 diff --git a/KEYBINDINGS.md b/KEYBINDINGS.md
-index b57c1303..361488a4 100644
+index b57c13032ce4c500846f3acdd5f539bbb9b35439..361488a41378f6b6d22df132427ad38f209a3cf9 100644
 --- a/KEYBINDINGS.md
 +++ b/KEYBINDINGS.md
 @@ -2,7 +2,7 @@
@@ -176,7 +83,7 @@ index b57c1303..361488a4 100644
  The file must be a JSON array of rules:
  
 diff --git a/REMOTE.md b/REMOTE.md
-index 56510e62..d7172833 100644
+index 56510e62890fa42c2a912ee85a0bdaa77b462ca4..d7172833919906188117b2bdc04a0f1f26dbdd29 100644
 --- a/REMOTE.md
 +++ b/REMOTE.md
 @@ -117,7 +117,7 @@ SSH launch is a desktop feature because it needs local process and SSH access. O
@@ -198,7 +105,7 @@ index 56510e62..d7172833 100644
  ## How Pairing Works
  
 diff --git a/apps/desktop/scripts/dev-electron.mjs b/apps/desktop/scripts/dev-electron.mjs
-index 9a7e68df..525b7a9f 100644
+index 9a7e68dfbbb3ff229b117b6f87ed786b41800ac7..525b7a9f15e8b06f7f8ff920841892f63f367598 100644
 --- a/apps/desktop/scripts/dev-electron.mjs
 +++ b/apps/desktop/scripts/dev-electron.mjs
 @@ -59,7 +59,7 @@ function cleanupStaleDevApps() {
@@ -220,7 +127,7 @@ index 9a7e68df..525b7a9f 100644
        cwd: desktopDir,
        env: childEnv,
 diff --git a/apps/desktop/scripts/electron-launcher.mjs b/apps/desktop/scripts/electron-launcher.mjs
-index 1453cbe6..c3bcba00 100644
+index 1453cbe666e22a98d97b20b29a174f106236861f..c3bcba0047725425779ce5a8c7401c7f4f9e37ae 100644
 --- a/apps/desktop/scripts/electron-launcher.mjs
 +++ b/apps/desktop/scripts/electron-launcher.mjs
 @@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
@@ -233,7 +140,7 @@ index 1453cbe6..c3bcba00 100644
  
  const __dirname = dirname(fileURLToPath(import.meta.url));
 diff --git a/apps/desktop/src/app/DesktopApp.ts b/apps/desktop/src/app/DesktopApp.ts
-index 85b8aed4..3e9fd6b7 100644
+index 85b8aed4a420f2001f57eb874ec5ddf0d53bd96d..3e9fd6b7b822a8bfecaa2bc5b2f5f6784ce6546b 100644
 --- a/apps/desktop/src/app/DesktopApp.ts
 +++ b/apps/desktop/src/app/DesktopApp.ts
 @@ -47,7 +47,7 @@ class DesktopDevelopmentBackendPortRequiredError extends Data.TaggedError(
@@ -246,7 +153,7 @@ index 85b8aed4..3e9fd6b7 100644
  }
  
 diff --git a/apps/desktop/src/app/DesktopAppIdentity.test.ts b/apps/desktop/src/app/DesktopAppIdentity.test.ts
-index f95fd1be..b0bda8f5 100644
+index f95fd1bef71c45573198ffdbc94fd76b869678b1..b0bda8f56d14f9a8d413af95eeb1b420483f153d 100644
 --- a/apps/desktop/src/app/DesktopAppIdentity.test.ts
 +++ b/apps/desktop/src/app/DesktopAppIdentity.test.ts
 @@ -166,7 +166,7 @@ describe("DesktopAppIdentity", () => {
@@ -259,7 +166,7 @@ index f95fd1be..b0bda8f5 100644
          },
          pngIconPath: Option.some("/icon.png"),
 diff --git a/apps/desktop/src/app/DesktopAppIdentity.ts b/apps/desktop/src/app/DesktopAppIdentity.ts
-index 7a566194..78f79277 100644
+index 7a566194ab1ad15f343bf27ac28bfb80f51de74e..78f79277f10d84e21eab4348386ca2f6afad5914 100644
 --- a/apps/desktop/src/app/DesktopAppIdentity.ts
 +++ b/apps/desktop/src/app/DesktopAppIdentity.ts
 @@ -14,7 +14,7 @@ const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
@@ -281,7 +188,7 @@ index 7a566194..78f79277 100644
            Effect.catch(() => Effect.succeed(Option.none<string>())),
          ),
 diff --git a/apps/desktop/src/app/DesktopConfig.ts b/apps/desktop/src/app/DesktopConfig.ts
-index a9218314..2cf344d3 100644
+index a921831401847536583080c3f7742669fe2d8da2..2cf344d349fabef7ceee0d53649987056dcdc791 100644
 --- a/apps/desktop/src/app/DesktopConfig.ts
 +++ b/apps/desktop/src/app/DesktopConfig.ts
 @@ -35,21 +35,19 @@ const compactEnv = (env: Readonly<Record<string, string | undefined>>): Record<s
@@ -318,7 +225,7 @@ index a9218314..2cf344d3 100644
    ),
  });
 diff --git a/apps/desktop/src/app/DesktopEnvironment.test.ts b/apps/desktop/src/app/DesktopEnvironment.test.ts
-index 11ea03f6..d57136cc 100644
+index 11ea03f6816b6a11feda1084315fabea0d56d783..d57136cc3291df2b93a23e4375cc1dd2825317b8 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.test.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.test.ts
 @@ -40,13 +40,13 @@ describe("DesktopEnvironment", () => {
@@ -362,7 +269,7 @@ index 11ea03f6..d57136cc 100644
        );
  
 diff --git a/apps/desktop/src/app/DesktopEnvironment.ts b/apps/desktop/src/app/DesktopEnvironment.ts
-index 2c5db8a1..a94f7306 100644
+index 2c5db8a16d8dbf54813deb0520d91407e97f28b9..a94f7306a145cc79eb6bd53f79811d88c264fa92 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.ts
 @@ -151,7 +151,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
@@ -397,7 +304,7 @@ index 2c5db8a1..a94f7306 100644
      legacyUserDataDirName,
      defaultDesktopSettings: resolveDefaultDesktopSettings(input.appVersion),
 diff --git a/apps/desktop/src/app/DesktopObservability.test.ts b/apps/desktop/src/app/DesktopObservability.test.ts
-index a78de48d..fac79f89 100644
+index a78de48d5e19ac6d7fdb2f3db2039fed5e4189a5..fac79f891321b8c4ba212015938077e822fb756a 100644
 --- a/apps/desktop/src/app/DesktopObservability.test.ts
 +++ b/apps/desktop/src/app/DesktopObservability.test.ts
 @@ -55,7 +55,7 @@ const makeEnvironmentLayer = (baseDir: string) =>
@@ -410,7 +317,7 @@ index a78de48d..fac79f89 100644
          }),
        ),
 diff --git a/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts b/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts
-index 96e56a87..5028aae6 100644
+index 96e56a87c9dacac03d3667c1d0a79acc1883e63e..5028aae6523ed5f1a9aba082963361a0a5bc39b3 100644
 --- a/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts
 +++ b/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts
 @@ -58,10 +58,10 @@ function makeEnvironmentLayer(
@@ -442,7 +349,7 @@ index 96e56a87..5028aae6 100644
          assert.equal(first.bootstrap.mode, "desktop");
          assert.equal(first.bootstrap.noBrowser, true);
 diff --git a/apps/desktop/src/backend/DesktopBackendConfiguration.ts b/apps/desktop/src/backend/DesktopBackendConfiguration.ts
-index 5e4e034b..a35fc8ee 100644
+index 5e4e034b5e77adb8611db2b31e1086dbe8b3575c..a35fc8ee036024b9b880994af953b5add8cf650e 100644
 --- a/apps/desktop/src/backend/DesktopBackendConfiguration.ts
 +++ b/apps/desktop/src/backend/DesktopBackendConfiguration.ts
 @@ -37,16 +37,16 @@ const emptyBackendObservabilitySettings: BackendObservabilitySettings = {
@@ -473,7 +380,7 @@ index 5e4e034b..a35fc8ee 100644
  
  const backendChildEnvPatch = (): Record<string, string | undefined> =>
 diff --git a/apps/desktop/src/backend/DesktopServerExposure.test.ts b/apps/desktop/src/backend/DesktopServerExposure.test.ts
-index 0f3e9eae..baaa3a3b 100644
+index 0f3e9eaeb45a535a9e882c0674b4c8ca877d2ba1..baaa3a3be9110f534b4dc4aca7b7cd039b27ec44 100644
 --- a/apps/desktop/src/backend/DesktopServerExposure.test.ts
 +++ b/apps/desktop/src/backend/DesktopServerExposure.test.ts
 @@ -77,7 +77,7 @@ function makeEnvironmentLayer(baseDir: string, env: Record<string, string | unde
@@ -515,7 +422,7 @@ index 0f3e9eae..baaa3a3b 100644
        },
      ),
 diff --git a/apps/desktop/src/settings/DesktopAppSettings.test.ts b/apps/desktop/src/settings/DesktopAppSettings.test.ts
-index db6194cf..68bf285d 100644
+index db6194cf8f70d1ff9f0d186eda84f0faad0c433c..68bf285db1627e976af5dda336389a9a3c1d4922 100644
 --- a/apps/desktop/src/settings/DesktopAppSettings.test.ts
 +++ b/apps/desktop/src/settings/DesktopAppSettings.test.ts
 @@ -39,7 +39,7 @@ function makeEnvironmentLayer(baseDir: string, appVersion = "0.0.17") {
@@ -528,7 +435,7 @@ index db6194cf..68bf285d 100644
    );
  }
 diff --git a/apps/desktop/src/settings/DesktopClientSettings.test.ts b/apps/desktop/src/settings/DesktopClientSettings.test.ts
-index f666e692..0f4214be 100644
+index f666e692860c3a05148a4f0cd6ff0347cd0b7473..0f4214be5bd20124c085ad1fab9774ce8fef1bfc 100644
 --- a/apps/desktop/src/settings/DesktopClientSettings.test.ts
 +++ b/apps/desktop/src/settings/DesktopClientSettings.test.ts
 @@ -48,7 +48,7 @@ function makeLayer(baseDir: string) {
@@ -541,7 +448,7 @@ index f666e692..0f4214be 100644
    );
  
 diff --git a/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts b/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts
-index d1d37b96..5a7140d9 100644
+index d1d37b96e1189c0d61904484fed092030ae1e24e..5a7140d9d051d979bf7957d755a2c570ee71b6d1 100644
 --- a/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts
 +++ b/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts
 @@ -104,7 +104,7 @@ function makeLayer(
@@ -554,7 +461,7 @@ index d1d37b96..5a7140d9 100644
    );
  
 diff --git a/apps/desktop/src/shell/DesktopShellEnvironment.test.ts b/apps/desktop/src/shell/DesktopShellEnvironment.test.ts
-index 897e7336..c0914230 100644
+index 897e7336a24825d0e3a326828cc287bc92531d6b..c0914230e33a155924faae7f43e722c3de836a3f 100644
 --- a/apps/desktop/src/shell/DesktopShellEnvironment.test.ts
 +++ b/apps/desktop/src/shell/DesktopShellEnvironment.test.ts
 @@ -12,11 +12,7 @@ const textEncoder = new TextEncoder();
@@ -571,7 +478,7 @@ index 897e7336..c0914230 100644
  }
  
 diff --git a/apps/desktop/src/shell/DesktopShellEnvironment.ts b/apps/desktop/src/shell/DesktopShellEnvironment.ts
-index f57873d9..142337d8 100644
+index f57873d9fb85ed53555ff694e8b181e5422192c1..142337d824252c9f63753fe81206279267e5b6f0 100644
 --- a/apps/desktop/src/shell/DesktopShellEnvironment.ts
 +++ b/apps/desktop/src/shell/DesktopShellEnvironment.ts
 @@ -125,8 +125,8 @@ const knownWindowsCliDirs = (env: NodeJS.ProcessEnv): ReadonlyArray<string> => [
@@ -586,7 +493,7 @@ index f57873d9..142337d8 100644
  const capturePosixEnvironmentCommand = (names: ReadonlyArray<string>) =>
    names
 diff --git a/apps/desktop/src/updates/DesktopUpdates.test.ts b/apps/desktop/src/updates/DesktopUpdates.test.ts
-index 34d18f11..91354ec7 100644
+index 34d18f11a77de09ec4c1b5d2d9f5954e6229428e..91354ec73843001106bbaeea83f9386b1dc08e75 100644
 --- a/apps/desktop/src/updates/DesktopUpdates.test.ts
 +++ b/apps/desktop/src/updates/DesktopUpdates.test.ts
 @@ -129,9 +129,9 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
@@ -616,7 +523,7 @@ index 34d18f11..91354ec7 100644
        }),
      ),
 diff --git a/apps/desktop/src/updates/DesktopUpdates.ts b/apps/desktop/src/updates/DesktopUpdates.ts
-index 056bca4a..193d262f 100644
+index 056bca4a0e1d1404f06e502849736c3b6314c19e..193d262f473c2326bfb005c28be4d0845fe6141d 100644
 --- a/apps/desktop/src/updates/DesktopUpdates.ts
 +++ b/apps/desktop/src/updates/DesktopUpdates.ts
 @@ -173,7 +173,7 @@ function getAutoUpdateDisabledReason(args: {
@@ -629,7 +536,7 @@ index 056bca4a..193d262f 100644
    if (args.platform === "linux" && !args.appImage) {
      return "Automatic updates on Linux require running the AppImage build.";
 diff --git a/apps/desktop/src/window/DesktopWindow.test.ts b/apps/desktop/src/window/DesktopWindow.test.ts
-index fbcc6093..6928f0ba 100644
+index fbcc60934aa91147b912b29ab63aa165b4cec961..6928f0bac1276ac958a13b96548cd4f2b182362a 100644
 --- a/apps/desktop/src/window/DesktopWindow.test.ts
 +++ b/apps/desktop/src/window/DesktopWindow.test.ts
 @@ -112,7 +112,7 @@ const desktopEnvironmentLayer = DesktopEnvironment.layer(environmentInput).pipe(
@@ -642,7 +549,7 @@ index fbcc6093..6928f0ba 100644
        }),
      ),
 diff --git a/apps/mobile/app.config.ts b/apps/mobile/app.config.ts
-index 5c46d01b..85daf454 100644
+index 5c46d01bfd83049d7b6f28dfb2d456382c0a133a..85daf4545e815c0ee39c2ed855126fb4625a4768 100644
 --- a/apps/mobile/app.config.ts
 +++ b/apps/mobile/app.config.ts
 @@ -16,24 +16,24 @@ const VARIANT_CONFIG: Record<
@@ -680,7 +587,7 @@ index 5c46d01b..85daf454 100644
  };
  
 diff --git a/apps/mobile/src/features/connection/pairing.test.ts b/apps/mobile/src/features/connection/pairing.test.ts
-index e0af038b..f5e5a0cb 100644
+index e0af038b46ed83a56ad71fddf2e86dbff0e094f3..f5e5a0cb8d6e7d7c1878fae1337329ae7d4e19ab 100644
 --- a/apps/mobile/src/features/connection/pairing.test.ts
 +++ b/apps/mobile/src/features/connection/pairing.test.ts
 @@ -12,7 +12,7 @@ describe("extractPairingUrlFromQrPayload", () => {
@@ -693,7 +600,7 @@ index e0af038b..f5e5a0cb 100644
      ).toBe("https://remote.example.com/pair#token=pairing-token");
    });
 diff --git a/apps/mobile/src/features/connection/pairing.ts b/apps/mobile/src/features/connection/pairing.ts
-index f7362900..fbd39712 100644
+index f7362900b0cb20f6dc570606cab81cf563d79c19..fbd39712759cddb6dbe383e45063f687c4144320 100644
 --- a/apps/mobile/src/features/connection/pairing.ts
 +++ b/apps/mobile/src/features/connection/pairing.ts
 @@ -53,7 +53,7 @@ export function extractPairingUrlFromQrPayload(payload: string): string {
@@ -706,7 +613,7 @@ index f7362900..fbd39712 100644
        if (pairingUrl.length > 0) {
          return pairingUrl;
 diff --git a/apps/server/src/cli/config.test.ts b/apps/server/src/cli/config.test.ts
-index 9e73773d..5369d919 100644
+index 9e73773d5a5ed7af2ccb32810b3b4b3a34cdcfd4..5369d919b501133b83b732d9464a374371e6825b 100644
 --- a/apps/server/src/cli/config.test.ts
 +++ b/apps/server/src/cli/config.test.ts
 @@ -83,15 +83,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
@@ -812,7 +719,7 @@ index 9e73773d..5369d919 100644
                }),
              ),
 diff --git a/apps/server/src/cli/config.ts b/apps/server/src/cli/config.ts
-index 7182854e..ece4c172 100644
+index 7182854e18c41afec54c193dc82bc6dadc2bc650..ece4c1725e8c187fda9713d86733a68f039cf9db 100644
 --- a/apps/server/src/cli/config.ts
 +++ b/apps/server/src/cli/config.ts
 @@ -39,7 +39,7 @@ export const hostFlag = Flag.string("host").pipe(
@@ -913,7 +820,7 @@ index 7182854e..ece4c172 100644
      Config.map(Option.getOrUndefined),
    ),
 diff --git a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
-index 59787e0b..95c4d8b4 100644
+index 59787e0b5451271bd13516e72caf59d25e67771a..95c4d8b40840a47a16dd4200db711fa8937d8526 100644
 --- a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
 +++ b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
 @@ -54,7 +54,7 @@ const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(120);
@@ -926,7 +833,7 @@ index 59787e0b..95c4d8b4 100644
  type TurnStartRequestedDomainEvent = Extract<
    OrchestrationEvent,
 diff --git a/apps/server/src/os-jank.ts b/apps/server/src/os-jank.ts
-index 93a40ae7..85ac6417 100644
+index 93a40ae7e197a8a74266bac3b60c89c965dbf1d3..85ac641724a1788d7f38fb438ea565fe31077261 100644
 --- a/apps/server/src/os-jank.ts
 +++ b/apps/server/src/os-jank.ts
 @@ -98,7 +98,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
@@ -939,7 +846,7 @@ index 93a40ae7..85ac6417 100644
    return resolve(yield* expandHomePath(raw.trim()));
  });
 diff --git a/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts b/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
-index 55e44747..cec42822 100644
+index 55e44747370121c581e76acc1d3199b1d2dee7e3..cec42822d0913c7ace6d5f962987818d104ae213 100644
 --- a/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
 +++ b/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
 @@ -152,8 +152,8 @@ describe("ProjectSetupScriptRunner", () => {
@@ -954,7 +861,7 @@ index 55e44747..cec42822 100644
      });
      expect(write).toHaveBeenCalledWith({
 diff --git a/apps/server/src/provider/Layers/ProviderRegistry.test.ts b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
-index 52465fdc..1b9abd65 100644
+index 52465fdc386bf85bce511884bb7c1a539186f723..1b9abd658e14c0847414a67693551c76f8e5a743 100644
 --- a/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 +++ b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 @@ -59,7 +59,7 @@ const disabledCodexSettings: CodexSettings = Schema.decodeSync(CodexSettings)({
@@ -976,7 +883,7 @@ index 52465fdc..1b9abd65 100644
                    // pointing at a binary the server has to actually spawn.
                    codex_personal: {
 diff --git a/apps/server/src/sourceControl/BitbucketApi.test.ts b/apps/server/src/sourceControl/BitbucketApi.test.ts
-index e93362b8..2a89edd6 100644
+index e93362b8423e93afe03098ebf00998f3fb7065f4..2a89edd6dbf32eafa24b9f320ffca08a31097ebc 100644
 --- a/apps/server/src/sourceControl/BitbucketApi.test.ts
 +++ b/apps/server/src/sourceControl/BitbucketApi.test.ts
 @@ -139,9 +139,9 @@ function makeLayer(input: {
@@ -993,7 +900,7 @@ index e93362b8..2a89edd6 100644
          }),
        ),
 diff --git a/apps/server/src/sourceControl/BitbucketApi.ts b/apps/server/src/sourceControl/BitbucketApi.ts
-index 3bcba65f..f64c6ae2 100644
+index 3bcba65fe0f5503ba1019af55936b8b495f2dd0b..f64c6ae2962cdaf28abbd7b5224d4e9653bf42fe 100644
 --- a/apps/server/src/sourceControl/BitbucketApi.ts
 +++ b/apps/server/src/sourceControl/BitbucketApi.ts
 @@ -23,12 +23,12 @@ import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -1023,7 +930,7 @@ index 3bcba65f..f64c6ae2 100644
    };
  }
 diff --git a/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts b/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts
-index f3fd502f..3c589074 100644
+index f3fd502f7fb8fdbd80827f18c60979a284c0705a..3c5890749d997c46eb04c859fc187d06bca97223 100644
 --- a/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts
 +++ b/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts
 @@ -122,7 +122,7 @@ export const makeDiscovery = Effect.fn("makeBitbucketSourceControlProviderDiscov
@@ -1036,7 +943,7 @@ index f3fd502f..3c589074 100644
    } satisfies SourceControlProviderDiscovery.SourceControlApiDiscoverySpec;
  });
 diff --git a/apps/server/src/sourceControl/SourceControlDiscovery.test.ts b/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
-index d1c6c65c..efbcbb64 100644
+index d1c6c65c7528d0dd8d4efe43962e8f3d86237a90..efbcbb646ce350bb4247987824014821ab6029d3 100644
 --- a/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
 +++ b/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
 @@ -94,7 +94,7 @@ Logged in to github.com account juliusmarminge (keyring)
@@ -1049,7 +956,7 @@ index d1c6c65c..efbcbb64 100644
            }),
          },
 diff --git a/apps/server/src/telemetry/Identify.ts b/apps/server/src/telemetry/Identify.ts
-index ade6ac48..01676567 100644
+index ade6ac485ba379b27afc471a08bad1a529486865..016765677f042ad227cd85106744b3618cfdaca6 100644
 --- a/apps/server/src/telemetry/Identify.ts
 +++ b/apps/server/src/telemetry/Identify.ts
 @@ -81,7 +81,7 @@ const upsertAnonymousId = Effect.gen(function* () {
@@ -1062,7 +969,7 @@ index ade6ac48..01676567 100644
  export const getTelemetryIdentifier = Effect.gen(function* () {
    const codexAccountId = yield* Effect.result(getCodexAccountId);
 diff --git a/apps/server/src/telemetry/Layers/AnalyticsService.test.ts b/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
-index 03ebd2fd..1f9d1ed2 100644
+index 03ebd2fdc65a50a30c048617f251c32df1615849..1f9d1ed2f70bd2e2cd96b4fda828c973769437bb 100644
 --- a/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
 +++ b/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
 @@ -47,10 +47,10 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
@@ -1081,7 +988,7 @@ index 03ebd2fd..1f9d1ed2 100644
        );
        const batchServerLayer = HttpServer.serve(
 diff --git a/apps/server/src/telemetry/Layers/AnalyticsService.ts b/apps/server/src/telemetry/Layers/AnalyticsService.ts
-index 27bf64c7..2b29f96b 100644
+index 27bf64c7be0e20315819e5323ac74daacaa658e0..2b29f96be7ba77c548a04cfb6c7408b1a47925df 100644
 --- a/apps/server/src/telemetry/Layers/AnalyticsService.ts
 +++ b/apps/server/src/telemetry/Layers/AnalyticsService.ts
 @@ -26,15 +26,15 @@ interface BufferedAnalyticsEvent {
@@ -1106,7 +1013,7 @@ index 27bf64c7..2b29f96b 100644
    ),
  });
 diff --git a/apps/server/src/terminal/Layers/Manager.test.ts b/apps/server/src/terminal/Layers/Manager.test.ts
-index c7a321d1..54e64da1 100644
+index c7a321d11950c9f2112370b0f2eda9ec551866e1..54e64da123046b8f90a951a868b680173585ce35 100644
 --- a/apps/server/src/terminal/Layers/Manager.test.ts
 +++ b/apps/server/src/terminal/Layers/Manager.test.ts
 @@ -338,7 +338,7 @@ it.layer(
@@ -1168,7 +1075,7 @@ index c7a321d1..54e64da1 100644
      }),
    );
 diff --git a/apps/server/src/terminal/Layers/Manager.ts b/apps/server/src/terminal/Layers/Manager.ts
-index 82eb9502..2d81d813 100644
+index 82eb9502cf690996b17d7c60ce2988b161e62d02..2d81d813b53f49798e27be4fa31f9fd0eee09962 100644
 --- a/apps/server/src/terminal/Layers/Manager.ts
 +++ b/apps/server/src/terminal/Layers/Manager.ts
 @@ -886,7 +886,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
@@ -1181,7 +1088,7 @@ index 82eb9502..2d81d813 100644
    }
    if (normalizedKey.startsWith("VITE_")) {
 diff --git a/apps/server/src/textGeneration/CodexTextGeneration.test.ts b/apps/server/src/textGeneration/CodexTextGeneration.test.ts
-index 87a2f95f..b88a97a3 100644
+index 87a2f95fbf598d632caf2e0bbb2b4a7be1c99e75..b88a97a3cf433e219f5e7bb9c817dd6d2d2d0f30 100644
 --- a/apps/server/src/textGeneration/CodexTextGeneration.test.ts
 +++ b/apps/server/src/textGeneration/CodexTextGeneration.test.ts
 @@ -142,9 +142,9 @@ function makeFakeCodexBinary(
@@ -1197,7 +1104,7 @@ index 87a2f95f..b88a97a3 100644
          `exit ${input.exitCode ?? 0}`,
          "",
 diff --git a/apps/server/src/vcs/GitVcsDriver.ts b/apps/server/src/vcs/GitVcsDriver.ts
-index c75570d4..c60132ee 100644
+index c75570d4b1cb5df271acb79a79eb77cbf4f38d2f..c60132ee8e872cf77a2e2669000034c9053450dd 100644
 --- a/apps/server/src/vcs/GitVcsDriver.ts
 +++ b/apps/server/src/vcs/GitVcsDriver.ts
 @@ -614,9 +614,9 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
@@ -1213,7 +1120,7 @@ index c75570d4..c60132ee 100644
  
        const cleanupTempIndex = fileSystem
 diff --git a/apps/server/src/vcs/VcsProjectConfig.test.ts b/apps/server/src/vcs/VcsProjectConfig.test.ts
-index aac4beb7..8682acc0 100644
+index aac4beb7e321aaeb5d41353820ad9e2ee99084a4..8682acc003184c9c9012a2dc9e571ed215e0ca65 100644
 --- a/apps/server/src/vcs/VcsProjectConfig.test.ts
 +++ b/apps/server/src/vcs/VcsProjectConfig.test.ts
 @@ -27,7 +27,7 @@ describe("VcsProjectConfig", () => {
@@ -1235,7 +1142,7 @@ index aac4beb7..8682acc0 100644
          yield* fileSystem.makeDirectory(configDir, { recursive: true });
          yield* fileSystem.makeDirectory(nested, { recursive: true });
 diff --git a/apps/server/src/vcs/VcsProjectConfig.ts b/apps/server/src/vcs/VcsProjectConfig.ts
-index 3e5ee234..486c2b11 100644
+index 3e5ee2347ce9aadf31d927f283831dbd97544e79..486c2b11f64e6aae162c66cfa4608d414cce7f5d 100644
 --- a/apps/server/src/vcs/VcsProjectConfig.ts
 +++ b/apps/server/src/vcs/VcsProjectConfig.ts
 @@ -61,7 +61,7 @@ export const make = Effect.fn("makeVcsProjectConfig")(function* () {
@@ -1248,7 +1155,7 @@ index 3e5ee234..486c2b11 100644
          return candidate;
        }
 diff --git a/apps/web/index.html b/apps/web/index.html
-index 88e1c8b4..e5ea6de6 100644
+index 88e1c8b4f2317ef00ec0a94d7ede8686a40ca4d8..e5ea6de661c3a424a99d941109457c940ba01cfb 100644
 --- a/apps/web/index.html
 +++ b/apps/web/index.html
 @@ -17,7 +17,7 @@
@@ -1261,7 +1168,7 @@ index 88e1c8b4..e5ea6de6 100644
              storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
                ? storedTheme
 diff --git a/apps/web/src/clientPersistenceStorage.ts b/apps/web/src/clientPersistenceStorage.ts
-index 30c949b3..390f40bf 100644
+index 30c949b37ac819600b6ba22f966d0a44d2db4aca..390f40bf8c079004bee8db8eb80fac9041d5fdce 100644
 --- a/apps/web/src/clientPersistenceStorage.ts
 +++ b/apps/web/src/clientPersistenceStorage.ts
 @@ -9,8 +9,8 @@ import * as Schema from "effect/Schema";
@@ -1276,7 +1183,7 @@ index 30c949b3..390f40bf 100644
  const BrowserSavedEnvironmentRecordSchema = Schema.Struct({
    environmentId: EnvironmentId,
 diff --git a/apps/web/src/components/BranchToolbar.logic.test.ts b/apps/web/src/components/BranchToolbar.logic.test.ts
-index 3db52373..a2f77986 100644
+index 3db5237373a10d89f1eb235e680329f1bdedb049..a2f77986946d56063ecbb47af86b0a9e0781d5fb 100644
 --- a/apps/web/src/components/BranchToolbar.logic.test.ts
 +++ b/apps/web/src/components/BranchToolbar.logic.test.ts
 @@ -22,7 +22,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
@@ -1384,7 +1291,7 @@ index 3db52373..a2f77986 100644
      });
    });
 diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
-index d4eb3da3..cbd5a7c5 100644
+index d4eb3da326387a94d0a6cfe227f46fb453b46c2a..cbd5a7c5a261e7d85471962e70363aacaafa29df 100644
 --- a/apps/web/src/components/ChatView.browser.tsx
 +++ b/apps/web/src/components/ChatView.browser.tsx
 @@ -198,7 +198,7 @@ function createBaseServerConfig(): ServerConfig {
@@ -1475,7 +1382,7 @@ index d4eb3da3..cbd5a7c5 100644
              : thread,
          ),
 diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
-index 687d965b..0bf259bd 100644
+index 687d965b7e33e44fab0df582d2c6ecc241902244..0bf259bd3bc10a2cad19fdd6aa3fd7b040a3212d 100644
 --- a/apps/web/src/components/ChatView.logic.ts
 +++ b/apps/web/src/components/ChatView.logic.ts
 @@ -20,7 +20,7 @@ import {
@@ -1488,7 +1395,7 @@ index 687d965b..0bf259bd 100644
  
  export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
 diff --git a/apps/web/src/components/KeybindingsToast.browser.tsx b/apps/web/src/components/KeybindingsToast.browser.tsx
-index a3e5af1d..28f218f3 100644
+index a3e5af1de53036036721ba1064aac6fdd13c55a7..28f218f33cbd14f082e130adbc9764987d95cef9 100644
 --- a/apps/web/src/components/KeybindingsToast.browser.tsx
 +++ b/apps/web/src/components/KeybindingsToast.browser.tsx
 @@ -100,7 +100,7 @@ function createBaseServerConfig(): ServerConfig {
@@ -1510,7 +1417,7 @@ index a3e5af1d..28f218f3 100644
        otlpTracesEnabled: false,
        otlpMetricsEnabled: false,
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index 926c117c..fb0e02cd 100644
+index 926c117c1c08c08f0df96d78ce727a6fad06ffb0..fb0e02cdcb37831981d1c39d81bf7faf2c256407 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
 @@ -199,12 +199,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
@@ -1529,7 +1436,7 @@ index 926c117c..fb0e02cd 100644
          },
        }),
 diff --git a/apps/web/src/components/chat/ProviderModelPicker.browser.tsx b/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
-index d3b16887..4196089b 100644
+index d3b168876a692e86093fdbebd6f5481c3e31b2a5..4196089b13345116bc9675d24ead2056c446eb56 100644
 --- a/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
 +++ b/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
 @@ -463,7 +463,7 @@ describe("ProviderModelPicker", () => {
@@ -1600,7 +1507,7 @@ index d3b16887..4196089b 100644
    });
  
 diff --git a/apps/web/src/components/settings/SettingsPanels.browser.tsx b/apps/web/src/components/settings/SettingsPanels.browser.tsx
-index 34f24006..d66ac91a 100644
+index 34f24006edc8394c763cdec98f7c47b8282b1712..d66ac91ac33075998e6ad4e1f460cbb9e9eb5c58 100644
 --- a/apps/web/src/components/settings/SettingsPanels.browser.tsx
 +++ b/apps/web/src/components/settings/SettingsPanels.browser.tsx
 @@ -221,13 +221,13 @@ function createBaseServerConfig(): ServerConfig {
@@ -1640,7 +1547,7 @@ index 34f24006..d66ac91a 100644
  
    it("shows an OpenCode server URL field in provider settings", async () => {
 diff --git a/apps/web/src/composerDraftStore.ts b/apps/web/src/composerDraftStore.ts
-index 3de3b5d7..cb0d11e8 100644
+index 3de3b5d706dd0c56a8e5e5a68193118f55cec166..cb0d11e893448691bc7d42719571988a6cb5c30f 100644
 --- a/apps/web/src/composerDraftStore.ts
 +++ b/apps/web/src/composerDraftStore.ts
 @@ -45,7 +45,7 @@ import { UnifiedSettings } from "@t3tools/contracts/settings";
@@ -1653,7 +1560,7 @@ index 3de3b5d7..cb0d11e8 100644
  const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
  export type DraftThreadEnvMode = typeof DraftThreadEnvModeSchema.Type;
 diff --git a/apps/web/src/editorPreferences.ts b/apps/web/src/editorPreferences.ts
-index 38c59115..0de23870 100644
+index 38c59115a55da9d5a9bcdbf2b008f690986cf204..0de23870d718782987f2d29e63f854b8b2dcf9d9 100644
 --- a/apps/web/src/editorPreferences.ts
 +++ b/apps/web/src/editorPreferences.ts
 @@ -2,7 +2,7 @@ import { EDITORS, EditorId, LocalApi } from "@t3tools/contracts";
@@ -1666,7 +1573,7 @@ index 38c59115..0de23870 100644
  export function usePreferredEditor(availableEditors: ReadonlyArray<EditorId>) {
    const [lastEditor, setLastEditor] = useLocalStorage(LAST_EDITOR_KEY, null, EditorId);
 diff --git a/apps/web/src/hooks/useLocalStorage.ts b/apps/web/src/hooks/useLocalStorage.ts
-index 93d26f66..94b2fce8 100644
+index 93d26f663294897e3dcdd20c5086578b8414291c..94b2fce8e3d4813380690f35d28b2d849ec7427f 100644
 --- a/apps/web/src/hooks/useLocalStorage.ts
 +++ b/apps/web/src/hooks/useLocalStorage.ts
 @@ -43,7 +43,7 @@ export const removeLocalStorageItem = (key: string) => {
@@ -1679,7 +1586,7 @@ index 93d26f66..94b2fce8 100644
  interface LocalStorageChangeDetail {
    key: string;
 diff --git a/apps/web/src/hooks/useTheme.ts b/apps/web/src/hooks/useTheme.ts
-index cd254c97..49233eec 100644
+index cd254c97548792b910525c3d5f861ba543a2234a..49233eecbecf7fa94da304ad0099077083e2969e 100644
 --- a/apps/web/src/hooks/useTheme.ts
 +++ b/apps/web/src/hooks/useTheme.ts
 @@ -6,7 +6,7 @@ type ThemeSnapshot = {
@@ -1692,7 +1599,7 @@ index cd254c97..49233eec 100644
  const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
    theme: "system",
 diff --git a/apps/web/src/hostedPairing.test.ts b/apps/web/src/hostedPairing.test.ts
-index 983094c1..694beb37 100644
+index 983094c1e5bc20687e6f20d38d71f4715e860230..694beb37c1978f9e90938953bf1a45378548294a 100644
 --- a/apps/web/src/hostedPairing.test.ts
 +++ b/apps/web/src/hostedPairing.test.ts
 @@ -53,7 +53,7 @@ describe("hostedPairing", () => {
@@ -1705,7 +1612,7 @@ index 983094c1..694beb37 100644
      expect(url.searchParams.has("next")).toBe(false);
    });
 diff --git a/apps/web/src/hostedPairing.ts b/apps/web/src/hostedPairing.ts
-index cc547323..0333513a 100644
+index cc547323f8d7615bec2137e727877c845ca9eb0b..0333513a84ed182174947ead9d00203f770c9de5 100644
 --- a/apps/web/src/hostedPairing.ts
 +++ b/apps/web/src/hostedPairing.ts
 @@ -83,7 +83,7 @@ export function buildHostedPairingUrl(input: {
@@ -1718,7 +1625,7 @@ index cc547323..0333513a 100644
    return url.toString();
  }
 diff --git a/apps/web/src/projectScripts.test.ts b/apps/web/src/projectScripts.test.ts
-index 1e05ff5e..210927aa 100644
+index 1e05ff5ef6e48348e6c75e0968c0c7a206cea2dd..210927aa1b2c33a1b7496e51cf8dbf4c70fc46d7 100644
 --- a/apps/web/src/projectScripts.test.ts
 +++ b/apps/web/src/projectScripts.test.ts
 @@ -55,8 +55,8 @@ describe("projectScripts helpers", () => {
@@ -1751,7 +1658,7 @@ index 1e05ff5e..210927aa 100644
  
    it("prefers the worktree path for script cwd resolution", () => {
 diff --git a/apps/web/src/providerUpdateDismissal.ts b/apps/web/src/providerUpdateDismissal.ts
-index 7cce819c..edbc500d 100644
+index 7cce819ccf95ab4c7b2011c1309b1c5b4c04c098..edbc500d0935825576924a6a74c8aec20874a4d4 100644
 --- a/apps/web/src/providerUpdateDismissal.ts
 +++ b/apps/web/src/providerUpdateDismissal.ts
 @@ -3,7 +3,7 @@ import * as Schema from "effect/Schema";
@@ -1764,7 +1671,7 @@ index 7cce819c..edbc500d 100644
  const ProviderUpdateDismissalsSchema = Schema.Struct({
    keys: Schema.Array(Schema.String),
 diff --git a/apps/web/src/terminalUiStateStore.ts b/apps/web/src/terminalUiStateStore.ts
-index 6c10ae44..b1f69146 100644
+index 6c10ae448e02d8e6e82f1f2b9d2f60b7f58d43f1..b1f691465e19d593b1ed4e845b641e5222e9e909 100644
 --- a/apps/web/src/terminalUiStateStore.ts
 +++ b/apps/web/src/terminalUiStateStore.ts
 @@ -27,7 +27,7 @@ interface ThreadTerminalUiState {
@@ -1777,7 +1684,7 @@ index 6c10ae44..b1f69146 100644
  interface PersistedTerminalUiStateStoreState {
    terminalUiStateByThreadKey?: Record<string, ThreadTerminalUiState>;
 diff --git a/apps/web/src/uiStateStore.ts b/apps/web/src/uiStateStore.ts
-index f16495be..b5e5bcba 100644
+index f16495bed7fe4da043e047d83209f9bbc4500044..b5e5bcbaec561e24c01927d2c1d9aa0c2233adc4 100644
 --- a/apps/web/src/uiStateStore.ts
 +++ b/apps/web/src/uiStateStore.ts
 @@ -1,14 +1,14 @@
@@ -1803,7 +1710,7 @@ index f16495be..b5e5bcba 100644
    "codething:renderer-state:v3",
    "codething:renderer-state:v2",
 diff --git a/apps/web/src/versionSkew.ts b/apps/web/src/versionSkew.ts
-index cb0116c8..d9c02ecb 100644
+index cb0116c8550635df05e0099ae92dfd17428d0670..d9c02ecbc698601b17406bb35cfe242ed5f21a4f 100644
 --- a/apps/web/src/versionSkew.ts
 +++ b/apps/web/src/versionSkew.ts
 @@ -10,7 +10,7 @@ export interface VersionMismatch {
@@ -1816,7 +1723,7 @@ index cb0116c8..d9c02ecb 100644
  const VersionMismatchDismissalsSchema = Schema.Struct({
    keys: Schema.Array(Schema.String),
 diff --git a/apps/web/src/worktreeCleanup.test.ts b/apps/web/src/worktreeCleanup.test.ts
-index 9c833c03..7c3e7901 100644
+index 9c833c03c74be301f2e44dea4168b2a55d54125c..7c3e79011e64ee01c5dc3b0687306d226d9cdf61 100644
 --- a/apps/web/src/worktreeCleanup.test.ts
 +++ b/apps/web/src/worktreeCleanup.test.ts
 @@ -86,7 +86,7 @@ describe("getOrphanedWorktreePathForThread", () => {
@@ -1838,7 +1745,7 @@ index 9c833c03..7c3e7901 100644
      expect(result).toBe("my-worktree");
    });
 diff --git a/apps/web/vercel.ts b/apps/web/vercel.ts
-index a0aeb57f..5f0ea4a9 100644
+index a0aeb57fb1fffd8e0fd8ecc74a7fac497752887e..5f0ea4a92f33d95140e87a94c6d931f4a1e4075e 100644
 --- a/apps/web/vercel.ts
 +++ b/apps/web/vercel.ts
 @@ -1,7 +1,7 @@
@@ -1869,7 +1776,7 @@ index a0aeb57f..5f0ea4a9 100644
        headers: {
          Location: "/",
 diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
-index 38819e28..c645210b 100644
+index 38819e28d73326eb0567cc51d10b4776a1e0902f..c645210b05ce1a7e016a020682133eaba97dde34 100644
 --- a/apps/web/vite.config.ts
 +++ b/apps/web/vite.config.ts
 @@ -23,7 +23,7 @@ const configuredHostedAppUrl = (() => {
@@ -1882,7 +1789,7 @@ index 38819e28..c645210b 100644
  const buildSourcemap =
    sourcemapEnv === "0" || sourcemapEnv === "false"
 diff --git a/docs/observability.md b/docs/observability.md
-index 5b98d116..07062042 100644
+index 5b98d1163ea492a875c4404212f8ae1d7254ad2e..0706204223e8bffd83e4473adfe7b3dc05e1d30b 100644
 --- a/docs/observability.md
 +++ b/docs/observability.md
 @@ -22,7 +22,7 @@ If you want a log message to show up in the trace file, emit it inside an active
@@ -2050,7 +1957,7 @@ index 5b98d116..07062042 100644
  If the OTLP URLs are unset, local tracing still works and metrics stay in-process only.
  
 diff --git a/docs/release.md b/docs/release.md
-index df903321..490c7dfa 100644
+index df9033218b909731aab01a5e6f35dee97065ba60..490c7dfab1a1ab08a0129dfd8bd96124e21105f4 100644
 --- a/docs/release.md
 +++ b/docs/release.md
 @@ -45,9 +45,9 @@ Required GitHub Actions secrets:
@@ -2102,7 +2009,7 @@ index df903321..490c7dfa 100644
  - Required release assets for updater:
    - platform installers (`.exe`, `.dmg`, `.AppImage`, plus macOS `.zip` for Squirrel.Mac update payloads)
 diff --git a/docs/source-control-providers.md b/docs/source-control-providers.md
-index c496d551..13a72ed9 100644
+index c496d5516a68415317955fee99acc85978c217aa..13a72ed9a825b71b75bd971dd82fa668f916b450 100644
 --- a/docs/source-control-providers.md
 +++ b/docs/source-control-providers.md
 @@ -86,8 +86,8 @@ Bitbucket uses API tokens instead of a CLI tool:
@@ -2117,7 +2024,7 @@ index c496d551..13a72ed9 100644
  3. Restart T3 Code and verify the connection in **Source Control settings**
  
 diff --git a/packages/contracts/src/terminal.test.ts b/packages/contracts/src/terminal.test.ts
-index 90c2b0b1..f1fbbb55 100644
+index 90c2b0b1444c0fa99613c34fadd1ba97c4887c9a..f1fbbb5521f93eace076f7a89470b449d2ab1335 100644
 --- a/packages/contracts/src/terminal.test.ts
 +++ b/packages/contracts/src/terminal.test.ts
 @@ -80,19 +80,19 @@ describe("TerminalOpenInput", () => {
@@ -2156,7 +2063,7 @@ index 90c2b0b1..f1fbbb55 100644
            pid: 1234,
            history: "",
 diff --git a/packages/shared/src/projectScripts.ts b/packages/shared/src/projectScripts.ts
-index 199a55bf..26f576b2 100644
+index 199a55bf3cbf9ecbb2a06778e659f1d35e8a8929..26f576b21007459b4d8c816e802498b7f415d318 100644
 --- a/packages/shared/src/projectScripts.ts
 +++ b/packages/shared/src/projectScripts.ts
 @@ -21,10 +21,10 @@ export function projectScriptRuntimeEnv(
@@ -2173,7 +2080,7 @@ index 199a55bf..26f576b2 100644
    if (input.extraEnv) {
      return { ...env, ...input.extraEnv };
 diff --git a/packages/shared/src/shell.test.ts b/packages/shared/src/shell.test.ts
-index 214c03a7..c752cf9a 100644
+index 214c03a7e5322f9b6aa44326f61dae38cd2ce559..c752cf9adc31e3a6a4900e72740c6fbad6131fdc 100644
 --- a/packages/shared/src/shell.test.ts
 +++ b/packages/shared/src/shell.test.ts
 @@ -19,7 +19,7 @@ describe("extractPathFromShellOutput", () => {
@@ -2293,7 +2200,7 @@ index 214c03a7..c752cf9a 100644
  
      expect(readEnvironmentFromWindowsShell(["PATH"], execFile)).toEqual({
 diff --git a/packages/shared/src/shell.ts b/packages/shared/src/shell.ts
-index c88ccc10..c0cbd306 100644
+index c88ccc10d2ac45e9af1f200d7c34c61226c1eb3e..c0cbd30606b3d6dbc472be7c69da15e3c5d19bd8 100644
 --- a/packages/shared/src/shell.ts
 +++ b/packages/shared/src/shell.ts
 @@ -4,8 +4,8 @@ import { execFileSync } from "node:child_process";
@@ -2322,7 +2229,7 @@ index c88ccc10..c0cbd306 100644
  
  function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {
 diff --git a/packages/ssh/src/tunnel.ts b/packages/ssh/src/tunnel.ts
-index 0de48b57..52423177 100644
+index 0de48b5721d9e114db884b6f42f87ddcd9e2448f..52423177cc02f8b1b1a3222895a81a1817bcc34a 100644
 --- a/packages/ssh/src/tunnel.ts
 +++ b/packages/ssh/src/tunnel.ts
 @@ -465,8 +465,8 @@ exit 1
@@ -2375,7 +2282,7 @@ index 0de48b57..52423177 100644
  if [ -f "$LOG_FILE" ]; then
    tail -n 80 "$LOG_FILE" 2>/dev/null || true
 diff --git a/scripts/build-desktop-artifact.test.ts b/scripts/build-desktop-artifact.test.ts
-index 743263d4..a12c4ffc 100644
+index 743263d43b3662bf4c9c25e14e4cdb915b87caa0..a12c4ffcbc9901e8383414f2528f80d9f345c843 100644
 --- a/scripts/build-desktop-artifact.test.ts
 +++ b/scripts/build-desktop-artifact.test.ts
 @@ -107,11 +107,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
@@ -2396,7 +2303,7 @@ index 743263d4..a12c4ffc 100644
              }),
            ),
 diff --git a/scripts/build-desktop-artifact.ts b/scripts/build-desktop-artifact.ts
-index 20b8c456..f237a014 100644
+index 20b8c4565e7bdbae6bc5bb17a1155aa5436e4b24..f237a0145d169d8e9f16acb367dba45e35aa3bff 100644
 --- a/scripts/build-desktop-artifact.ts
 +++ b/scripts/build-desktop-artifact.ts
 @@ -238,17 +238,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
@@ -2537,7 +2444,7 @@ index 20b8c456..f237a014 100644
    ),
  }).pipe(
 diff --git a/scripts/dev-runner.test.ts b/scripts/dev-runner.test.ts
-index 724b328c..369e3d98 100644
+index 724b328c4c606bf3253ad5a983a3db1b1fe75d29..369e3d98aa88590311ef95b64ce93488a9f5bc65 100644
 --- a/scripts/dev-runner.test.ts
 +++ b/scripts/dev-runner.test.ts
 @@ -14,12 +14,12 @@ import {
@@ -2694,7 +2601,7 @@ index 724b328c..369e3d98 100644
          assert.equal(env.VITE_WS_URL, "ws://localhost:13773");
        }),
 diff --git a/scripts/dev-runner.ts b/scripts/dev-runner.ts
-index cce408c8..c86b40ea 100644
+index cce408c827cd01c19a61da23a14178e411b8d6fd..c86b40ea552aaf83ffabd75203febbea71517cac 100644
 --- a/scripts/dev-runner.ts
 +++ b/scripts/dev-runner.ts
 @@ -25,7 +25,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
@@ -2885,7 +2792,7 @@ index cce408c8..c86b40ea 100644
    devUrl: Flag.string("dev-url").pipe(
      Flag.withSchema(Schema.URLFromString),
 diff --git a/scripts/mock-update-server.ts b/scripts/mock-update-server.ts
-index b1dde31e..994f5d4c 100644
+index b1dde31e37e38737865c428d1d76291a8ce77358..994f5d4ca11b14c4805e84df0c5e538b7880d999 100644
 --- a/scripts/mock-update-server.ts
 +++ b/scripts/mock-update-server.ts
 @@ -20,8 +20,8 @@ const resolveMockUpdateServerConfig = Effect.gen(function* () {
@@ -2900,7 +2807,7 @@ index b1dde31e..994f5d4c 100644
      ),
    });
 diff --git a/turbo.json b/turbo.json
-index 9a726d92..c0ee0b49 100644
+index 9a726d92e1a2dfa8dad384fbd0aa79206a2c35a6..c0ee0b4911162e5d652e8400c330dafed2a870b4 100644
 --- a/turbo.json
 +++ b/turbo.json
 @@ -5,25 +5,25 @@
@@ -2948,6 +2855,3 @@ index 9a726d92..c0ee0b49 100644
      "APP_VERSION",
      "VITE_HOSTED_APP_URL",
      "VITE_HOSTED_APP_CHANNEL"
--- 
-2.34.1
-

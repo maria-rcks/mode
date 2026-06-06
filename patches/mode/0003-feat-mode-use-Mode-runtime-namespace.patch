@@ -1,0 +1,2857 @@
+diff --git a/.docs/quick-start.md b/.docs/quick-start.md
+index 2206d53ee580bde5e6cc33e1b83cb940152f0a57..c6e768e211632b30b95710854a918fe4b8d21972 100644
+--- a/.docs/quick-start.md
++++ b/.docs/quick-start.md
+@@ -8,7 +8,7 @@ bun run dev
+ bun run dev:desktop
+ 
+ # Desktop development on an isolated port set
+-T3CODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
++MODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
+ 
+ # Production
+ bun run build
+diff --git a/.docs/scripts.md b/.docs/scripts.md
+index b3fcd4b30e98cced3d59c8c54e7d3da54dcd67f2..f3304b892c172b8e608e8e258bb27943977b47ed 100644
+--- a/.docs/scripts.md
++++ b/.docs/scripts.md
+@@ -3,7 +3,7 @@
+ - `bun run dev` — Starts contracts, server, and web in `turbo watch` mode.
+ - `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
+ - `bun run dev:web` — Starts just the Vite dev server for the web app.
+-- Dev commands default `T3CODE_STATE_DIR` to `~/.t3/dev` to keep dev state isolated from desktop/prod state.
++- Dev commands default `MODE_STATE_DIR` to `~/.mode/dev` to keep dev state isolated from desktop/prod state.
+ - Override server CLI-equivalent flags from root dev commands with `--`, for example:
+   `bun run dev -- --base-dir ~/.t3-2`
+ - `bun run start` — Runs the production server (serves built web app as static files).
+@@ -33,10 +33,10 @@
+ 
+ ## Running multiple dev instances
+ 
+-Set `T3CODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
++Set `MODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
+ 
+ - Default ports: server `3773`, web `5733`
+-- Shifted ports: `base + offset` (offset is hashed from `T3CODE_DEV_INSTANCE`)
+-- Example: `T3CODE_DEV_INSTANCE=branch-a bun run dev:desktop`
++- Shifted ports: `base + offset` (offset is hashed from `MODE_DEV_INSTANCE`)
++- Example: `MODE_DEV_INSTANCE=branch-a bun run dev:desktop`
+ 
+-If you want full control instead of hashing, set `T3CODE_PORT_OFFSET` to a numeric offset.
++If you want full control instead of hashing, set `MODE_PORT_OFFSET` to a numeric offset.
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 2a23e0d197a980f8025c85e03ae2bfeb7e2d9c80..2f81de62d781e599e23d42329a797f7998cb7107 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -594,9 +594,9 @@ jobs:
+       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+-      T3CODE_WEB_ROUTER_URL: ${{ vars.T3CODE_WEB_ROUTER_URL }}
+-      T3CODE_WEB_LATEST_DOMAIN: ${{ vars.T3CODE_WEB_LATEST_DOMAIN }}
+-      T3CODE_WEB_NIGHTLY_DOMAIN: ${{ vars.T3CODE_WEB_NIGHTLY_DOMAIN }}
++      MODE_WEB_ROUTER_URL: ${{ vars.MODE_WEB_ROUTER_URL }}
++      MODE_WEB_LATEST_DOMAIN: ${{ vars.MODE_WEB_LATEST_DOMAIN }}
++      MODE_WEB_NIGHTLY_DOMAIN: ${{ vars.MODE_WEB_NIGHTLY_DOMAIN }}
+       VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
+     steps:
+       - name: Checkout
+@@ -633,9 +633,9 @@ jobs:
+             exit 1
+           fi
+ 
+-          router_url="${T3CODE_WEB_ROUTER_URL:-https://app.t3.codes}"
+-          latest_domain="${T3CODE_WEB_LATEST_DOMAIN:-latest.app.t3.codes}"
+-          nightly_domain="${T3CODE_WEB_NIGHTLY_DOMAIN:-nightly.app.t3.codes}"
++          router_url="${MODE_WEB_ROUTER_URL:-https://app.t3.codes}"
++          latest_domain="${MODE_WEB_LATEST_DOMAIN:-latest.app.t3.codes}"
++          nightly_domain="${MODE_WEB_NIGHTLY_DOMAIN:-nightly.app.t3.codes}"
+           router_domain="${router_url#http://}"
+           router_domain="${router_domain#https://}"
+           router_domain="${router_domain%%/*}"
+diff --git a/KEYBINDINGS.md b/KEYBINDINGS.md
+index b57c13032ce4c500846f3acdd5f539bbb9b35439..361488a41378f6b6d22df132427ad38f209a3cf9 100644
+--- a/KEYBINDINGS.md
++++ b/KEYBINDINGS.md
+@@ -2,7 +2,7 @@
+ 
+ T3 Code reads keybindings from:
+ 
+-- `~/.t3/keybindings.json`
++- `~/.mode/keybindings.json`
+ 
+ The file must be a JSON array of rules:
+ 
+diff --git a/REMOTE.md b/REMOTE.md
+index 56510e62890fa42c2a912ee85a0bdaa77b462ca4..d7172833919906188117b2bdc04a0f1f26dbdd29 100644
+--- a/REMOTE.md
++++ b/REMOTE.md
+@@ -117,7 +117,7 @@ SSH launch is a desktop feature because it needs local process and SSH access. O
+ 
+ #### SSH Launch Troubleshooting
+ 
+-The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.t3/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
++The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.mode/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
+ 
+ The remote host must have a compatible Node.js runtime. T3 Code uses the server package's `engines.node` requirement:
+ 
+@@ -150,7 +150,7 @@ nvm alias default 24
+ 
+ With mise/asdf/fnm/nodenv, make sure the tool's shim directory is installed and points at a Node version satisfying the range above.
+ 
+-If reconnecting after an app update fails, retry the SSH launch once. The launcher now compares its generated runner script, stops stale launcher-managed remote servers, clears the SSH launch PID/port state, and starts a fresh remote server. You should not normally need to delete `~/.t3/ssh-launch` or kill `t3` processes manually.
++If reconnecting after an app update fails, retry the SSH launch once. The launcher now compares its generated runner script, stops stale launcher-managed remote servers, clears the SSH launch PID/port state, and starts a fresh remote server. You should not normally need to delete `~/.mode/ssh-launch` or kill `t3` processes manually.
+ 
+ ## How Pairing Works
+ 
+diff --git a/apps/desktop/scripts/dev-electron.mjs b/apps/desktop/scripts/dev-electron.mjs
+index 9a7e68dfbbb3ff229b117b6f87ed786b41800ac7..525b7a9f15e8b06f7f8ff920841892f63f367598 100644
+--- a/apps/desktop/scripts/dev-electron.mjs
++++ b/apps/desktop/scripts/dev-electron.mjs
+@@ -59,7 +59,7 @@ function cleanupStaleDevApps() {
+     return;
+   }
+ 
+-  spawnSync("pkill", ["-f", "--", `--t3code-dev-root=${desktopDir}`], { stdio: "ignore" });
++  spawnSync("pkill", ["-f", "--", `--mode-dev-root=${desktopDir}`], { stdio: "ignore" });
+ }
+ 
+ function startApp() {
+@@ -69,7 +69,7 @@ function startApp() {
+ 
+   const app = spawn(
+     resolveElectronPath(),
+-    [`--t3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"],
++    [`--mode-dev-root=${desktopDir}`, "dist-electron/main.cjs"],
+     {
+       cwd: desktopDir,
+       env: childEnv,
+diff --git a/apps/desktop/scripts/electron-launcher.mjs b/apps/desktop/scripts/electron-launcher.mjs
+index 1453cbe666e22a98d97b20b29a174f106236861f..c3bcba0047725425779ce5a8c7401c7f4f9e37ae 100644
+--- a/apps/desktop/scripts/electron-launcher.mjs
++++ b/apps/desktop/scripts/electron-launcher.mjs
+@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
+ 
+ const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
+ const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+-const APP_BUNDLE_ID = isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code";
++const APP_BUNDLE_ID = isDevelopment ? "com.t3tools.mode.dev" : "com.t3tools.mode";
+ const LAUNCHER_VERSION = 2;
+ 
+ const __dirname = dirname(fileURLToPath(import.meta.url));
+diff --git a/apps/desktop/src/app/DesktopApp.ts b/apps/desktop/src/app/DesktopApp.ts
+index 85b8aed4a420f2001f57eb874ec5ddf0d53bd96d..3e9fd6b7b822a8bfecaa2bc5b2f5f6784ce6546b 100644
+--- a/apps/desktop/src/app/DesktopApp.ts
++++ b/apps/desktop/src/app/DesktopApp.ts
+@@ -47,7 +47,7 @@ class DesktopDevelopmentBackendPortRequiredError extends Data.TaggedError(
+   "DesktopDevelopmentBackendPortRequiredError",
+ )<{}> {
+   override get message() {
+-    return "T3CODE_PORT is required in desktop development.";
++    return "MODE_PORT is required in desktop development.";
+   }
+ }
+ 
+diff --git a/apps/desktop/src/app/DesktopAppIdentity.test.ts b/apps/desktop/src/app/DesktopAppIdentity.test.ts
+index f95fd1bef71c45573198ffdbc94fd76b869678b1..b0bda8f56d14f9a8d413af95eeb1b420483f153d 100644
+--- a/apps/desktop/src/app/DesktopAppIdentity.test.ts
++++ b/apps/desktop/src/app/DesktopAppIdentity.test.ts
+@@ -166,7 +166,7 @@ describe("DesktopAppIdentity", () => {
+         calls,
+         environment: {
+           env: {
+-            T3CODE_COMMIT_HASH: "0123456789abcdef",
++            MODE_COMMIT_HASH: "0123456789abcdef",
+           },
+         },
+         pngIconPath: Option.some("/icon.png"),
+diff --git a/apps/desktop/src/app/DesktopAppIdentity.ts b/apps/desktop/src/app/DesktopAppIdentity.ts
+index 7a566194ab1ad15f343bf27ac28bfb80f51de74e..78f79277f10d84e21eab4348386ca2f6afad5914 100644
+--- a/apps/desktop/src/app/DesktopAppIdentity.ts
++++ b/apps/desktop/src/app/DesktopAppIdentity.ts
+@@ -14,7 +14,7 @@ const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
+ const COMMIT_HASH_DISPLAY_LENGTH = 12;
+ 
+ const AppPackageMetadata = Schema.Struct({
+-  t3codeCommitHash: Schema.optional(Schema.String),
++  modeCommitHash: Schema.optional(Schema.String),
+ });
+ const decodeAppPackageMetadata = Schema.decodeEffect(Schema.fromJsonString(AppPackageMetadata));
+ 
+@@ -50,7 +50,7 @@ const make = Effect.gen(function* () {
+       onSome: (value) =>
+         decodeAppPackageMetadata(value).pipe(
+           Effect.map((parsed) =>
+-            Option.fromNullishOr(parsed.t3codeCommitHash).pipe(Option.flatMap(normalizeCommitHash)),
++            Option.fromNullishOr(parsed.modeCommitHash).pipe(Option.flatMap(normalizeCommitHash)),
+           ),
+           Effect.catch(() => Effect.succeed(Option.none<string>())),
+         ),
+diff --git a/apps/desktop/src/app/DesktopConfig.ts b/apps/desktop/src/app/DesktopConfig.ts
+index a921831401847536583080c3f7742669fe2d8da2..2cf344d349fabef7ceee0d53649987056dcdc791 100644
+--- a/apps/desktop/src/app/DesktopConfig.ts
++++ b/apps/desktop/src/app/DesktopConfig.ts
+@@ -35,21 +35,19 @@ const compactEnv = (env: Readonly<Record<string, string | undefined>>): Record<s
+ export const DesktopConfig = Config.all({
+   appDataDirectory: trimmedString("APPDATA"),
+   xdgConfigHome: trimmedString("XDG_CONFIG_HOME"),
+-  t3Home: trimmedString("T3CODE_HOME"),
++  t3Home: trimmedString("MODE_HOME"),
+   devServerUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option),
+-  devRemoteT3ServerEntryPath: trimmedString("T3CODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH"),
+-  configuredBackendPort: Config.port("T3CODE_PORT").pipe(Config.option),
+-  commitHashOverride: trimmedString("T3CODE_COMMIT_HASH"),
+-  desktopLanHostOverride: trimmedString("T3CODE_DESKTOP_LAN_HOST"),
+-  desktopHttpsEndpointUrls: commaSeparatedStrings("T3CODE_DESKTOP_HTTPS_ENDPOINTS"),
+-  otlpTracesUrl: trimmedString("T3CODE_OTLP_TRACES_URL"),
+-  otlpExportIntervalMs: Config.int("T3CODE_OTLP_EXPORT_INTERVAL_MS").pipe(
+-    Config.withDefault(10_000),
+-  ),
++  devRemoteT3ServerEntryPath: trimmedString("MODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH"),
++  configuredBackendPort: Config.port("MODE_PORT").pipe(Config.option),
++  commitHashOverride: trimmedString("MODE_COMMIT_HASH"),
++  desktopLanHostOverride: trimmedString("MODE_DESKTOP_LAN_HOST"),
++  desktopHttpsEndpointUrls: commaSeparatedStrings("MODE_DESKTOP_HTTPS_ENDPOINTS"),
++  otlpTracesUrl: trimmedString("MODE_OTLP_TRACES_URL"),
++  otlpExportIntervalMs: Config.int("MODE_OTLP_EXPORT_INTERVAL_MS").pipe(Config.withDefault(10_000)),
+   appImagePath: trimmedString("APPIMAGE"),
+-  disableAutoUpdate: optionalBoolean("T3CODE_DISABLE_AUTO_UPDATE"),
+-  mockUpdates: optionalBoolean("T3CODE_DESKTOP_MOCK_UPDATES"),
+-  mockUpdateServerPort: Config.port("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(
++  disableAutoUpdate: optionalBoolean("MODE_DISABLE_AUTO_UPDATE"),
++  mockUpdates: optionalBoolean("MODE_DESKTOP_MOCK_UPDATES"),
++  mockUpdateServerPort: Config.port("MODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(
+     Config.withDefault(3000),
+   ),
+ });
+diff --git a/apps/desktop/src/app/DesktopEnvironment.test.ts b/apps/desktop/src/app/DesktopEnvironment.test.ts
+index 11ea03f6816b6a11feda1084315fabea0d56d783..d57136cc3291df2b93a23e4375cc1dd2825317b8 100644
+--- a/apps/desktop/src/app/DesktopEnvironment.test.ts
++++ b/apps/desktop/src/app/DesktopEnvironment.test.ts
+@@ -40,13 +40,13 @@ describe("DesktopEnvironment", () => {
+       const environment = yield* makeEnvironment(
+         {},
+         {
+-          T3CODE_HOME: " /tmp/t3 ",
+-          T3CODE_COMMIT_HASH: " 0123456789abcdef ",
+-          T3CODE_PORT: "4949",
++          MODE_HOME: " /tmp/t3 ",
++          MODE_COMMIT_HASH: " 0123456789abcdef ",
++          MODE_PORT: "4949",
+           VITE_DEV_SERVER_URL: "http://localhost:5173",
+-          T3CODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH: " /remote/server.mjs ",
+-          T3CODE_OTLP_TRACES_URL: " http://127.0.0.1:4318/v1/traces ",
+-          T3CODE_OTLP_EXPORT_INTERVAL_MS: "2500",
++          MODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH: " /remote/server.mjs ",
++          MODE_OTLP_TRACES_URL: " http://127.0.0.1:4318/v1/traces ",
++          MODE_OTLP_EXPORT_INTERVAL_MS: "2500",
+         },
+       );
+ 
+@@ -63,8 +63,8 @@ describe("DesktopEnvironment", () => {
+       assert.equal(environment.appRoot, "/repo");
+       assert.equal(environment.backendEntryPath, "/repo/apps/server/dist/bin.mjs");
+       assert.equal(environment.backendCwd, "/repo");
+-      assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev");
+-      assert.equal(environment.linuxWmClass, "t3code-dev");
++      assert.equal(environment.appUserModelId, "com.t3tools.mode.dev");
++      assert.equal(environment.linuxWmClass, "mode-dev");
+       assert.deepEqual(
+         Option.map(environment.devServerUrl, (url) => url.href),
+         Option.some("http://localhost:5173/"),
+@@ -82,7 +82,7 @@ describe("DesktopEnvironment", () => {
+       const environment = yield* makeEnvironment(
+         {},
+         {
+-          T3CODE_HOME: "/tmp/t3",
++          MODE_HOME: "/tmp/t3",
+         },
+       );
+ 
+diff --git a/apps/desktop/src/app/DesktopEnvironment.ts b/apps/desktop/src/app/DesktopEnvironment.ts
+index 2c5db8a16d8dbf54813deb0520d91407e97f28b9..a94f7306a145cc79eb6bd53f79811d88c264fa92 100644
+--- a/apps/desktop/src/app/DesktopEnvironment.ts
++++ b/apps/desktop/src/app/DesktopEnvironment.ts
+@@ -151,7 +151,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
+       : input.platform === "darwin"
+         ? path.join(homeDirectory, "Library", "Application Support")
+         : Option.getOrElse(config.xdgConfigHome, () => path.join(homeDirectory, ".config"));
+-  const baseDir = Option.getOrElse(config.t3Home, () => path.join(homeDirectory, ".t3"));
++  const baseDir = Option.getOrElse(config.t3Home, () => path.join(homeDirectory, ".mode"));
+   const rootDir = path.resolve(input.dirname, "../../..");
+   const appRoot = input.isPackaged ? input.appPath : rootDir;
+   const branding = resolveDesktopAppBranding({
+@@ -160,7 +160,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
+   });
+   const displayName = branding.displayName;
+   const stateDir = path.join(baseDir, isDevelopment ? "dev" : "userdata");
+-  const userDataDirName = isDevelopment ? "t3code-dev" : "t3code";
++  const userDataDirName = isDevelopment ? "mode-dev" : "mode";
+   const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+   const resourcesPath = input.resourcesPath;
+ 
+@@ -199,9 +199,9 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
+     otlpExportIntervalMs: config.otlpExportIntervalMs,
+     branding,
+     displayName,
+-    appUserModelId: isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
+-    linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code.desktop",
+-    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",
++    appUserModelId: isDevelopment ? "com.t3tools.mode.dev" : "com.t3tools.mode",
++    linuxDesktopEntryName: isDevelopment ? "mode-dev.desktop" : "mode.desktop",
++    linuxWmClass: isDevelopment ? "mode-dev" : "mode",
+     userDataDirName,
+     legacyUserDataDirName,
+     defaultDesktopSettings: resolveDefaultDesktopSettings(input.appVersion),
+diff --git a/apps/desktop/src/app/DesktopObservability.test.ts b/apps/desktop/src/app/DesktopObservability.test.ts
+index a78de48d5e19ac6d7fdb2f3db2039fed5e4189a5..fac79f891321b8c4ba212015938077e822fb756a 100644
+--- a/apps/desktop/src/app/DesktopObservability.test.ts
++++ b/apps/desktop/src/app/DesktopObservability.test.ts
+@@ -55,7 +55,7 @@ const makeEnvironmentLayer = (baseDir: string) =>
+       Layer.mergeAll(
+         NodeServices.layer,
+         DesktopConfig.layerTest({
+-          T3CODE_HOME: baseDir,
++          MODE_HOME: baseDir,
+           VITE_DEV_SERVER_URL: "http://127.0.0.1:5733",
+         }),
+       ),
+diff --git a/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts b/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts
+index 96e56a87c9dacac03d3667c1d0a79acc1883e63e..5028aae6523ed5f1a9aba082963361a0a5bc39b3 100644
+--- a/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts
++++ b/apps/desktop/src/backend/DesktopBackendConfiguration.test.ts
+@@ -58,10 +58,10 @@ function makeEnvironmentLayer(
+       Layer.mergeAll(
+         NodeServices.layer,
+         DesktopConfig.layerTest({
+-          T3CODE_HOME: baseDir,
+-          T3CODE_PORT: "9999",
+-          T3CODE_MODE: "desktop",
+-          T3CODE_DESKTOP_LAN_HOST: "192.168.1.50",
++          MODE_HOME: baseDir,
++          MODE_PORT: "9999",
++          MODE_MODE: "desktop",
++          MODE_DESKTOP_LAN_HOST: "192.168.1.50",
+           VITE_DEV_SERVER_URL: options?.devServerUrl,
+         }),
+       ),
+@@ -110,9 +110,9 @@ describe("DesktopBackendConfiguration", () => {
+         assert.equal(first.cwd, environment.backendCwd);
+         assert.equal(first.captureOutput, true);
+         assert.equal(first.env.ELECTRON_RUN_AS_NODE, "1");
+-        assert.isUndefined(first.env.T3CODE_PORT);
+-        assert.isUndefined(first.env.T3CODE_MODE);
+-        assert.isUndefined(first.env.T3CODE_DESKTOP_LAN_HOST);
++        assert.isUndefined(first.env.MODE_PORT);
++        assert.isUndefined(first.env.MODE_MODE);
++        assert.isUndefined(first.env.MODE_DESKTOP_LAN_HOST);
+ 
+         assert.equal(first.bootstrap.mode, "desktop");
+         assert.equal(first.bootstrap.noBrowser, true);
+diff --git a/apps/desktop/src/backend/DesktopBackendConfiguration.ts b/apps/desktop/src/backend/DesktopBackendConfiguration.ts
+index 5e4e034b5e77adb8611db2b31e1086dbe8b3575c..a35fc8ee036024b9b880994af953b5add8cf650e 100644
+--- a/apps/desktop/src/backend/DesktopBackendConfiguration.ts
++++ b/apps/desktop/src/backend/DesktopBackendConfiguration.ts
+@@ -37,16 +37,16 @@ const emptyBackendObservabilitySettings: BackendObservabilitySettings = {
+ };
+ 
+ const DESKTOP_BACKEND_ENV_NAMES = [
+-  "T3CODE_PORT",
+-  "T3CODE_MODE",
+-  "T3CODE_NO_BROWSER",
+-  "T3CODE_HOST",
+-  "T3CODE_DESKTOP_WS_URL",
+-  "T3CODE_DESKTOP_LAN_ACCESS",
+-  "T3CODE_DESKTOP_LAN_HOST",
+-  "T3CODE_DESKTOP_HTTPS_ENDPOINTS",
+-  "T3CODE_TAILSCALE_SERVE",
+-  "T3CODE_TAILSCALE_SERVE_PORT",
++  "MODE_PORT",
++  "MODE_MODE",
++  "MODE_NO_BROWSER",
++  "MODE_HOST",
++  "MODE_DESKTOP_WS_URL",
++  "MODE_DESKTOP_LAN_ACCESS",
++  "MODE_DESKTOP_LAN_HOST",
++  "MODE_DESKTOP_HTTPS_ENDPOINTS",
++  "MODE_TAILSCALE_SERVE",
++  "MODE_TAILSCALE_SERVE_PORT",
+ ] as const;
+ 
+ const backendChildEnvPatch = (): Record<string, string | undefined> =>
+diff --git a/apps/desktop/src/backend/DesktopServerExposure.test.ts b/apps/desktop/src/backend/DesktopServerExposure.test.ts
+index 0f3e9eaeb45a535a9e882c0674b4c8ca877d2ba1..baaa3a3be9110f534b4dc4aca7b7cd039b27ec44 100644
+--- a/apps/desktop/src/backend/DesktopServerExposure.test.ts
++++ b/apps/desktop/src/backend/DesktopServerExposure.test.ts
+@@ -77,7 +77,7 @@ function makeEnvironmentLayer(baseDir: string, env: Record<string, string | unde
+     runningUnderArm64Translation: false,
+   }).pipe(
+     Layer.provide(
+-      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ T3CODE_HOME: baseDir, ...env })),
++      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ MODE_HOME: baseDir, ...env })),
+     ),
+   );
+ }
+@@ -87,7 +87,7 @@ function makeLayer(input: {
+   readonly networkInterfaces?: DesktopNetworkInterfaces;
+   readonly env?: Record<string, string | undefined>;
+ }) {
+-  const env = { T3CODE_HOME: input.baseDir, ...input.env };
++  const env = { MODE_HOME: input.baseDir, ...input.env };
+   const environmentLayer = makeEnvironmentLayer(input.baseDir, env);
+   const networkLayer = Layer.succeed(DesktopServerExposure.DesktopNetworkInterfacesService, {
+     read: Effect.succeed(input.networkInterfaces ?? emptyNetworkInterfaces),
+@@ -257,8 +257,8 @@ describe("DesktopServerExposure", () => {
+         );
+       }),
+       {
+-        T3CODE_DESKTOP_LAN_HOST: "10.0.0.7",
+-        T3CODE_DESKTOP_HTTPS_ENDPOINTS: "https://public.example.test",
++        MODE_DESKTOP_LAN_HOST: "10.0.0.7",
++        MODE_DESKTOP_HTTPS_ENDPOINTS: "https://public.example.test",
+       },
+     ),
+   );
+@@ -357,7 +357,7 @@ describe("DesktopServerExposure", () => {
+         ]);
+       }),
+       {
+-        T3CODE_DESKTOP_HTTPS_ENDPOINTS:
++        MODE_DESKTOP_HTTPS_ENDPOINTS:
+           "https://desktop.example.ts.net,http://desktop.example.test:3773,not-a-url",
+       },
+     ),
+diff --git a/apps/desktop/src/settings/DesktopAppSettings.test.ts b/apps/desktop/src/settings/DesktopAppSettings.test.ts
+index db6194cf8f70d1ff9f0d186eda84f0faad0c433c..68bf285db1627e976af5dda336389a9a3c1d4922 100644
+--- a/apps/desktop/src/settings/DesktopAppSettings.test.ts
++++ b/apps/desktop/src/settings/DesktopAppSettings.test.ts
+@@ -39,7 +39,7 @@ function makeEnvironmentLayer(baseDir: string, appVersion = "0.0.17") {
+     runningUnderArm64Translation: false,
+   }).pipe(
+     Layer.provide(
+-      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ T3CODE_HOME: baseDir })),
++      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ MODE_HOME: baseDir })),
+     ),
+   );
+ }
+diff --git a/apps/desktop/src/settings/DesktopClientSettings.test.ts b/apps/desktop/src/settings/DesktopClientSettings.test.ts
+index f666e692860c3a05148a4f0cd6ff0347cd0b7473..0f4214be5bd20124c085ad1fab9774ce8fef1bfc 100644
+--- a/apps/desktop/src/settings/DesktopClientSettings.test.ts
++++ b/apps/desktop/src/settings/DesktopClientSettings.test.ts
+@@ -48,7 +48,7 @@ function makeLayer(baseDir: string) {
+     runningUnderArm64Translation: false,
+   }).pipe(
+     Layer.provide(
+-      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ T3CODE_HOME: baseDir })),
++      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ MODE_HOME: baseDir })),
+     ),
+   );
+ 
+diff --git a/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts b/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts
+index d1d37b96e1189c0d61904484fed092030ae1e24e..5a7140d9d051d979bf7957d755a2c570ee71b6d1 100644
+--- a/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts
++++ b/apps/desktop/src/settings/DesktopSavedEnvironments.test.ts
+@@ -104,7 +104,7 @@ function makeLayer(
+     runningUnderArm64Translation: false,
+   }).pipe(
+     Layer.provide(
+-      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ T3CODE_HOME: baseDir })),
++      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ MODE_HOME: baseDir })),
+     ),
+   );
+ 
+diff --git a/apps/desktop/src/shell/DesktopShellEnvironment.test.ts b/apps/desktop/src/shell/DesktopShellEnvironment.test.ts
+index 897e7336a24825d0e3a326828cc287bc92531d6b..c0914230e33a155924faae7f43e722c3de836a3f 100644
+--- a/apps/desktop/src/shell/DesktopShellEnvironment.test.ts
++++ b/apps/desktop/src/shell/DesktopShellEnvironment.test.ts
+@@ -12,11 +12,7 @@ const textEncoder = new TextEncoder();
+ 
+ function envOutput(values: Readonly<Record<string, string>>): string {
+   return Object.entries(values)
+-    .flatMap(([name, value]) => [
+-      `__T3CODE_ENV_${name}_START__`,
+-      value,
+-      `__T3CODE_ENV_${name}_END__`,
+-    ])
++    .flatMap(([name, value]) => [`__MODE_ENV_${name}_START__`, value, `__MODE_ENV_${name}_END__`])
+     .join("\n");
+ }
+ 
+diff --git a/apps/desktop/src/shell/DesktopShellEnvironment.ts b/apps/desktop/src/shell/DesktopShellEnvironment.ts
+index f57873d9fb85ed53555ff694e8b181e5422192c1..142337d824252c9f63753fe81206279267e5b6f0 100644
+--- a/apps/desktop/src/shell/DesktopShellEnvironment.ts
++++ b/apps/desktop/src/shell/DesktopShellEnvironment.ts
+@@ -125,8 +125,8 @@ const knownWindowsCliDirs = (env: NodeJS.ProcessEnv): ReadonlyArray<string> => [
+   ),
+ ];
+ 
+-const startMarker = (name: string) => `__T3CODE_ENV_${name}_START__`;
+-const endMarker = (name: string) => `__T3CODE_ENV_${name}_END__`;
++const startMarker = (name: string) => `__MODE_ENV_${name}_START__`;
++const endMarker = (name: string) => `__MODE_ENV_${name}_END__`;
+ 
+ const capturePosixEnvironmentCommand = (names: ReadonlyArray<string>) =>
+   names
+diff --git a/apps/desktop/src/updates/DesktopUpdates.test.ts b/apps/desktop/src/updates/DesktopUpdates.test.ts
+index 34d18f11a77de09ec4c1b5d2d9f5954e6229428e..91354ec73843001106bbaeea83f9386b1dc08e75 100644
+--- a/apps/desktop/src/updates/DesktopUpdates.test.ts
++++ b/apps/desktop/src/updates/DesktopUpdates.test.ts
+@@ -129,9 +129,9 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
+       Layer.mergeAll(
+         NodeServices.layer,
+         DesktopConfig.layerTest({
+-          T3CODE_HOME: `/tmp/t3-desktop-updates-test-${process.pid}`,
+-          T3CODE_DESKTOP_MOCK_UPDATES: "true",
+-          T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
++          MODE_HOME: `/tmp/t3-desktop-updates-test-${process.pid}`,
++          MODE_DESKTOP_MOCK_UPDATES: "true",
++          MODE_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
+           ...options.env,
+         }),
+       ),
+@@ -146,9 +146,9 @@ function makeHarness(options: UpdatesHarnessOptions = {}) {
+     Layer.provideMerge(DesktopAppSettings.layer),
+     Layer.provideMerge(
+       DesktopConfig.layerTest({
+-        T3CODE_HOME: `/tmp/t3-desktop-updates-test-${process.pid}`,
+-        T3CODE_DESKTOP_MOCK_UPDATES: "true",
+-        T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
++        MODE_HOME: `/tmp/t3-desktop-updates-test-${process.pid}`,
++        MODE_DESKTOP_MOCK_UPDATES: "true",
++        MODE_DESKTOP_MOCK_UPDATE_SERVER_PORT: "4141",
+         ...options.env,
+       }),
+     ),
+diff --git a/apps/desktop/src/updates/DesktopUpdates.ts b/apps/desktop/src/updates/DesktopUpdates.ts
+index 056bca4a0e1d1404f06e502849736c3b6314c19e..193d262f473c2326bfb005c28be4d0845fe6141d 100644
+--- a/apps/desktop/src/updates/DesktopUpdates.ts
++++ b/apps/desktop/src/updates/DesktopUpdates.ts
+@@ -173,7 +173,7 @@ function getAutoUpdateDisabledReason(args: {
+     return "Automatic updates are only available in packaged production builds.";
+   }
+   if (args.disabledByEnv) {
+-    return "Automatic updates are disabled by the T3CODE_DISABLE_AUTO_UPDATE setting.";
++    return "Automatic updates are disabled by the MODE_DISABLE_AUTO_UPDATE setting.";
+   }
+   if (args.platform === "linux" && !args.appImage) {
+     return "Automatic updates on Linux require running the AppImage build.";
+diff --git a/apps/desktop/src/window/DesktopWindow.test.ts b/apps/desktop/src/window/DesktopWindow.test.ts
+index fbcc60934aa91147b912b29ab63aa165b4cec961..6928f0bac1276ac958a13b96548cd4f2b182362a 100644
+--- a/apps/desktop/src/window/DesktopWindow.test.ts
++++ b/apps/desktop/src/window/DesktopWindow.test.ts
+@@ -112,7 +112,7 @@ const desktopEnvironmentLayer = DesktopEnvironment.layer(environmentInput).pipe(
+     Layer.mergeAll(
+       NodeServices.layer,
+       DesktopConfig.layerTest({
+-        T3CODE_PORT: "3773",
++        MODE_PORT: "3773",
+         VITE_DEV_SERVER_URL: "http://127.0.0.1:5733",
+       }),
+     ),
+diff --git a/apps/mobile/app.config.ts b/apps/mobile/app.config.ts
+index 5c46d01bfd83049d7b6f28dfb2d456382c0a133a..85daf4545e815c0ee39c2ed855126fb4625a4768 100644
+--- a/apps/mobile/app.config.ts
++++ b/apps/mobile/app.config.ts
+@@ -16,24 +16,24 @@ const VARIANT_CONFIG: Record<
+ > = {
+   development: {
+     appName: "T3 Code Dev",
+-    scheme: "t3code-dev",
++    scheme: "mode-dev",
+     iosIcon: "./assets/icon-composer-dev.icon",
+-    iosBundleIdentifier: "com.t3tools.t3code.dev",
+-    androidPackage: "com.t3tools.t3code.dev",
++    iosBundleIdentifier: "com.t3tools.mode.dev",
++    androidPackage: "com.t3tools.mode.dev",
+   },
+   preview: {
+     appName: "T3 Code Preview",
+-    scheme: "t3code-preview",
++    scheme: "mode-preview",
+     iosIcon: "./assets/icon-composer-prod.icon",
+-    iosBundleIdentifier: "com.t3tools.t3code.preview",
+-    androidPackage: "com.t3tools.t3code.preview",
++    iosBundleIdentifier: "com.t3tools.mode.preview",
++    androidPackage: "com.t3tools.mode.preview",
+   },
+   production: {
+     appName: "T3 Code",
+-    scheme: "t3code",
++    scheme: "mode",
+     iosIcon: "./assets/icon-composer-prod.icon",
+-    iosBundleIdentifier: "com.t3tools.t3code",
+-    androidPackage: "com.t3tools.t3code",
++    iosBundleIdentifier: "com.t3tools.mode",
++    androidPackage: "com.t3tools.mode",
+   },
+ };
+ 
+diff --git a/apps/mobile/src/features/connection/pairing.test.ts b/apps/mobile/src/features/connection/pairing.test.ts
+index e0af038b46ed83a56ad71fddf2e86dbff0e094f3..f5e5a0cb8d6e7d7c1878fae1337329ae7d4e19ab 100644
+--- a/apps/mobile/src/features/connection/pairing.test.ts
++++ b/apps/mobile/src/features/connection/pairing.test.ts
+@@ -12,7 +12,7 @@ describe("extractPairingUrlFromQrPayload", () => {
+   it("unwraps mobile deep links that carry an encoded pairing url", () => {
+     expect(
+       extractPairingUrlFromQrPayload(
+-        "t3code://pair?pairingUrl=https%3A%2F%2Fremote.example.com%2Fpair%23token%3Dpairing-token",
++        "mode://pair?pairingUrl=https%3A%2F%2Fremote.example.com%2Fpair%23token%3Dpairing-token",
+       ),
+     ).toBe("https://remote.example.com/pair#token=pairing-token");
+   });
+diff --git a/apps/mobile/src/features/connection/pairing.ts b/apps/mobile/src/features/connection/pairing.ts
+index f7362900b0cb20f6dc570606cab81cf563d79c19..fbd39712759cddb6dbe383e45063f687c4144320 100644
+--- a/apps/mobile/src/features/connection/pairing.ts
++++ b/apps/mobile/src/features/connection/pairing.ts
+@@ -53,7 +53,7 @@ export function extractPairingUrlFromQrPayload(payload: string): string {
+ 
+   try {
+     const url = new URL(trimmed);
+-    if (url.protocol === "t3code:") {
++    if (url.protocol === "mode:") {
+       const pairingUrl = url.searchParams.get(MOBILE_PAIRING_URL_PARAM)?.trim() ?? "";
+       if (pairingUrl.length > 0) {
+         return pairingUrl;
+diff --git a/apps/server/src/cli/config.test.ts b/apps/server/src/cli/config.test.ts
+index 9e73773d5a5ed7af2ccb32810b3b4b3a34cdcfd4..5369d919b501133b83b732d9464a374371e6825b 100644
+--- a/apps/server/src/cli/config.test.ts
++++ b/apps/server/src/cli/config.test.ts
+@@ -83,15 +83,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
+             ConfigProvider.layer(
+               ConfigProvider.fromEnv({
+                 env: {
+-                  T3CODE_LOG_LEVEL: "Warn",
+-                  T3CODE_MODE: "desktop",
+-                  T3CODE_PORT: "4001",
+-                  T3CODE_HOST: "0.0.0.0",
+-                  T3CODE_HOME: baseDir,
++                  MODE_LOG_LEVEL: "Warn",
++                  MODE_MODE: "desktop",
++                  MODE_PORT: "4001",
++                  MODE_HOST: "0.0.0.0",
++                  MODE_HOME: baseDir,
+                   VITE_DEV_SERVER_URL: "http://127.0.0.1:5173",
+-                  T3CODE_NO_BROWSER: "true",
+-                  T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
+-                  T3CODE_LOG_WS_EVENTS: "true",
++                  MODE_NO_BROWSER: "true",
++                  MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
++                  MODE_LOG_WS_EVENTS: "true",
+                 },
+               }),
+             ),
+@@ -149,15 +149,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
+             ConfigProvider.layer(
+               ConfigProvider.fromEnv({
+                 env: {
+-                  T3CODE_LOG_LEVEL: "Warn",
+-                  T3CODE_MODE: "desktop",
+-                  T3CODE_PORT: "4001",
+-                  T3CODE_HOST: "0.0.0.0",
+-                  T3CODE_HOME: join(NodeOS.tmpdir(), "ignored-base"),
++                  MODE_LOG_LEVEL: "Warn",
++                  MODE_MODE: "desktop",
++                  MODE_PORT: "4001",
++                  MODE_HOST: "0.0.0.0",
++                  MODE_HOME: join(NodeOS.tmpdir(), "ignored-base"),
+                   VITE_DEV_SERVER_URL: "http://127.0.0.1:5173",
+-                  T3CODE_NO_BROWSER: "false",
+-                  T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
+-                  T3CODE_LOG_WS_EVENTS: "false",
++                  MODE_NO_BROWSER: "false",
++                  MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "false",
++                  MODE_LOG_WS_EVENTS: "false",
+                 },
+               }),
+             ),
+@@ -223,10 +223,10 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
+             ConfigProvider.layer(
+               ConfigProvider.fromEnv({
+                 env: {
+-                  T3CODE_BOOTSTRAP_FD: String(fd),
+-                  T3CODE_NO_BROWSER: "true",
+-                  T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
+-                  T3CODE_LOG_WS_EVENTS: "true",
++                  MODE_BOOTSTRAP_FD: String(fd),
++                  MODE_NO_BROWSER: "true",
++                  MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
++                  MODE_LOG_WS_EVENTS: "true",
+                 },
+               }),
+             ),
+@@ -298,7 +298,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
+             ConfigProvider.layer(
+               ConfigProvider.fromEnv({
+                 env: {
+-                  T3CODE_BOOTSTRAP_FD: String(fd),
++                  MODE_BOOTSTRAP_FD: String(fd),
+                 },
+               }),
+             ),
+@@ -420,12 +420,12 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
+             ConfigProvider.layer(
+               ConfigProvider.fromEnv({
+                 env: {
+-                  T3CODE_MODE: "web",
+-                  T3CODE_BOOTSTRAP_FD: String(fd),
+-                  T3CODE_HOME: baseDir,
+-                  T3CODE_NO_BROWSER: "true",
+-                  T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
+-                  T3CODE_LOG_WS_EVENTS: "true",
++                  MODE_MODE: "web",
++                  MODE_BOOTSTRAP_FD: String(fd),
++                  MODE_HOME: baseDir,
++                  MODE_NO_BROWSER: "true",
++                  MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
++                  MODE_LOG_WS_EVENTS: "true",
+                 },
+               }),
+             ),
+@@ -556,8 +556,8 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
+             ConfigProvider.layer(
+               ConfigProvider.fromEnv({
+                 env: {
+-                  T3CODE_NO_BROWSER: "false",
+-                  T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
++                  MODE_NO_BROWSER: "false",
++                  MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "true",
+                 },
+               }),
+             ),
+diff --git a/apps/server/src/cli/config.ts b/apps/server/src/cli/config.ts
+index 7182854e18c41afec54c193dc82bc6dadc2bc650..ece4c1725e8c187fda9713d86733a68f039cf9db 100644
+--- a/apps/server/src/cli/config.ts
++++ b/apps/server/src/cli/config.ts
+@@ -39,7 +39,7 @@ export const hostFlag = Flag.string("host").pipe(
+   Flag.optional,
+ );
+ export const baseDirFlag = Flag.string("base-dir").pipe(
+-  Flag.withDescription("Base directory path (equivalent to T3CODE_HOME)."),
++  Flag.withDescription("Base directory path (equivalent to MODE_HOME)."),
+   Flag.optional,
+ );
+ export const devUrlFlag = Flag.string("dev-url").pipe(
+@@ -64,7 +64,7 @@ export const autoBootstrapProjectFromCwdFlag = Flag.boolean("auto-bootstrap-proj
+ );
+ export const logWebSocketEventsFlag = Flag.boolean("log-websocket-events").pipe(
+   Flag.withDescription(
+-    "Emit server-side logs for outbound WebSocket push traffic (equivalent to T3CODE_LOG_WS_EVENTS).",
++    "Emit server-side logs for outbound WebSocket push traffic (equivalent to MODE_LOG_WS_EVENTS).",
+   ),
+   Flag.withAlias("log-ws-events"),
+   Flag.optional,
+@@ -82,57 +82,55 @@ export const tailscaleServePortFlag = Flag.integer("tailscale-serve-port").pipe(
+ );
+ 
+ const EnvServerConfig = Config.all({
+-  logLevel: Config.logLevel("T3CODE_LOG_LEVEL").pipe(Config.withDefault("Info")),
+-  traceMinLevel: Config.logLevel("T3CODE_TRACE_MIN_LEVEL").pipe(Config.withDefault("Info")),
+-  traceTimingEnabled: Config.boolean("T3CODE_TRACE_TIMING_ENABLED").pipe(Config.withDefault(true)),
+-  traceFile: Config.string("T3CODE_TRACE_FILE").pipe(
++  logLevel: Config.logLevel("MODE_LOG_LEVEL").pipe(Config.withDefault("Info")),
++  traceMinLevel: Config.logLevel("MODE_TRACE_MIN_LEVEL").pipe(Config.withDefault("Info")),
++  traceTimingEnabled: Config.boolean("MODE_TRACE_TIMING_ENABLED").pipe(Config.withDefault(true)),
++  traceFile: Config.string("MODE_TRACE_FILE").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  traceMaxBytes: Config.int("T3CODE_TRACE_MAX_BYTES").pipe(Config.withDefault(10 * 1024 * 1024)),
+-  traceMaxFiles: Config.int("T3CODE_TRACE_MAX_FILES").pipe(Config.withDefault(10)),
+-  traceBatchWindowMs: Config.int("T3CODE_TRACE_BATCH_WINDOW_MS").pipe(Config.withDefault(200)),
+-  otlpTracesUrl: Config.string("T3CODE_OTLP_TRACES_URL").pipe(
++  traceMaxBytes: Config.int("MODE_TRACE_MAX_BYTES").pipe(Config.withDefault(10 * 1024 * 1024)),
++  traceMaxFiles: Config.int("MODE_TRACE_MAX_FILES").pipe(Config.withDefault(10)),
++  traceBatchWindowMs: Config.int("MODE_TRACE_BATCH_WINDOW_MS").pipe(Config.withDefault(200)),
++  otlpTracesUrl: Config.string("MODE_OTLP_TRACES_URL").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  otlpMetricsUrl: Config.string("T3CODE_OTLP_METRICS_URL").pipe(
++  otlpMetricsUrl: Config.string("MODE_OTLP_METRICS_URL").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  otlpExportIntervalMs: Config.int("T3CODE_OTLP_EXPORT_INTERVAL_MS").pipe(
+-    Config.withDefault(10_000),
+-  ),
+-  otlpServiceName: Config.string("T3CODE_OTLP_SERVICE_NAME").pipe(Config.withDefault("t3-server")),
+-  mode: Config.schema(RuntimeMode, "T3CODE_MODE").pipe(
++  otlpExportIntervalMs: Config.int("MODE_OTLP_EXPORT_INTERVAL_MS").pipe(Config.withDefault(10_000)),
++  otlpServiceName: Config.string("MODE_OTLP_SERVICE_NAME").pipe(Config.withDefault("t3-server")),
++  mode: Config.schema(RuntimeMode, "MODE_MODE").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  port: Config.port("T3CODE_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
+-  host: Config.string("T3CODE_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
+-  t3Home: Config.string("T3CODE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
++  port: Config.port("MODE_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
++  host: Config.string("MODE_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
++  t3Home: Config.string("MODE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
+   devUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
+-  noBrowser: Config.boolean("T3CODE_NO_BROWSER").pipe(
++  noBrowser: Config.boolean("MODE_NO_BROWSER").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  bootstrapFd: Config.int("T3CODE_BOOTSTRAP_FD").pipe(
++  bootstrapFd: Config.int("MODE_BOOTSTRAP_FD").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  autoBootstrapProjectFromCwd: Config.boolean("T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD").pipe(
++  autoBootstrapProjectFromCwd: Config.boolean("MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  logWebSocketEvents: Config.boolean("T3CODE_LOG_WS_EVENTS").pipe(
++  logWebSocketEvents: Config.boolean("MODE_LOG_WS_EVENTS").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  tailscaleServeEnabled: Config.boolean("T3CODE_TAILSCALE_SERVE").pipe(
++  tailscaleServeEnabled: Config.boolean("MODE_TAILSCALE_SERVE").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+-  tailscaleServePort: Config.port("T3CODE_TAILSCALE_SERVE_PORT").pipe(
++  tailscaleServePort: Config.port("MODE_TAILSCALE_SERVE_PORT").pipe(
+     Config.option,
+     Config.map(Option.getOrUndefined),
+   ),
+diff --git a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
+index 59787e0b5451271bd13516e72caf59d25e67771a..95c4d8b40840a47a16dd4200db711fa8937d8526 100644
+--- a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
++++ b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
+@@ -54,7 +54,7 @@ const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(120);
+ const BUFFERED_PROPOSED_PLAN_BY_ID_CACHE_CAPACITY = 10_000;
+ const BUFFERED_PROPOSED_PLAN_BY_ID_TTL = Duration.minutes(120);
+ const MAX_BUFFERED_ASSISTANT_CHARS = 24_000;
+-const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.T3CODE_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
++const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.MODE_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
+ 
+ type TurnStartRequestedDomainEvent = Extract<
+   OrchestrationEvent,
+diff --git a/apps/server/src/os-jank.ts b/apps/server/src/os-jank.ts
+index 93a40ae7e197a8a74266bac3b60c89c965dbf1d3..85ac641724a1788d7f38fb438ea565fe31077261 100644
+--- a/apps/server/src/os-jank.ts
++++ b/apps/server/src/os-jank.ts
+@@ -98,7 +98,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
+ export const resolveBaseDir = Effect.fn(function* (raw: string | undefined) {
+   const { join, resolve } = yield* Path.Path;
+   if (!raw || raw.trim().length === 0) {
+-    return join(NodeOS.homedir(), ".t3");
++    return join(NodeOS.homedir(), ".mode");
+   }
+   return resolve(yield* expandHomePath(raw.trim()));
+ });
+diff --git a/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts b/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
+index 55e44747370121c581e76acc1d3199b1d2dee7e3..cec42822d0913c7ace6d5f962987818d104ae213 100644
+--- a/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
++++ b/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
+@@ -152,8 +152,8 @@ describe("ProjectSetupScriptRunner", () => {
+       cwd: "/repo/worktrees/a",
+       worktreePath: "/repo/worktrees/a",
+       env: {
+-        T3CODE_PROJECT_ROOT: "/repo/project",
+-        T3CODE_WORKTREE_PATH: "/repo/worktrees/a",
++        MODE_PROJECT_ROOT: "/repo/project",
++        MODE_WORKTREE_PATH: "/repo/worktrees/a",
+       },
+     });
+     expect(write).toHaveBeenCalledWith({
+diff --git a/apps/server/src/provider/Layers/ProviderRegistry.test.ts b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
+index 52465fdc386bf85bce511884bb7c1a539186f723..1b9abd658e14c0847414a67693551c76f8e5a743 100644
+--- a/apps/server/src/provider/Layers/ProviderRegistry.test.ts
++++ b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
+@@ -59,7 +59,7 @@ const disabledCodexSettings: CodexSettings = Schema.decodeSync(CodexSettings)({
+   enabled: false,
+ });
+ 
+-process.env.T3CODE_CURSOR_ENABLED = "1";
++process.env.MODE_CURSOR_ENABLED = "1";
+ 
+ // ── Test helpers ────────────────────────────────────────────────────
+ 
+@@ -1000,7 +1000,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest(), T
+                 // accepts + decodes them. Cast the patch to `unknown` so
+                 // the `Schema.decodeSync` below does the real validation.
+                 providerInstances: {
+-                  // Matches the shape the user had in `.t3/dev/settings.json`
++                  // Matches the shape the user had in `.mode/dev/settings.json`
+                   // when the bug was reported: a custom enabled Codex instance
+                   // pointing at a binary the server has to actually spawn.
+                   codex_personal: {
+diff --git a/apps/server/src/sourceControl/BitbucketApi.test.ts b/apps/server/src/sourceControl/BitbucketApi.test.ts
+index e93362b8423e93afe03098ebf00998f3fb7065f4..2a89edd6dbf32eafa24b9f320ffca08a31097ebc 100644
+--- a/apps/server/src/sourceControl/BitbucketApi.test.ts
++++ b/apps/server/src/sourceControl/BitbucketApi.test.ts
+@@ -139,9 +139,9 @@ function makeLayer(input: {
+       ConfigProvider.layer(
+         ConfigProvider.fromEnv({
+           env: {
+-            T3CODE_BITBUCKET_API_BASE_URL: "https://api.test.local/2.0",
+-            T3CODE_BITBUCKET_EMAIL: "user@example.com",
+-            T3CODE_BITBUCKET_API_TOKEN: "token",
++            MODE_BITBUCKET_API_BASE_URL: "https://api.test.local/2.0",
++            MODE_BITBUCKET_EMAIL: "user@example.com",
++            MODE_BITBUCKET_API_TOKEN: "token",
+           },
+         }),
+       ),
+diff --git a/apps/server/src/sourceControl/BitbucketApi.ts b/apps/server/src/sourceControl/BitbucketApi.ts
+index 3bcba65fe0f5503ba1019af55936b8b495f2dd0b..f64c6ae2962cdaf28abbd7b5224d4e9653bf42fe 100644
+--- a/apps/server/src/sourceControl/BitbucketApi.ts
++++ b/apps/server/src/sourceControl/BitbucketApi.ts
+@@ -23,12 +23,12 @@ import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
+ const DEFAULT_API_BASE_URL = "https://api.bitbucket.org/2.0";
+ 
+ const BitbucketApiEnvConfig = Config.all({
+-  baseUrl: Config.string("T3CODE_BITBUCKET_API_BASE_URL").pipe(
++  baseUrl: Config.string("MODE_BITBUCKET_API_BASE_URL").pipe(
+     Config.withDefault(DEFAULT_API_BASE_URL),
+   ),
+-  accessToken: Config.string("T3CODE_BITBUCKET_ACCESS_TOKEN").pipe(Config.option),
+-  email: Config.string("T3CODE_BITBUCKET_EMAIL").pipe(Config.option),
+-  apiToken: Config.string("T3CODE_BITBUCKET_API_TOKEN").pipe(Config.option),
++  accessToken: Config.string("MODE_BITBUCKET_ACCESS_TOKEN").pipe(Config.option),
++  email: Config.string("MODE_BITBUCKET_EMAIL").pipe(Config.option),
++  apiToken: Config.string("MODE_BITBUCKET_API_TOKEN").pipe(Config.option),
+ });
+ 
+ export class BitbucketApiError extends Schema.TaggedErrorClass<BitbucketApiError>()(
+@@ -337,7 +337,7 @@ function authFromConfig(
+     account: Option.none(),
+     host: Option.some("bitbucket.org"),
+     detail: Option.some(
+-      "Set T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN, or T3CODE_BITBUCKET_ACCESS_TOKEN.",
++      "Set MODE_BITBUCKET_EMAIL and MODE_BITBUCKET_API_TOKEN, or MODE_BITBUCKET_ACCESS_TOKEN.",
+     ),
+   };
+ }
+diff --git a/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts b/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts
+index f3fd502f7fb8fdbd80827f18c60979a284c0705a..3c5890749d997c46eb04c859fc187d06bca97223 100644
+--- a/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts
++++ b/apps/server/src/sourceControl/BitbucketSourceControlProvider.ts
+@@ -122,7 +122,7 @@ export const makeDiscovery = Effect.fn("makeBitbucketSourceControlProviderDiscov
+     kind: "bitbucket",
+     label: "Bitbucket",
+     installHint:
+-      "Set T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
++      "Set MODE_BITBUCKET_EMAIL and MODE_BITBUCKET_API_TOKEN on the server (use a Bitbucket API token with pull request and repository scopes).",
+     probeAuth: bitbucket.probeAuth,
+   } satisfies SourceControlProviderDiscovery.SourceControlApiDiscoverySpec;
+ });
+diff --git a/apps/server/src/sourceControl/SourceControlDiscovery.test.ts b/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
+index d1c6c65c7528d0dd8d4efe43962e8f3d86237a90..efbcbb646ce350bb4247987824014821ab6029d3 100644
+--- a/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
++++ b/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
+@@ -94,7 +94,7 @@ Logged in to github.com account juliusmarminge (keyring)
+             account: Option.none(),
+             host: Option.some("bitbucket.org"),
+             detail: Option.some(
+-              "Set T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN, or T3CODE_BITBUCKET_ACCESS_TOKEN.",
++              "Set MODE_BITBUCKET_EMAIL and MODE_BITBUCKET_API_TOKEN, or MODE_BITBUCKET_ACCESS_TOKEN.",
+             ),
+           }),
+         },
+diff --git a/apps/server/src/telemetry/Identify.ts b/apps/server/src/telemetry/Identify.ts
+index ade6ac485ba379b27afc471a08bad1a529486865..016765677f042ad227cd85106744b3618cfdaca6 100644
+--- a/apps/server/src/telemetry/Identify.ts
++++ b/apps/server/src/telemetry/Identify.ts
+@@ -81,7 +81,7 @@ const upsertAnonymousId = Effect.gen(function* () {
+  * getTelemetryIdentifier - Users are "identified" by finding the first match of the following, then hashing the value.
+  * 1. ~/.codex/auth.json tokens.account_id
+  * 2. ~/.claude.json userID
+- * 3. ~/.t3/telemetry/anonymous-id
++ * 3. ~/.mode/telemetry/anonymous-id
+  */
+ export const getTelemetryIdentifier = Effect.gen(function* () {
+   const codexAccountId = yield* Effect.result(getCodexAccountId);
+diff --git a/apps/server/src/telemetry/Layers/AnalyticsService.test.ts b/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
+index 03ebd2fdc65a50a30c048617f251c32df1615849..1f9d1ed2f70bd2e2cd96b4fda828c973769437bb 100644
+--- a/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
++++ b/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
+@@ -47,10 +47,10 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
+       const telemetryLayer = AnalyticsServiceLayerLive.pipe(Layer.provideMerge(serverConfigLayer));
+       const configLayer = ConfigProvider.layer(
+         ConfigProvider.fromUnknown({
+-          T3CODE_TELEMETRY_ENABLED: true,
+-          T3CODE_POSTHOG_KEY: "phc_test_key",
+-          T3CODE_POSTHOG_HOST: "",
+-          T3CODE_TELEMETRY_FLUSH_BATCH_SIZE: 20,
++          MODE_TELEMETRY_ENABLED: true,
++          MODE_POSTHOG_KEY: "phc_test_key",
++          MODE_POSTHOG_HOST: "",
++          MODE_TELEMETRY_FLUSH_BATCH_SIZE: 20,
+         }),
+       );
+       const batchServerLayer = HttpServer.serve(
+diff --git a/apps/server/src/telemetry/Layers/AnalyticsService.ts b/apps/server/src/telemetry/Layers/AnalyticsService.ts
+index 27bf64c7be0e20315819e5323ac74daacaa658e0..2b29f96be7ba77c548a04cfb6c7408b1a47925df 100644
+--- a/apps/server/src/telemetry/Layers/AnalyticsService.ts
++++ b/apps/server/src/telemetry/Layers/AnalyticsService.ts
+@@ -26,15 +26,15 @@ interface BufferedAnalyticsEvent {
+ }
+ 
+ const TelemetryEnvConfig = Config.all({
+-  posthogKey: Config.string("T3CODE_POSTHOG_KEY").pipe(
++  posthogKey: Config.string("MODE_POSTHOG_KEY").pipe(
+     Config.withDefault("phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m"),
+   ),
+-  posthogHost: Config.string("T3CODE_POSTHOG_HOST").pipe(
++  posthogHost: Config.string("MODE_POSTHOG_HOST").pipe(
+     Config.withDefault("https://us.i.posthog.com"),
+   ),
+-  enabled: Config.boolean("T3CODE_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
+-  flushBatchSize: Config.number("T3CODE_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
+-  maxBufferedEvents: Config.number("T3CODE_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
++  enabled: Config.boolean("MODE_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
++  flushBatchSize: Config.number("MODE_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
++  maxBufferedEvents: Config.number("MODE_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
+     Config.withDefault(1_000),
+   ),
+ });
+diff --git a/apps/server/src/terminal/Layers/Manager.test.ts b/apps/server/src/terminal/Layers/Manager.test.ts
+index c7a321d11950c9f2112370b0f2eda9ec551866e1..54e64da123046b8f90a951a868b680173585ce35 100644
+--- a/apps/server/src/terminal/Layers/Manager.test.ts
++++ b/apps/server/src/terminal/Layers/Manager.test.ts
+@@ -338,7 +338,7 @@ it.layer(
+       const unsubscribe = yield* manager.attachStream(
+         openInput({
+           env: {
+-            T3CODE_WORKTREE_PATH: "/tmp/should-not-restart",
++            MODE_WORKTREE_PATH: "/tmp/should-not-restart",
+           },
+           worktreePath: "/tmp/should-not-restart",
+         }),
+@@ -376,7 +376,7 @@ it.layer(
+         {
+           ...openInput({
+             env: {
+-              T3CODE_WORKTREE_PATH: "/tmp/restart-requested",
++              MODE_WORKTREE_PATH: "/tmp/restart-requested",
+             },
+             worktreePath: "/tmp/restart-requested",
+           }),
+@@ -1186,7 +1186,7 @@ it.layer(
+       };
+ 
+       setEnv("PORT", "5173");
+-      setEnv("T3CODE_PORT", "3773");
++      setEnv("MODE_PORT", "3773");
+       setEnv("VITE_DEV_SERVER_URL", "http://localhost:5173");
+       setEnv("TEST_TERMINAL_KEEP", "keep-me");
+ 
+@@ -1198,7 +1198,7 @@ it.layer(
+         if (!spawnInput) return;
+ 
+         expect(spawnInput.env.PORT).toBeUndefined();
+-        expect(spawnInput.env.T3CODE_PORT).toBeUndefined();
++        expect(spawnInput.env.MODE_PORT).toBeUndefined();
+         expect(spawnInput.env.VITE_DEV_SERVER_URL).toBeUndefined();
+         expect(spawnInput.env.TEST_TERMINAL_KEEP).toBe("keep-me");
+       } finally {
+@@ -1213,8 +1213,8 @@ it.layer(
+       yield* manager.open(
+         openInput({
+           env: {
+-            T3CODE_PROJECT_ROOT: "/repo",
+-            T3CODE_WORKTREE_PATH: "/repo/worktree-a",
++            MODE_PROJECT_ROOT: "/repo",
++            MODE_WORKTREE_PATH: "/repo/worktree-a",
+             CUSTOM_FLAG: "1",
+           },
+         }),
+@@ -1223,8 +1223,8 @@ it.layer(
+       expect(spawnInput).toBeDefined();
+       if (!spawnInput) return;
+ 
+-      assert.equal(spawnInput.env.T3CODE_PROJECT_ROOT, "/repo");
+-      assert.equal(spawnInput.env.T3CODE_WORKTREE_PATH, "/repo/worktree-a");
++      assert.equal(spawnInput.env.MODE_PROJECT_ROOT, "/repo");
++      assert.equal(spawnInput.env.MODE_WORKTREE_PATH, "/repo/worktree-a");
+       assert.equal(spawnInput.env.CUSTOM_FLAG, "1");
+     }),
+   );
+diff --git a/apps/server/src/terminal/Layers/Manager.ts b/apps/server/src/terminal/Layers/Manager.ts
+index 82eb9502cf690996b17d7c60ce2988b161e62d02..2d81d813b53f49798e27be4fa31f9fd0eee09962 100644
+--- a/apps/server/src/terminal/Layers/Manager.ts
++++ b/apps/server/src/terminal/Layers/Manager.ts
+@@ -886,7 +886,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
+ 
+ function shouldExcludeTerminalEnvKey(key: string): boolean {
+   const normalizedKey = key.toUpperCase();
+-  if (normalizedKey.startsWith("T3CODE_")) {
++  if (normalizedKey.startsWith("MODE_")) {
+     return true;
+   }
+   if (normalizedKey.startsWith("VITE_")) {
+diff --git a/apps/server/src/textGeneration/CodexTextGeneration.test.ts b/apps/server/src/textGeneration/CodexTextGeneration.test.ts
+index 87a2f95fbf598d632caf2e0bbb2b4a7be1c99e75..b88a97a3cf433e219f5e7bb9c817dd6d2d2d0f30 100644
+--- a/apps/server/src/textGeneration/CodexTextGeneration.test.ts
++++ b/apps/server/src/textGeneration/CodexTextGeneration.test.ts
+@@ -142,9 +142,9 @@ function makeFakeCodexBinary(
+             ]
+           : []),
+         'if [ -n "$output_path" ]; then',
+-        "  cat > \"$output_path\" <<'__T3CODE_FAKE_CODEX_OUTPUT__'",
++        "  cat > \"$output_path\" <<'__MODE_FAKE_CODEX_OUTPUT__'",
+         input.output,
+-        "__T3CODE_FAKE_CODEX_OUTPUT__",
++        "__MODE_FAKE_CODEX_OUTPUT__",
+         "fi",
+         `exit ${input.exitCode ?? 0}`,
+         "",
+diff --git a/apps/server/src/vcs/GitVcsDriver.ts b/apps/server/src/vcs/GitVcsDriver.ts
+index c75570d4b1cb5df271acb79a79eb77cbf4f38d2f..c60132ee8e872cf77a2e2669000034c9053450dd 100644
+--- a/apps/server/src/vcs/GitVcsDriver.ts
++++ b/apps/server/src/vcs/GitVcsDriver.ts
+@@ -614,9 +614,9 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
+         ...process.env,
+         GIT_INDEX_FILE: tempIndexPath,
+         GIT_AUTHOR_NAME: "T3 Code",
+-        GIT_AUTHOR_EMAIL: "t3code@users.noreply.github.com",
++        GIT_AUTHOR_EMAIL: "mode@users.noreply.github.com",
+         GIT_COMMITTER_NAME: "T3 Code",
+-        GIT_COMMITTER_EMAIL: "t3code@users.noreply.github.com",
++        GIT_COMMITTER_EMAIL: "mode@users.noreply.github.com",
+       };
+ 
+       const cleanupTempIndex = fileSystem
+diff --git a/apps/server/src/vcs/VcsProjectConfig.test.ts b/apps/server/src/vcs/VcsProjectConfig.test.ts
+index aac4beb7e321aaeb5d41353820ad9e2ee99084a4..8682acc003184c9c9012a2dc9e571ed215e0ca65 100644
+--- a/apps/server/src/vcs/VcsProjectConfig.test.ts
++++ b/apps/server/src/vcs/VcsProjectConfig.test.ts
+@@ -27,7 +27,7 @@ describe("VcsProjectConfig", () => {
+     );
+   });
+ 
+-  it.layer(TestLayer)("discovers .t3code/vcs.json from nested workspaces", (it) => {
++  it.layer(TestLayer)("discovers .mode/vcs.json from nested workspaces", (it) => {
+     it.effect("returns the configured kind", () =>
+       Effect.gen(function* () {
+         const fileSystem = yield* FileSystem.FileSystem;
+@@ -35,7 +35,7 @@ describe("VcsProjectConfig", () => {
+         const root = yield* fileSystem.makeTempDirectoryScoped({
+           prefix: "t3-vcs-config-test-",
+         });
+-        const configDir = path.join(root, ".t3code");
++        const configDir = path.join(root, ".mode");
+         const nested = path.join(root, "packages", "app");
+         yield* fileSystem.makeDirectory(configDir, { recursive: true });
+         yield* fileSystem.makeDirectory(nested, { recursive: true });
+diff --git a/apps/server/src/vcs/VcsProjectConfig.ts b/apps/server/src/vcs/VcsProjectConfig.ts
+index 3e5ee2347ce9aadf31d927f283831dbd97544e79..486c2b11f64e6aae162c66cfa4608d414cce7f5d 100644
+--- a/apps/server/src/vcs/VcsProjectConfig.ts
++++ b/apps/server/src/vcs/VcsProjectConfig.ts
+@@ -61,7 +61,7 @@ export const make = Effect.fn("makeVcsProjectConfig")(function* () {
+   const findConfigPath = Effect.fn("VcsProjectConfig.findConfigPath")(function* (cwd: string) {
+     let current = cwd;
+     while (true) {
+-      const candidate = path.join(current, ".t3code", "vcs.json");
++      const candidate = path.join(current, ".mode", "vcs.json");
+       if (yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false))) {
+         return candidate;
+       }
+diff --git a/apps/web/index.html b/apps/web/index.html
+index 88e1c8b4f2317ef00ec0a94d7ede8686a40ca4d8..e5ea6de661c3a424a99d941109457c940ba01cfb 100644
+--- a/apps/web/index.html
++++ b/apps/web/index.html
+@@ -17,7 +17,7 @@
+         const DARK_BACKGROUND = "#161616";
+         const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+         try {
+-          const storedTheme = window.localStorage.getItem("t3code:theme");
++          const storedTheme = window.localStorage.getItem("mode:theme");
+           const theme =
+             storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
+               ? storedTheme
+diff --git a/apps/web/src/clientPersistenceStorage.ts b/apps/web/src/clientPersistenceStorage.ts
+index 30c949b37ac819600b6ba22f966d0a44d2db4aca..390f40bf8c079004bee8db8eb80fac9041d5fdce 100644
+--- a/apps/web/src/clientPersistenceStorage.ts
++++ b/apps/web/src/clientPersistenceStorage.ts
+@@ -9,8 +9,8 @@ import * as Schema from "effect/Schema";
+ 
+ import { getLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
+ 
+-export const CLIENT_SETTINGS_STORAGE_KEY = "t3code:client-settings:v1";
+-export const SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY = "t3code:saved-environment-registry:v1";
++export const CLIENT_SETTINGS_STORAGE_KEY = "mode:client-settings:v1";
++export const SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY = "mode:saved-environment-registry:v1";
+ 
+ const BrowserSavedEnvironmentRecordSchema = Schema.Struct({
+   environmentId: EnvironmentId,
+diff --git a/apps/web/src/components/BranchToolbar.logic.test.ts b/apps/web/src/components/BranchToolbar.logic.test.ts
+index 3db5237373a10d89f1eb235e680329f1bdedb049..a2f77986946d56063ecbb47af86b0a9e0781d5fb 100644
+--- a/apps/web/src/components/BranchToolbar.logic.test.ts
++++ b/apps/web/src/components/BranchToolbar.logic.test.ts
+@@ -22,7 +22,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
+     expect(
+       resolveDraftEnvModeAfterBranchChange({
+         nextWorktreePath: null,
+-        currentWorktreePath: "/repo/.t3/worktrees/feature-a",
++        currentWorktreePath: "/repo/.mode/worktrees/feature-a",
+         effectiveEnvMode: "worktree",
+       }),
+     ).toBe("local");
+@@ -41,7 +41,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
+   it("uses worktree mode when selecting a ref already attached to a worktree", () => {
+     expect(
+       resolveDraftEnvModeAfterBranchChange({
+-        nextWorktreePath: "/repo/.t3/worktrees/feature-a",
++        nextWorktreePath: "/repo/.mode/worktrees/feature-a",
+         currentWorktreePath: null,
+         effectiveEnvMode: "local",
+       }),
+@@ -123,7 +123,7 @@ describe("resolveEffectiveEnvMode", () => {
+   it("treats draft threads already attached to a worktree as current-checkout mode", () => {
+     expect(
+       resolveEffectiveEnvMode({
+-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
++        activeWorktreePath: "/repo/.mode/worktrees/feature-a",
+         hasServerThread: false,
+         draftThreadEnvMode: "worktree",
+       }),
+@@ -154,7 +154,9 @@ describe("resolveCurrentWorkspaceLabel", () => {
+   });
+ 
+   it("describes the active checkout as a worktree when one is attached", () => {
+-    expect(resolveCurrentWorkspaceLabel("/repo/.t3/worktrees/feature-a")).toBe("Current worktree");
++    expect(resolveCurrentWorkspaceLabel("/repo/.mode/worktrees/feature-a")).toBe(
++      "Current worktree",
++    );
+   });
+ });
+ 
+@@ -164,7 +166,7 @@ describe("resolveLockedWorkspaceLabel", () => {
+   });
+ 
+   it("uses a shorter label for an attached worktree", () => {
+-    expect(resolveLockedWorkspaceLabel("/repo/.t3/worktrees/feature-a")).toBe("Worktree");
++    expect(resolveLockedWorkspaceLabel("/repo/.mode/worktrees/feature-a")).toBe("Worktree");
+   });
+ });
+ 
+@@ -296,15 +298,15 @@ describe("resolveBranchSelectionTarget", () => {
+     expect(
+       resolveBranchSelectionTarget({
+         activeProjectCwd: "/repo",
+-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
++        activeWorktreePath: "/repo/.mode/worktrees/feature-a",
+         refName: {
+           isDefault: false,
+-          worktreePath: "/repo/.t3/worktrees/feature-b",
++          worktreePath: "/repo/.mode/worktrees/feature-b",
+         },
+       }),
+     ).toEqual({
+-      checkoutCwd: "/repo/.t3/worktrees/feature-b",
+-      nextWorktreePath: "/repo/.t3/worktrees/feature-b",
++      checkoutCwd: "/repo/.mode/worktrees/feature-b",
++      nextWorktreePath: "/repo/.mode/worktrees/feature-b",
+       reuseExistingWorktree: true,
+     });
+   });
+@@ -313,7 +315,7 @@ describe("resolveBranchSelectionTarget", () => {
+     expect(
+       resolveBranchSelectionTarget({
+         activeProjectCwd: "/repo",
+-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
++        activeWorktreePath: "/repo/.mode/worktrees/feature-a",
+         refName: {
+           isDefault: true,
+           worktreePath: "/repo",
+@@ -330,7 +332,7 @@ describe("resolveBranchSelectionTarget", () => {
+     expect(
+       resolveBranchSelectionTarget({
+         activeProjectCwd: "/repo",
+-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
++        activeWorktreePath: "/repo/.mode/worktrees/feature-a",
+         refName: {
+           isDefault: true,
+           worktreePath: null,
+@@ -347,15 +349,15 @@ describe("resolveBranchSelectionTarget", () => {
+     expect(
+       resolveBranchSelectionTarget({
+         activeProjectCwd: "/repo",
+-        activeWorktreePath: "/repo/.t3/worktrees/feature-a",
++        activeWorktreePath: "/repo/.mode/worktrees/feature-a",
+         refName: {
+           isDefault: false,
+           worktreePath: null,
+         },
+       }),
+     ).toEqual({
+-      checkoutCwd: "/repo/.t3/worktrees/feature-a",
+-      nextWorktreePath: "/repo/.t3/worktrees/feature-a",
++      checkoutCwd: "/repo/.mode/worktrees/feature-a",
++      nextWorktreePath: "/repo/.mode/worktrees/feature-a",
+       reuseExistingWorktree: false,
+     });
+   });
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index d4eb3da326387a94d0a6cfe227f46fb453b46c2a..cbd5a7c5a261e7d85471962e70363aacaafa29df 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -198,7 +198,7 @@ function createBaseServerConfig(): ServerConfig {
+       sessionCookieName: "t3_session",
+     },
+     cwd: "/repo/project",
+-    keybindingsConfigPath: "/repo/project/.t3code-keybindings.json",
++    keybindingsConfigPath: "/repo/project/.mode-keybindings.json",
+     keybindings: [],
+     issues: [],
+     providers: [
+@@ -218,7 +218,7 @@ function createBaseServerConfig(): ServerConfig {
+     ],
+     availableEditors: [],
+     observability: {
+-      logsDirectoryPath: "/repo/project/.t3/logs",
++      logsDirectoryPath: "/repo/project/.mode/logs",
+       localTracingEnabled: true,
+       otlpTracesEnabled: false,
+       otlpMetricsEnabled: false,
+@@ -1995,10 +1995,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+             cwd: "/repo/project",
+             worktreePath: null,
+             env: {
+-              T3CODE_PROJECT_ROOT: "/repo/project",
++              MODE_PROJECT_ROOT: "/repo/project",
+             },
+           });
+-          expect(attachRequest?.env?.T3CODE_WORKTREE_PATH).toBeUndefined();
++          expect(attachRequest?.env?.MODE_WORKTREE_PATH).toBeUndefined();
+         },
+         { timeout: 8_000, interval: 16 },
+       );
+@@ -2248,7 +2248,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+   });
+ 
+   it("falls back to the first installed editor when the stored favorite is unavailable", async () => {
+-    localStorage.setItem("t3code:last-editor", JSON.stringify("vscodium"));
++    localStorage.setItem("mode:last-editor", JSON.stringify("vscodium"));
+     setDraftThreadWithoutWorktree();
+ 
+     const mounted = await mountChatView({
+@@ -2348,7 +2348,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+             threadId: THREAD_ID,
+             cwd: "/repo/project",
+             env: {
+-              T3CODE_PROJECT_ROOT: "/repo/project",
++              MODE_PROJECT_ROOT: "/repo/project",
+             },
+           });
+         },
+@@ -2427,8 +2427,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
+             threadId: THREAD_ID,
+             cwd: "/repo/worktrees/feature-draft",
+             env: {
+-              T3CODE_PROJECT_ROOT: "/repo/project",
+-              T3CODE_WORKTREE_PATH: "/repo/worktrees/feature-draft",
++              MODE_PROJECT_ROOT: "/repo/project",
++              MODE_WORKTREE_PATH: "/repo/worktrees/feature-draft",
+             },
+           });
+         },
+@@ -3957,7 +3957,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+ 
+   it("shows the confirm archive action after clicking the archive button", async () => {
+     localStorage.setItem(
+-      "t3code:client-settings:v1",
++      "mode:client-settings:v1",
+       JSON.stringify({
+         ...DEFAULT_CLIENT_SETTINGS,
+         confirmThreadArchive: true,
+@@ -3986,7 +3986,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       await expect.element(confirmButton).toBeInTheDocument();
+       await expect.element(confirmButton).toBeVisible();
+     } finally {
+-      localStorage.removeItem("t3code:client-settings:v1");
++      localStorage.removeItem("mode:client-settings:v1");
+       await mounted.cleanup();
+     }
+   });
+@@ -4109,7 +4109,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+           thread.id === THREAD_ID
+             ? Object.assign({}, thread, {
+                 branch: "feature/existing",
+-                worktreePath: "/repo/.t3/worktrees/existing",
++                worktreePath: "/repo/.mode/worktrees/existing",
+               })
+             : thread,
+         ),
+diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
+index 687d965b7e33e44fab0df582d2c6ecc241902244..0bf259bd3bc10a2cad19fdd6aa3fd7b040a3212d 100644
+--- a/apps/web/src/components/ChatView.logic.ts
++++ b/apps/web/src/components/ChatView.logic.ts
+@@ -20,7 +20,7 @@ import {
+ } from "../lib/terminalContext";
+ import type { DraftThreadEnvMode } from "../composerDraftStore";
+ 
+-export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "t3code:last-invoked-script-by-project";
++export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "mode:last-invoked-script-by-project";
+ export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
+ 
+ export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
+diff --git a/apps/web/src/components/KeybindingsToast.browser.tsx b/apps/web/src/components/KeybindingsToast.browser.tsx
+index a3e5af1de53036036721ba1064aac6fdd13c55a7..28f218f33cbd14f082e130adbc9764987d95cef9 100644
+--- a/apps/web/src/components/KeybindingsToast.browser.tsx
++++ b/apps/web/src/components/KeybindingsToast.browser.tsx
+@@ -100,7 +100,7 @@ function createBaseServerConfig(): ServerConfig {
+       sessionCookieName: "t3_session",
+     },
+     cwd: "/repo/project",
+-    keybindingsConfigPath: "/repo/project/.t3code-keybindings.json",
++    keybindingsConfigPath: "/repo/project/.mode-keybindings.json",
+     keybindings: [],
+     issues: [],
+     providers: [
+@@ -120,7 +120,7 @@ function createBaseServerConfig(): ServerConfig {
+     ],
+     availableEditors: [],
+     observability: {
+-      logsDirectoryPath: "/repo/project/.t3/logs",
++      logsDirectoryPath: "/repo/project/.mode/logs",
+       localTracingEnabled: true,
+       otlpTracesEnabled: false,
+       otlpMetricsEnabled: false,
+diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
+index 926c117c1c08c08f0df96d78ce727a6fad06ffb0..fb0e02cdcb37831981d1c39d81bf7faf2c256407 100644
+--- a/apps/web/src/components/Sidebar.logic.test.ts
++++ b/apps/web/src/components/Sidebar.logic.test.ts
+@@ -199,12 +199,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
+         activeThread: {
+           projectId: "project-1",
+           branch: "feature/existing",
+-          worktreePath: "/repo/.t3/worktrees/existing",
++          worktreePath: "/repo/.mode/worktrees/existing",
+         },
+         activeDraftThread: {
+           projectId: "project-1",
+           branch: "feature/draft",
+-          worktreePath: "/repo/.t3/worktrees/draft",
++          worktreePath: "/repo/.mode/worktrees/draft",
+           envMode: "worktree",
+         },
+       }),
+diff --git a/apps/web/src/components/chat/ProviderModelPicker.browser.tsx b/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
+index d3b168876a692e86093fdbebd6f5481c3e31b2a5..4196089b13345116bc9675d24ead2056c446eb56 100644
+--- a/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
++++ b/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
+@@ -463,7 +463,7 @@ describe("ProviderModelPicker", () => {
+ 
+   it("shows locked provider header and only its models in locked mode", async () => {
+     localStorage.setItem(
+-      "t3code:client-settings:v1",
++      "mode:client-settings:v1",
+       JSON.stringify({
+         ...DEFAULT_CLIENT_SETTINGS,
+         favorites: [
+@@ -493,7 +493,7 @@ describe("ProviderModelPicker", () => {
+         ]);
+       });
+     } finally {
+-      localStorage.removeItem("t3code:client-settings:v1");
++      localStorage.removeItem("mode:client-settings:v1");
+       await mounted.cleanup();
+     }
+   });
+@@ -945,7 +945,7 @@ describe("ProviderModelPicker", () => {
+   });
+ 
+   it("toggles favorite stars when clicked", async () => {
+-    localStorage.removeItem("t3code:client-settings:v1");
++    localStorage.removeItem("mode:client-settings:v1");
+ 
+     const mounted = await mountPicker({
+       activeInstanceId: CLAUDE_INSTANCE_ID,
+@@ -985,12 +985,12 @@ describe("ProviderModelPicker", () => {
+       });
+     } finally {
+       await mounted.cleanup();
+-      localStorage.removeItem("t3code:client-settings:v1");
++      localStorage.removeItem("mode:client-settings:v1");
+     }
+   });
+ 
+   it("does not duplicate favorited models across favorites and all models sections", async () => {
+-    localStorage.removeItem("t3code:client-settings:v1");
++    localStorage.removeItem("mode:client-settings:v1");
+ 
+     const mounted = await mountPicker({
+       activeInstanceId: CLAUDE_INSTANCE_ID,
+@@ -1019,13 +1019,13 @@ describe("ProviderModelPicker", () => {
+       });
+     } finally {
+       await mounted.cleanup();
+-      localStorage.removeItem("t3code:client-settings:v1");
++      localStorage.removeItem("mode:client-settings:v1");
+     }
+   });
+ 
+   it("shows favorited models first within the selected provider list", async () => {
+     localStorage.setItem(
+-      "t3code:client-settings:v1",
++      "mode:client-settings:v1",
+       JSON.stringify({
+         ...DEFAULT_CLIENT_SETTINGS,
+         favorites: [{ provider: "codex", model: "gpt-5.3-codex" }],
+@@ -1046,7 +1046,7 @@ describe("ProviderModelPicker", () => {
+       });
+     } finally {
+       await mounted.cleanup();
+-      localStorage.removeItem("t3code:client-settings:v1");
++      localStorage.removeItem("mode:client-settings:v1");
+     }
+   });
+ 
+diff --git a/apps/web/src/components/settings/SettingsPanels.browser.tsx b/apps/web/src/components/settings/SettingsPanels.browser.tsx
+index 34f24006edc8394c763cdec98f7c47b8282b1712..d66ac91ac33075998e6ad4e1f460cbb9e9eb5c58 100644
+--- a/apps/web/src/components/settings/SettingsPanels.browser.tsx
++++ b/apps/web/src/components/settings/SettingsPanels.browser.tsx
+@@ -221,13 +221,13 @@ function createBaseServerConfig(): ServerConfig {
+       sessionCookieName: "t3_session",
+     },
+     cwd: "/repo/project",
+-    keybindingsConfigPath: "/repo/project/.t3code-keybindings.json",
++    keybindingsConfigPath: "/repo/project/.mode-keybindings.json",
+     keybindings: [],
+     issues: [],
+     providers: [],
+     availableEditors: ["cursor"],
+     observability: {
+-      logsDirectoryPath: "/repo/project/.t3/logs",
++      logsDirectoryPath: "/repo/project/.mode/logs",
+       localTracingEnabled: true,
+       otlpTracesUrl: "http://localhost:4318/v1/traces",
+       otlpTracesEnabled: true,
+@@ -1084,8 +1084,8 @@ describe("GeneralSettingsPanel observability", () => {
+           .fn()
+           .mockResolvedValue(createEmptyProcessResourceHistoryResult()),
+         getTraceDiagnostics: vi.fn().mockResolvedValue({
+-          traceFilePath: "/repo/project/.t3/traces.jsonl",
+-          scannedFilePaths: ["/repo/project/.t3/traces.jsonl"],
++          traceFilePath: "/repo/project/.mode/traces.jsonl",
++          scannedFilePaths: ["/repo/project/.mode/traces.jsonl"],
+           readAt: makeUtc("2036-04-07T00:00:00.000Z"),
+           recordCount: 0,
+           parseErrorCount: 0,
+@@ -1118,7 +1118,7 @@ describe("GeneralSettingsPanel observability", () => {
+     const openLogsButton = page.getByLabelText("Open logs folder");
+     await openLogsButton.click();
+ 
+-    expect(openInEditor).toHaveBeenCalledWith("/repo/project/.t3/logs", "cursor");
++    expect(openInEditor).toHaveBeenCalledWith("/repo/project/.mode/logs", "cursor");
+   });
+ 
+   it("shows an OpenCode server URL field in provider settings", async () => {
+diff --git a/apps/web/src/composerDraftStore.ts b/apps/web/src/composerDraftStore.ts
+index 3de3b5d706dd0c56a8e5e5a68193118f55cec166..cb0d11e893448691bc7d42719571988a6cb5c30f 100644
+--- a/apps/web/src/composerDraftStore.ts
++++ b/apps/web/src/composerDraftStore.ts
+@@ -45,7 +45,7 @@ import { UnifiedSettings } from "@t3tools/contracts/settings";
+ const isRuntimeMode = Schema.is(RuntimeMode);
+ const isProviderDriverKind = Schema.is(ProviderDriverKind);
+ 
+-export const COMPOSER_DRAFT_STORAGE_KEY = "t3code:composer-drafts:v1";
++export const COMPOSER_DRAFT_STORAGE_KEY = "mode:composer-drafts:v1";
+ const COMPOSER_DRAFT_STORAGE_VERSION = 6;
+ const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
+ export type DraftThreadEnvMode = typeof DraftThreadEnvModeSchema.Type;
+diff --git a/apps/web/src/editorPreferences.ts b/apps/web/src/editorPreferences.ts
+index 38c59115a55da9d5a9bcdbf2b008f690986cf204..0de23870d718782987f2d29e63f854b8b2dcf9d9 100644
+--- a/apps/web/src/editorPreferences.ts
++++ b/apps/web/src/editorPreferences.ts
+@@ -2,7 +2,7 @@ import { EDITORS, EditorId, LocalApi } from "@t3tools/contracts";
+ import { getLocalStorageItem, setLocalStorageItem, useLocalStorage } from "./hooks/useLocalStorage";
+ import { useMemo } from "react";
+ 
+-const LAST_EDITOR_KEY = "t3code:last-editor";
++const LAST_EDITOR_KEY = "mode:last-editor";
+ 
+ export function usePreferredEditor(availableEditors: ReadonlyArray<EditorId>) {
+   const [lastEditor, setLastEditor] = useLocalStorage(LAST_EDITOR_KEY, null, EditorId);
+diff --git a/apps/web/src/hooks/useLocalStorage.ts b/apps/web/src/hooks/useLocalStorage.ts
+index 93d26f663294897e3dcdd20c5086578b8414291c..94b2fce8e3d4813380690f35d28b2d849ec7427f 100644
+--- a/apps/web/src/hooks/useLocalStorage.ts
++++ b/apps/web/src/hooks/useLocalStorage.ts
+@@ -43,7 +43,7 @@ export const removeLocalStorageItem = (key: string) => {
+   isomorphicLocalStorage.removeItem(key);
+ };
+ 
+-const LOCAL_STORAGE_CHANGE_EVENT = "t3code:local_storage_change";
++const LOCAL_STORAGE_CHANGE_EVENT = "mode:local_storage_change";
+ 
+ interface LocalStorageChangeDetail {
+   key: string;
+diff --git a/apps/web/src/hooks/useTheme.ts b/apps/web/src/hooks/useTheme.ts
+index cd254c97548792b910525c3d5f861ba543a2234a..49233eecbecf7fa94da304ad0099077083e2969e 100644
+--- a/apps/web/src/hooks/useTheme.ts
++++ b/apps/web/src/hooks/useTheme.ts
+@@ -6,7 +6,7 @@ type ThemeSnapshot = {
+   systemDark: boolean;
+ };
+ 
+-const STORAGE_KEY = "t3code:theme";
++const STORAGE_KEY = "mode:theme";
+ const MEDIA_QUERY = "(prefers-color-scheme: dark)";
+ const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
+   theme: "system",
+diff --git a/apps/web/src/hostedPairing.test.ts b/apps/web/src/hostedPairing.test.ts
+index 983094c1e5bc20687e6f20d38d71f4715e860230..694beb37c1978f9e90938953bf1a45378548294a 100644
+--- a/apps/web/src/hostedPairing.test.ts
++++ b/apps/web/src/hostedPairing.test.ts
+@@ -53,7 +53,7 @@ describe("hostedPairing", () => {
+     );
+ 
+     expect(url.origin).toBe("https://app.t3.codes");
+-    expect(url.pathname).toBe("/__t3code/channel");
++    expect(url.pathname).toBe("/__mode/channel");
+     expect(url.searchParams.get("channel")).toBe("nightly");
+     expect(url.searchParams.has("next")).toBe(false);
+   });
+diff --git a/apps/web/src/hostedPairing.ts b/apps/web/src/hostedPairing.ts
+index cc547323f8d7615bec2137e727877c845ca9eb0b..0333513a84ed182174947ead9d00203f770c9de5 100644
+--- a/apps/web/src/hostedPairing.ts
++++ b/apps/web/src/hostedPairing.ts
+@@ -83,7 +83,7 @@ export function buildHostedPairingUrl(input: {
+ export function buildHostedChannelSelectionUrl(input: {
+   readonly channel: HostedAppChannel;
+ }): string {
+-  const url = new URL("/__t3code/channel", configuredHostedAppUrl());
++  const url = new URL("/__mode/channel", configuredHostedAppUrl());
+   url.searchParams.set("channel", input.channel);
+   return url.toString();
+ }
+diff --git a/apps/web/src/projectScripts.test.ts b/apps/web/src/projectScripts.test.ts
+index 1e05ff5ef6e48348e6c75e0968c0c7a206cea2dd..210927aa1b2c33a1b7496e51cf8dbf4c70fc46d7 100644
+--- a/apps/web/src/projectScripts.test.ts
++++ b/apps/web/src/projectScripts.test.ts
+@@ -55,8 +55,8 @@ describe("projectScripts helpers", () => {
+     });
+ 
+     expect(env).toMatchObject({
+-      T3CODE_PROJECT_ROOT: "/repo",
+-      T3CODE_WORKTREE_PATH: "/repo/worktree-a",
++      MODE_PROJECT_ROOT: "/repo",
++      MODE_WORKTREE_PATH: "/repo/worktree-a",
+     });
+   });
+ 
+@@ -64,14 +64,14 @@ describe("projectScripts helpers", () => {
+     const env = projectScriptRuntimeEnv({
+       project: { cwd: "/repo" },
+       extraEnv: {
+-        T3CODE_PROJECT_ROOT: "/custom-root",
++        MODE_PROJECT_ROOT: "/custom-root",
+         CUSTOM_FLAG: "1",
+       },
+     });
+ 
+-    expect(env.T3CODE_PROJECT_ROOT).toBe("/custom-root");
++    expect(env.MODE_PROJECT_ROOT).toBe("/custom-root");
+     expect(env.CUSTOM_FLAG).toBe("1");
+-    expect(env.T3CODE_WORKTREE_PATH).toBeUndefined();
++    expect(env.MODE_WORKTREE_PATH).toBeUndefined();
+   });
+ 
+   it("prefers the worktree path for script cwd resolution", () => {
+diff --git a/apps/web/src/providerUpdateDismissal.ts b/apps/web/src/providerUpdateDismissal.ts
+index 7cce819ccf95ab4c7b2011c1309b1c5b4c04c098..edbc500d0935825576924a6a74c8aec20874a4d4 100644
+--- a/apps/web/src/providerUpdateDismissal.ts
++++ b/apps/web/src/providerUpdateDismissal.ts
+@@ -3,7 +3,7 @@ import * as Schema from "effect/Schema";
+ 
+ import { getLocalStorageItem, setLocalStorageItem, useLocalStorage } from "./hooks/useLocalStorage";
+ 
+-export const PROVIDER_UPDATE_DISMISSALS_STORAGE_KEY = "t3code:provider-update-dismissals:v1";
++export const PROVIDER_UPDATE_DISMISSALS_STORAGE_KEY = "mode:provider-update-dismissals:v1";
+ 
+ const ProviderUpdateDismissalsSchema = Schema.Struct({
+   keys: Schema.Array(Schema.String),
+diff --git a/apps/web/src/terminalUiStateStore.ts b/apps/web/src/terminalUiStateStore.ts
+index 6c10ae448e02d8e6e82f1f2b9d2f60b7f58d43f1..b1f691465e19d593b1ed4e845b641e5222e9e909 100644
+--- a/apps/web/src/terminalUiStateStore.ts
++++ b/apps/web/src/terminalUiStateStore.ts
+@@ -27,7 +27,7 @@ interface ThreadTerminalUiState {
+ }
+ 
+ // Keep the old storage key so existing drawer layout preferences migrate.
+-const TERMINAL_UI_STATE_STORAGE_KEY = "t3code:terminal-state:v1";
++const TERMINAL_UI_STATE_STORAGE_KEY = "mode:terminal-state:v1";
+ 
+ interface PersistedTerminalUiStateStoreState {
+   terminalUiStateByThreadKey?: Record<string, ThreadTerminalUiState>;
+diff --git a/apps/web/src/uiStateStore.ts b/apps/web/src/uiStateStore.ts
+index f16495bed7fe4da043e047d83209f9bbc4500044..b5e5bcbaec561e24c01927d2c1d9aa0c2233adc4 100644
+--- a/apps/web/src/uiStateStore.ts
++++ b/apps/web/src/uiStateStore.ts
+@@ -1,14 +1,14 @@
+ import { Debouncer } from "@tanstack/react-pacer";
+ import { create } from "zustand";
+ 
+-export const PERSISTED_STATE_KEY = "t3code:ui-state:v1";
++export const PERSISTED_STATE_KEY = "mode:ui-state:v1";
+ const LEGACY_PERSISTED_STATE_KEYS = [
+-  "t3code:renderer-state:v8",
+-  "t3code:renderer-state:v7",
+-  "t3code:renderer-state:v6",
+-  "t3code:renderer-state:v5",
+-  "t3code:renderer-state:v4",
+-  "t3code:renderer-state:v3",
++  "mode:renderer-state:v8",
++  "mode:renderer-state:v7",
++  "mode:renderer-state:v6",
++  "mode:renderer-state:v5",
++  "mode:renderer-state:v4",
++  "mode:renderer-state:v3",
+   "codething:renderer-state:v4",
+   "codething:renderer-state:v3",
+   "codething:renderer-state:v2",
+diff --git a/apps/web/src/versionSkew.ts b/apps/web/src/versionSkew.ts
+index cb0116c8550635df05e0099ae92dfd17428d0670..d9c02ecbc698601b17406bb35cfe242ed5f21a4f 100644
+--- a/apps/web/src/versionSkew.ts
++++ b/apps/web/src/versionSkew.ts
+@@ -10,7 +10,7 @@ export interface VersionMismatch {
+   readonly hint: string;
+ }
+ 
+-export const VERSION_MISMATCH_DISMISSALS_STORAGE_KEY = "t3code:version-mismatch-dismissals:v1";
++export const VERSION_MISMATCH_DISMISSALS_STORAGE_KEY = "mode:version-mismatch-dismissals:v1";
+ 
+ const VersionMismatchDismissalsSchema = Schema.Struct({
+   keys: Schema.Array(Schema.String),
+diff --git a/apps/web/src/worktreeCleanup.test.ts b/apps/web/src/worktreeCleanup.test.ts
+index 9c833c03c74be301f2e44dea4168b2a55d54125c..7c3e79011e64ee01c5dc3b0687306d226d9cdf61 100644
+--- a/apps/web/src/worktreeCleanup.test.ts
++++ b/apps/web/src/worktreeCleanup.test.ts
+@@ -86,7 +86,7 @@ describe("getOrphanedWorktreePathForThread", () => {
+ describe("formatWorktreePathForDisplay", () => {
+   it("shows only the last path segment for unix-like paths", () => {
+     const result = formatWorktreePathForDisplay(
+-      "/Users/julius/.t3/worktrees/t3code-mvp/t3code-4e609bb8",
++      "/Users/julius/.mode/worktrees/t3code-mvp/t3code-4e609bb8",
+     );
+     expect(result).toBe("t3code-4e609bb8");
+   });
+@@ -98,7 +98,7 @@ describe("formatWorktreePathForDisplay", () => {
+     expect(result).toBe("t3code-4e609bb8");
+   });
+ 
+-  it("uses the final segment even when outside ~/.t3/worktrees", () => {
++  it("uses the final segment even when outside ~/.mode/worktrees", () => {
+     const result = formatWorktreePathForDisplay("/tmp/custom-worktrees/my-worktree");
+     expect(result).toBe("my-worktree");
+   });
+diff --git a/apps/web/vercel.ts b/apps/web/vercel.ts
+index a0aeb57fb1fffd8e0fd8ecc74a7fac497752887e..5f0ea4a92f33d95140e87a94c6d931f4a1e4075e 100644
+--- a/apps/web/vercel.ts
++++ b/apps/web/vercel.ts
+@@ -1,7 +1,7 @@
+ import { matchers, routes, type Transform, type VercelConfig } from "@vercel/config/v1";
+ 
+ const ROUTER_HOST = "app.t3.codes";
+-const HOSTED_WEB_CHANNEL_COOKIE = "t3code_web_channel";
++const HOSTED_WEB_CHANNEL_COOKIE = "mode_web_channel";
+ const LATEST_ORIGIN = "https://latest.app.t3.codes";
+ const NIGHTLY_ORIGIN = "https://nightly.app.t3.codes";
+ const CLEAN_CHANNEL_QUERY_TRANSFORMS = [
+@@ -33,7 +33,7 @@ export const config: VercelConfig = {
+     "bun add -g turbo && bun install --filter '@t3tools/contracts' --filter '@t3tools/client-runtime' --filter '@t3tools/scripts' --filter '@t3tools/web'",
+   routes: [
+     {
+-      src: "/__t3code/channel",
++      src: "/__mode/channel",
+       has: [matchers.query("channel", "nightly")],
+       transforms: CLEAN_CHANNEL_QUERY_TRANSFORMS,
+       headers: {
+@@ -43,7 +43,7 @@ export const config: VercelConfig = {
+       status: 302,
+     },
+     {
+-      src: "/__t3code/channel",
++      src: "/__mode/channel",
+       transforms: CLEAN_CHANNEL_QUERY_TRANSFORMS,
+       headers: {
+         Location: "/",
+diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
+index 38819e28d73326eb0567cc51d10b4776a1e0902f..c645210b05ce1a7e016a020682133eaba97dde34 100644
+--- a/apps/web/vite.config.ts
++++ b/apps/web/vite.config.ts
+@@ -23,7 +23,7 @@ const configuredHostedAppUrl = (() => {
+   }
+   return undefined;
+ })();
+-const sourcemapEnv = process.env.T3CODE_WEB_SOURCEMAP?.trim().toLowerCase();
++const sourcemapEnv = process.env.MODE_WEB_SOURCEMAP?.trim().toLowerCase();
+ 
+ const buildSourcemap =
+   sourcemapEnv === "0" || sourcemapEnv === "false"
+diff --git a/docs/observability.md b/docs/observability.md
+index 5b98d1163ea492a875c4404212f8ae1d7254ad2e..0706204223e8bffd83e4473adfe7b3dc05e1d30b 100644
+--- a/docs/observability.md
++++ b/docs/observability.md
+@@ -22,7 +22,7 @@ If you want a log message to show up in the trace file, emit it inside an active
+ 
+ ### Traces
+ 
+-Completed spans are written as NDJSON records to `serverTracePath` (by default, `~/.t3/userdata/logs/server.trace.ndjson`).
++Completed spans are written as NDJSON records to `serverTracePath` (by default, `~/.mode/userdata/logs/server.trace.ndjson`).
+ 
+ Important fields in each record:
+ 
+@@ -99,16 +99,16 @@ Default Grafana login:
+ #### 2. Export OTLP env vars
+ 
+ ```bash
+-export T3CODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces
+-export T3CODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics
+-export T3CODE_OTLP_SERVICE_NAME=t3-local
++export MODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces
++export MODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics
++export MODE_OTLP_SERVICE_NAME=t3-local
+ ```
+ 
+ Optional:
+ 
+ ```bash
+-export T3CODE_TRACE_MIN_LEVEL=Info
+-export T3CODE_TRACE_TIMING_ENABLED=true
++export MODE_TRACE_MIN_LEVEL=Info
++export MODE_TRACE_TIMING_ENABLED=true
+ ```
+ 
+ #### 3. Launch the app from that same shell
+@@ -133,23 +133,23 @@ node --run dev:desktop
+ 
+ Packaged desktop app:
+ 
+-Launch the actual app executable from the same shell so the desktop app and embedded backend inherit `T3CODE_OTLP_*`.
++Launch the actual app executable from the same shell so the desktop app and embedded backend inherit `MODE_OTLP_*`.
+ 
+ macOS app bundle example:
+ 
+ ```bash
+-T3CODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces \
+-T3CODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics \
+-T3CODE_OTLP_SERVICE_NAME=t3-desktop \
++MODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces \
++MODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics \
++MODE_OTLP_SERVICE_NAME=t3-desktop \
+ "/Applications/T3 Code.app/Contents/MacOS/T3 Code"
+ ```
+ 
+ Direct binary example:
+ 
+ ```bash
+-T3CODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces \
+-T3CODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics \
+-T3CODE_OTLP_SERVICE_NAME=t3-desktop \
++MODE_OTLP_TRACES_URL=http://localhost:4318/v1/traces \
++MODE_OTLP_METRICS_URL=http://localhost:4318/v1/metrics \
++MODE_OTLP_SERVICE_NAME=t3-desktop \
+ ./path/to/your/desktop-app-binary
+ ```
+ 
+@@ -168,7 +168,7 @@ The trace file is the fastest way to inspect raw span data.
+ Tail it:
+ 
+ ```bash
+-tail -f "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++tail -f "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ In monorepo dev, use:
+@@ -185,7 +185,7 @@ jq -c 'select(.exit._tag != "Success") | {
+   durationMs,
+   exit,
+   attributes
+-}' "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++}' "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ Show slow spans:
+@@ -196,7 +196,7 @@ jq -c 'select(.durationMs > 1000) | {
+   durationMs,
+   traceId,
+   spanId
+-}' "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++}' "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ Inspect embedded log events:
+@@ -213,7 +213,7 @@ jq -c 'select(any(.events[]?; .attributes["effect.logLevel"] != null)) | {
+         level: .attributes["effect.logLevel"]
+       }
+   ]
+-}' "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++}' "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ Follow one trace:
+@@ -224,7 +224,7 @@ jq -r 'select(.traceId == "TRACE_ID_HERE") | [
+   .spanId,
+   (.parentSpanId // "-"),
+   .durationMs
+-] | @tsv' "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++] | @tsv' "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ Filter orchestration commands:
+@@ -235,7 +235,7 @@ jq -c 'select(.attributes["orchestration.command_type"] != null) | {
+   durationMs,
+   commandType: .attributes["orchestration.command_type"],
+   aggregateKind: .attributes["orchestration.aggregate_kind"]
+-}' "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++}' "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ Filter git activity:
+@@ -250,7 +250,7 @@ jq -c 'select(.attributes["git.operation"] != null) | {
+     .events[]
+     | select(.name == "git.hook.started" or .name == "git.hook.finished")
+   ]
+-}' "$T3CODE_HOME/userdata/logs/server.trace.ndjson"
++}' "$MODE_HOME/userdata/logs/server.trace.ndjson"
+ ```
+ 
+ ### Use Tempo When You Need A Real Trace Viewer
+@@ -358,7 +358,7 @@ If you need those later, add client-side instrumentation or a dedicated server f
+ 
+ Usually one of these is true:
+ 
+-- `T3CODE_OTLP_TRACES_URL` was not set
++- `MODE_OTLP_TRACES_URL` was not set
+ - the app was launched from a different environment than the one where you exported the vars
+ - the app was not fully restarted after changing env
+ - Grafana is looking at the wrong time range or service name
+@@ -482,19 +482,19 @@ It provides:
+ 
+ Local trace file:
+ 
+-- `T3CODE_TRACE_FILE`: override trace file path
+-- `T3CODE_TRACE_MAX_BYTES`: per-file rotation size, default `10485760`
+-- `T3CODE_TRACE_MAX_FILES`: rotated file count, default `10`
+-- `T3CODE_TRACE_BATCH_WINDOW_MS`: flush window, default `200`
+-- `T3CODE_TRACE_MIN_LEVEL`: minimum trace level, default `Info`
+-- `T3CODE_TRACE_TIMING_ENABLED`: enable timing metadata, default `true`
++- `MODE_TRACE_FILE`: override trace file path
++- `MODE_TRACE_MAX_BYTES`: per-file rotation size, default `10485760`
++- `MODE_TRACE_MAX_FILES`: rotated file count, default `10`
++- `MODE_TRACE_BATCH_WINDOW_MS`: flush window, default `200`
++- `MODE_TRACE_MIN_LEVEL`: minimum trace level, default `Info`
++- `MODE_TRACE_TIMING_ENABLED`: enable timing metadata, default `true`
+ 
+ OTLP export:
+ 
+-- `T3CODE_OTLP_TRACES_URL`: OTLP trace endpoint
+-- `T3CODE_OTLP_METRICS_URL`: OTLP metric endpoint
+-- `T3CODE_OTLP_EXPORT_INTERVAL_MS`: export interval, default `10000`
+-- `T3CODE_OTLP_SERVICE_NAME`: service name, default `t3-server`
++- `MODE_OTLP_TRACES_URL`: OTLP trace endpoint
++- `MODE_OTLP_METRICS_URL`: OTLP metric endpoint
++- `MODE_OTLP_EXPORT_INTERVAL_MS`: export interval, default `10000`
++- `MODE_OTLP_SERVICE_NAME`: service name, default `t3-server`
+ 
+ If the OTLP URLs are unset, local tracing still works and metrics stay in-process only.
+ 
+diff --git a/docs/release.md b/docs/release.md
+index df9033218b909731aab01a5e6f35dee97065ba60..490c7dfab1a1ab08a0129dfd8bd96124e21105f4 100644
+--- a/docs/release.md
++++ b/docs/release.md
+@@ -45,9 +45,9 @@ Required GitHub Actions secrets:
+ Optional GitHub Actions variables:
+ 
+ - `VERCEL_TEAM_SLUG`: overrides the Vercel CLI scope when the team slug is preferred over the `VERCEL_ORG_ID` secret.
+-- `T3CODE_WEB_ROUTER_URL`: defaults to `https://app.t3.codes`.
+-- `T3CODE_WEB_LATEST_DOMAIN`: defaults to `latest.app.t3.codes`.
+-- `T3CODE_WEB_NIGHTLY_DOMAIN`: defaults to `nightly.app.t3.codes`.
++- `MODE_WEB_ROUTER_URL`: defaults to `https://app.t3.codes`.
++- `MODE_WEB_LATEST_DOMAIN`: defaults to `latest.app.t3.codes`.
++- `MODE_WEB_NIGHTLY_DOMAIN`: defaults to `nightly.app.t3.codes`.
+ 
+ Required Vercel domains:
+ 
+@@ -56,9 +56,9 @@ Required Vercel domains:
+ - `nightly.app.t3.codes`: channel alias updated by nightly releases.
+ 
+ The router domain uses `apps/web/vercel.ts` routes. Users opt into a channel by
+-visiting `/__t3code/channel?channel=latest` or
+-`/__t3code/channel?channel=nightly`; the router stores the
+-`t3code_web_channel` cookie and rewrites future requests on `app.t3.codes` to
++visiting `/__mode/channel?channel=latest` or
++`/__mode/channel?channel=nightly`; the router stores the
++`mode_web_channel` cookie and rewrites future requests on `app.t3.codes` to
+ the matching channel alias.
+ 
+ The release deploy job rewrites release package versions before upload so the
+@@ -67,7 +67,7 @@ same deployment to both the `latest` channel and the router domain so the router
+ rules stay current. Nightly deploys only alias the `nightly` channel. The job
+ also passes `VITE_HOSTED_APP_CHANNEL=latest|nightly`, which renders the hosted
+ update track selector in the About panel. Changing the selector navigates
+-through `/__t3code/channel` on the router domain so the user's channel cookie is
++through `/__mode/channel` on the router domain so the user's channel cookie is
+ updated before redirecting to the hosted app root.
+ 
+ One-time Vercel dashboard setup:
+@@ -106,10 +106,10 @@ One-time Vercel dashboard setup:
+   - The desktop UI shows a rocket update button when an update is available; click once to download, click again after download to restart/install.
+ - Provider: GitHub Releases (`provider: github`) configured at build time.
+ - Repository slug source:
+-  - `T3CODE_DESKTOP_UPDATE_REPOSITORY` (format `owner/repo`), if set.
++  - `MODE_DESKTOP_UPDATE_REPOSITORY` (format `owner/repo`), if set.
+   - otherwise `GITHUB_REPOSITORY` from GitHub Actions.
+ - Temporary private-repo auth workaround:
+-  - set `T3CODE_DESKTOP_UPDATE_GITHUB_TOKEN` (or `GH_TOKEN`) in the desktop app runtime environment.
++  - set `MODE_DESKTOP_UPDATE_GITHUB_TOKEN` (or `GH_TOKEN`) in the desktop app runtime environment.
+   - the app forwards it as an `Authorization: Bearer <token>` request header for updater HTTP calls.
+ - Required release assets for updater:
+   - platform installers (`.exe`, `.dmg`, `.AppImage`, plus macOS `.zip` for Squirrel.Mac update payloads)
+diff --git a/docs/source-control-providers.md b/docs/source-control-providers.md
+index c496d5516a68415317955fee99acc85978c217aa..13a72ed9a825b71b75bd971dd82fa668f916b450 100644
+--- a/docs/source-control-providers.md
++++ b/docs/source-control-providers.md
+@@ -86,8 +86,8 @@ Bitbucket uses API tokens instead of a CLI tool:
+ 1. Create an API token in your Atlassian account with read/write access to pull requests and repositories
+ 2. Add these environment variables to the environment running T3 Code:
+    ```bash
+-   export T3CODE_BITBUCKET_EMAIL="you@example.com"
+-   export T3CODE_BITBUCKET_API_TOKEN="your-token"
++   export MODE_BITBUCKET_EMAIL="you@example.com"
++   export MODE_BITBUCKET_API_TOKEN="your-token"
+    ```
+ 3. Restart T3 Code and verify the connection in **Source Control settings**
+ 
+diff --git a/packages/contracts/src/terminal.test.ts b/packages/contracts/src/terminal.test.ts
+index 90c2b0b1444c0fa99613c34fadd1ba97c4887c9a..f1fbbb5521f93eace076f7a89470b449d2ab1335 100644
+--- a/packages/contracts/src/terminal.test.ts
++++ b/packages/contracts/src/terminal.test.ts
+@@ -80,19 +80,19 @@ describe("TerminalOpenInput", () => {
+       threadId: "thread-1",
+       terminalId: DEFAULT_TERMINAL_ID,
+       cwd: "/tmp/project",
+-      worktreePath: "/tmp/project/.t3/worktrees/feature-a",
++      worktreePath: "/tmp/project/.mode/worktrees/feature-a",
+       cols: 100,
+       rows: 24,
+       env: {
+-        T3CODE_PROJECT_ROOT: "/tmp/project",
++        MODE_PROJECT_ROOT: "/tmp/project",
+         CUSTOM_FLAG: "1",
+       },
+     });
+     expect(parsed.env).toMatchObject({
+-      T3CODE_PROJECT_ROOT: "/tmp/project",
++      MODE_PROJECT_ROOT: "/tmp/project",
+       CUSTOM_FLAG: "1",
+     });
+-    expect(parsed.worktreePath).toBe("/tmp/project/.t3/worktrees/feature-a");
++    expect(parsed.worktreePath).toBe("/tmp/project/.mode/worktrees/feature-a");
+   });
+ 
+   it("rejects invalid env keys", () => {
+@@ -288,8 +288,8 @@ describe("TerminalEvent", () => {
+         snapshot: {
+           threadId: "thread-1",
+           terminalId: DEFAULT_TERMINAL_ID,
+-          cwd: "/tmp/project/.t3/worktrees/feature-a",
+-          worktreePath: "/tmp/project/.t3/worktrees/feature-a",
++          cwd: "/tmp/project/.mode/worktrees/feature-a",
++          worktreePath: "/tmp/project/.mode/worktrees/feature-a",
+           status: "running",
+           pid: 1234,
+           history: "",
+diff --git a/packages/shared/src/projectScripts.ts b/packages/shared/src/projectScripts.ts
+index 199a55bf3cbf9ecbb2a06778e659f1d35e8a8929..26f576b21007459b4d8c816e802498b7f415d318 100644
+--- a/packages/shared/src/projectScripts.ts
++++ b/packages/shared/src/projectScripts.ts
+@@ -21,10 +21,10 @@ export function projectScriptRuntimeEnv(
+   input: ProjectScriptRuntimeEnvInput,
+ ): Record<string, string> {
+   const env: Record<string, string> = {
+-    T3CODE_PROJECT_ROOT: input.project.cwd,
++    MODE_PROJECT_ROOT: input.project.cwd,
+   };
+   if (input.worktreePath) {
+-    env.T3CODE_WORKTREE_PATH = input.worktreePath;
++    env.MODE_WORKTREE_PATH = input.worktreePath;
+   }
+   if (input.extraEnv) {
+     return { ...env, ...input.extraEnv };
+diff --git a/packages/shared/src/shell.test.ts b/packages/shared/src/shell.test.ts
+index 214c03a7e5322f9b6aa44326f61dae38cd2ce559..c752cf9adc31e3a6a4900e72740c6fbad6131fdc 100644
+--- a/packages/shared/src/shell.test.ts
++++ b/packages/shared/src/shell.test.ts
+@@ -19,7 +19,7 @@ describe("extractPathFromShellOutput", () => {
+   it("extracts the path between capture markers", () => {
+     expect(
+       extractPathFromShellOutput(
+-        "__T3CODE_PATH_START__\n/opt/homebrew/bin:/usr/bin\n__T3CODE_PATH_END__\n",
++        "__MODE_PATH_START__\n/opt/homebrew/bin:/usr/bin\n__MODE_PATH_END__\n",
+       ),
+     ).toBe("/opt/homebrew/bin:/usr/bin");
+   });
+@@ -27,7 +27,7 @@ describe("extractPathFromShellOutput", () => {
+   it("ignores shell startup noise around the capture markers", () => {
+     expect(
+       extractPathFromShellOutput(
+-        "Welcome to fish\n__T3CODE_PATH_START__\n/opt/homebrew/bin:/usr/bin\n__T3CODE_PATH_END__\nBye\n",
++        "Welcome to fish\n__MODE_PATH_START__\n/opt/homebrew/bin:/usr/bin\n__MODE_PATH_END__\nBye\n",
+       ),
+     ).toBe("/opt/homebrew/bin:/usr/bin");
+   });
+@@ -45,7 +45,7 @@ describe("readPathFromLoginShell", () => {
+         args: ReadonlyArray<string>,
+         options: { encoding: "utf8"; timeout: number },
+       ) => string
+-    >(() => "__T3CODE_ENV_PATH_START__\n/a:/b\n__T3CODE_ENV_PATH_END__\n");
++    >(() => "__MODE_ENV_PATH_START__\n/a:/b\n__MODE_ENV_PATH_END__\n");
+ 
+     expect(readPathFromLoginShell("/opt/homebrew/bin/fish", execFile)).toBe("/a:/b");
+     expect(execFile).toHaveBeenCalledTimes(1);
+@@ -63,8 +63,8 @@ describe("readPathFromLoginShell", () => {
+     expect(args).toHaveLength(2);
+     expect(args?.[0]).toBe("-ilc");
+     expect(args?.[1]).toContain("printenv PATH || true");
+-    expect(args?.[1]).toContain("__T3CODE_ENV_PATH_START__");
+-    expect(args?.[1]).toContain("__T3CODE_ENV_PATH_END__");
++    expect(args?.[1]).toContain("__MODE_ENV_PATH_START__");
++    expect(args?.[1]).toContain("__MODE_ENV_PATH_END__");
+     expect(options).toEqual({ encoding: "utf8", timeout: 5000 });
+   });
+ });
+@@ -111,12 +111,12 @@ describe("readEnvironmentFromLoginShell", () => {
+       ) => string
+     >(() =>
+       [
+-        "__T3CODE_ENV_PATH_START__",
++        "__MODE_ENV_PATH_START__",
+         "/a:/b",
+-        "__T3CODE_ENV_PATH_END__",
+-        "__T3CODE_ENV_SSH_AUTH_SOCK_START__",
++        "__MODE_ENV_PATH_END__",
++        "__MODE_ENV_SSH_AUTH_SOCK_START__",
+         "/tmp/secretive.sock",
+-        "__T3CODE_ENV_SSH_AUTH_SOCK_END__",
++        "__MODE_ENV_SSH_AUTH_SOCK_END__",
+       ].join("\n"),
+     );
+ 
+@@ -136,11 +136,11 @@ describe("readEnvironmentFromLoginShell", () => {
+       ) => string
+     >(() =>
+       [
+-        "__T3CODE_ENV_PATH_START__",
++        "__MODE_ENV_PATH_START__",
+         "/a:/b",
+-        "__T3CODE_ENV_PATH_END__",
+-        "__T3CODE_ENV_SSH_AUTH_SOCK_START__",
+-        "__T3CODE_ENV_SSH_AUTH_SOCK_END__",
++        "__MODE_ENV_PATH_END__",
++        "__MODE_ENV_SSH_AUTH_SOCK_START__",
++        "__MODE_ENV_SSH_AUTH_SOCK_END__",
+       ].join("\n"),
+     );
+ 
+@@ -157,7 +157,7 @@ describe("readEnvironmentFromLoginShell", () => {
+         options: { encoding: "utf8"; timeout: number },
+       ) => string
+     >(() =>
+-      ["__T3CODE_ENV_CUSTOM_VAR_START__", "  padded value  ", "__T3CODE_ENV_CUSTOM_VAR_END__"].join(
++      ["__MODE_ENV_CUSTOM_VAR_START__", "  padded value  ", "__MODE_ENV_CUSTOM_VAR_END__"].join(
+         "\n",
+       ),
+     );
+@@ -205,7 +205,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+       ) => string
+     >(
+       () =>
+-        "__T3CODE_ENV_PATH_START__\nC:\\Users\\testuser\\AppData\\Roaming\\npm\n__T3CODE_ENV_PATH_END__\n",
++        "__MODE_ENV_PATH_START__\nC:\\Users\\testuser\\AppData\\Roaming\\npm\n__MODE_ENV_PATH_END__\n",
+     );
+ 
+     expect(readEnvironmentFromWindowsShell(["PATH"], execFile)).toEqual({
+@@ -227,7 +227,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+       ) => string
+     >(
+       () =>
+-        "__T3CODE_ENV_FNM_DIR_START__\r\nC:\\Users\\testuser\\AppData\\Roaming\\fnm\r\n__T3CODE_ENV_FNM_DIR_END__\r\n",
++        "__MODE_ENV_FNM_DIR_START__\r\nC:\\Users\\testuser\\AppData\\Roaming\\fnm\r\n__MODE_ENV_FNM_DIR_END__\r\n",
+     );
+ 
+     expect(readEnvironmentFromWindowsShell(["FNM_DIR"], execFile)).toEqual({
+@@ -242,7 +242,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+         args: ReadonlyArray<string>,
+         options: { encoding: "utf8"; timeout: number },
+       ) => string
+-    >(() => "__T3CODE_ENV_PATH_START__\nC:\\Tools\n__T3CODE_ENV_PATH_END__\n");
++    >(() => "__MODE_ENV_PATH_START__\nC:\\Tools\n__MODE_ENV_PATH_END__\n");
+ 
+     expect(readEnvironmentFromWindowsShell(["PATH"], { loadProfile: true }, execFile)).toEqual({
+       PATH: "C:\\Tools",
+@@ -266,7 +266,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+       if (file === "pwsh.exe") {
+         throw new Error("spawn pwsh.exe ENOENT");
+       }
+-      return "__T3CODE_ENV_PATH_START__\nC:\\Tools\n__T3CODE_ENV_PATH_END__\n";
++      return "__MODE_ENV_PATH_START__\nC:\\Tools\n__MODE_ENV_PATH_END__\n";
+     });
+ 
+     expect(readEnvironmentFromWindowsShell(["PATH"], execFile)).toEqual({
+diff --git a/packages/shared/src/shell.ts b/packages/shared/src/shell.ts
+index c88ccc10d2ac45e9af1f200d7c34c61226c1eb3e..c0cbd30606b3d6dbc472be7c69da15e3c5d19bd8 100644
+--- a/packages/shared/src/shell.ts
++++ b/packages/shared/src/shell.ts
+@@ -4,8 +4,8 @@ import { execFileSync } from "node:child_process";
+ import { accessSync, constants, statSync } from "node:fs";
+ import { extname, join } from "node:path";
+ 
+-const PATH_CAPTURE_START = "__T3CODE_PATH_START__";
+-const PATH_CAPTURE_END = "__T3CODE_PATH_END__";
++const PATH_CAPTURE_START = "__MODE_PATH_START__";
++const PATH_CAPTURE_END = "__MODE_PATH_END__";
+ const SHELL_ENV_NAME_PATTERN = /^[A-Z0-9_]+$/;
+ const WINDOWS_PATH_DELIMITER = ";";
+ const POSIX_PATH_DELIMITER = ":";
+@@ -119,11 +119,11 @@ export function mergePathEntries(
+ }
+ 
+ function envCaptureStart(name: string): string {
+-  return `__T3CODE_ENV_${name}_START__`;
++  return `__MODE_ENV_${name}_START__`;
+ }
+ 
+ function envCaptureEnd(name: string): string {
+-  return `__T3CODE_ENV_${name}_END__`;
++  return `__MODE_ENV_${name}_END__`;
+ }
+ 
+ function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {
+diff --git a/packages/ssh/src/tunnel.ts b/packages/ssh/src/tunnel.ts
+index 0de48b5721d9e114db884b6f42f87ddcd9e2448f..52423177cc02f8b1b1a3222895a81a1817bcc34a 100644
+--- a/packages/ssh/src/tunnel.ts
++++ b/packages/ssh/src/tunnel.ts
+@@ -465,8 +465,8 @@ exit 1
+ export const REMOTE_LAUNCH_SCRIPT = `set -eu
+ @@T3_NODE_ENV_SCRIPT@@
+ STATE_KEY="$1"
+-STATE_DIR="$HOME/.t3/ssh-launch/$STATE_KEY"
+-DEFAULT_SERVER_HOME="$HOME/.t3"
++STATE_DIR="$HOME/.mode/ssh-launch/$STATE_KEY"
++DEFAULT_SERVER_HOME="$HOME/.mode"
+ DEFAULT_RUNTIME_FILE="$DEFAULT_SERVER_HOME/userdata/server-runtime.json"
+ PORT_FILE="$STATE_DIR/port"
+ PID_FILE="$STATE_DIR/pid"
+@@ -600,7 +600,7 @@ if [ -z "$REMOTE_PORT" ]; then
+     printf 'Failed to find an available port on the remote host. Ensure node is available on PATH.\\n' >&2
+     exit 1
+   fi
+-  nohup env T3CODE_NO_BROWSER=1 "$RUNNER_FILE" serve --host 127.0.0.1 --port "$REMOTE_PORT" --base-dir "$DEFAULT_SERVER_HOME" >>"$LOG_FILE" 2>&1 < /dev/null &
++  nohup env MODE_NO_BROWSER=1 "$RUNNER_FILE" serve --host 127.0.0.1 --port "$REMOTE_PORT" --base-dir "$DEFAULT_SERVER_HOME" >>"$LOG_FILE" 2>&1 < /dev/null &
+   REMOTE_PID="$!"
+   printf '%s\\n' "$REMOTE_PID" >"$PID_FILE"
+   printf '%s\\n' "$REMOTE_PORT" >"$PORT_FILE"
+@@ -618,8 +618,8 @@ printf '{"remotePort":%s,"serverKind":"%s"}\\n' "$REMOTE_PORT" "\${REMOTE_MANAGE
+ `;
+ 
+ export const REMOTE_PAIRING_SCRIPT = `set -eu
+-STATE_DIR="$HOME/.t3/ssh-launch/@@T3_STATE_KEY@@"
+-DEFAULT_SERVER_HOME="$HOME/.t3"
++STATE_DIR="$HOME/.mode/ssh-launch/@@T3_STATE_KEY@@"
++DEFAULT_SERVER_HOME="$HOME/.mode"
+ RUNNER_FILE="$STATE_DIR/run-t3.sh"
+ mkdir -p "$STATE_DIR"
+ cat >"$RUNNER_FILE" <<'SH'
+@@ -631,7 +631,7 @@ PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"
+ `;
+ 
+ export const REMOTE_STOP_SCRIPT = `set -eu
+-STATE_DIR="$HOME/.t3/ssh-launch/@@T3_STATE_KEY@@"
++STATE_DIR="$HOME/.mode/ssh-launch/@@T3_STATE_KEY@@"
+ PID_FILE="$STATE_DIR/pid"
+ PORT_FILE="$STATE_DIR/port"
+ MANAGED_FILE="$STATE_DIR/managed"
+@@ -650,7 +650,7 @@ printf '{"stopped":true}\\n'
+ `;
+ 
+ const REMOTE_LOG_TAIL_SCRIPT = `set -eu
+-STATE_DIR="$HOME/.t3/ssh-launch/@@T3_STATE_KEY@@"
++STATE_DIR="$HOME/.mode/ssh-launch/@@T3_STATE_KEY@@"
+ LOG_FILE="$STATE_DIR/server.log"
+ if [ -f "$LOG_FILE" ]; then
+   tail -n 80 "$LOG_FILE" 2>/dev/null || true
+diff --git a/scripts/build-desktop-artifact.test.ts b/scripts/build-desktop-artifact.test.ts
+index 743263d43b3662bf4c9c25e14e4cdb915b87caa0..a12c4ffcbc9901e8383414f2528f80d9f345c843 100644
+--- a/scripts/build-desktop-artifact.test.ts
++++ b/scripts/build-desktop-artifact.test.ts
+@@ -107,11 +107,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
+           ConfigProvider.layer(
+             ConfigProvider.fromEnv({
+               env: {
+-                T3CODE_DESKTOP_SKIP_BUILD: "true",
+-                T3CODE_DESKTOP_KEEP_STAGE: "true",
+-                T3CODE_DESKTOP_SIGNED: "true",
+-                T3CODE_DESKTOP_VERBOSE: "true",
+-                T3CODE_DESKTOP_MOCK_UPDATES: "true",
++                MODE_DESKTOP_SKIP_BUILD: "true",
++                MODE_DESKTOP_KEEP_STAGE: "true",
++                MODE_DESKTOP_SIGNED: "true",
++                MODE_DESKTOP_VERBOSE: "true",
++                MODE_DESKTOP_MOCK_UPDATES: "true",
+               },
+             }),
+           ),
+diff --git a/scripts/build-desktop-artifact.ts b/scripts/build-desktop-artifact.ts
+index 20b8c4565e7bdbae6bc5bb17a1155aa5436e4b24..f237a0145d169d8e9f16acb367dba45e35aa3bff 100644
+--- a/scripts/build-desktop-artifact.ts
++++ b/scripts/build-desktop-artifact.ts
+@@ -238,17 +238,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
+ });
+ 
+ const BuildEnvConfig = Config.all({
+-  platform: Config.schema(BuildPlatform, "T3CODE_DESKTOP_PLATFORM").pipe(Config.option),
+-  target: Config.string("T3CODE_DESKTOP_TARGET").pipe(Config.option),
+-  arch: Config.schema(BuildArch, "T3CODE_DESKTOP_ARCH").pipe(Config.option),
+-  version: Config.string("T3CODE_DESKTOP_VERSION").pipe(Config.option),
+-  outputDir: Config.string("T3CODE_DESKTOP_OUTPUT_DIR").pipe(Config.option),
+-  skipBuild: Config.boolean("T3CODE_DESKTOP_SKIP_BUILD").pipe(Config.withDefault(false)),
+-  keepStage: Config.boolean("T3CODE_DESKTOP_KEEP_STAGE").pipe(Config.withDefault(false)),
+-  signed: Config.boolean("T3CODE_DESKTOP_SIGNED").pipe(Config.withDefault(false)),
+-  verbose: Config.boolean("T3CODE_DESKTOP_VERBOSE").pipe(Config.withDefault(false)),
+-  mockUpdates: Config.boolean("T3CODE_DESKTOP_MOCK_UPDATES").pipe(Config.withDefault(false)),
+-  mockUpdateServerPort: Config.string("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.option),
++  platform: Config.schema(BuildPlatform, "MODE_DESKTOP_PLATFORM").pipe(Config.option),
++  target: Config.string("MODE_DESKTOP_TARGET").pipe(Config.option),
++  arch: Config.schema(BuildArch, "MODE_DESKTOP_ARCH").pipe(Config.option),
++  version: Config.string("MODE_DESKTOP_VERSION").pipe(Config.option),
++  outputDir: Config.string("MODE_DESKTOP_OUTPUT_DIR").pipe(Config.option),
++  skipBuild: Config.boolean("MODE_DESKTOP_SKIP_BUILD").pipe(Config.withDefault(false)),
++  keepStage: Config.boolean("MODE_DESKTOP_KEEP_STAGE").pipe(Config.withDefault(false)),
++  signed: Config.boolean("MODE_DESKTOP_SIGNED").pipe(Config.withDefault(false)),
++  verbose: Config.boolean("MODE_DESKTOP_VERBOSE").pipe(Config.withDefault(false)),
++  mockUpdates: Config.boolean("MODE_DESKTOP_MOCK_UPDATES").pipe(Config.withDefault(false)),
++  mockUpdateServerPort: Config.string("MODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.option),
+ });
+ 
+ const MockUpdateServerPortSchema = Schema.NumberFromString.check(
+@@ -512,7 +512,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
+     }
+   | undefined {
+   const rawRepo =
+-    process.env.T3CODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
++    process.env.MODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
+     process.env.GITHUB_REPOSITORY?.trim() ||
+     "";
+   if (!rawRepo) return undefined;
+@@ -568,7 +568,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+   mockUpdateServerPort: number | undefined,
+ ) {
+   const buildConfig: Record<string, unknown> = {
+-    appId: "com.t3tools.t3code",
++    appId: "com.t3tools.mode",
+     productName: resolveDesktopProductName(version),
+     artifactName: "T3-Code-${version}-${arch}.${ext}",
+     directories: {
+@@ -599,12 +599,12 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+   if (platform === "linux") {
+     buildConfig.linux = {
+       target: [target],
+-      executableName: "t3code",
++      executableName: "mode",
+       icon: "icon.png",
+       category: "Development",
+       desktop: {
+         entry: {
+-          StartupWMClass: "t3code",
++          StartupWMClass: "mode",
+         },
+       },
+     };
+@@ -779,7 +779,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   yield* fs.copy(stageResourcesDir, path.join(stageAppDir, "apps/desktop/prod-resources"));
+ 
+   const stagePackageJson: StagePackageJson = {
+-    name: "t3code",
++    name: "mode",
+     version: appVersion,
+     buildVersion: appVersion,
+     t3codeCommitHash: commitHash,
+@@ -892,54 +892,54 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+ 
+ const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
+   platform: Flag.choice("platform", BuildPlatform.literals).pipe(
+-    Flag.withDescription("Build platform (env: T3CODE_DESKTOP_PLATFORM)."),
++    Flag.withDescription("Build platform (env: MODE_DESKTOP_PLATFORM)."),
+     Flag.optional,
+   ),
+   target: Flag.string("target").pipe(
+     Flag.withDescription(
+-      "Artifact target, for example dmg/AppImage/nsis (env: T3CODE_DESKTOP_TARGET).",
++      "Artifact target, for example dmg/AppImage/nsis (env: MODE_DESKTOP_TARGET).",
+     ),
+     Flag.optional,
+   ),
+   arch: Flag.choice("arch", BuildArch.literals).pipe(
+-    Flag.withDescription("Build arch, for example arm64/x64/universal (env: T3CODE_DESKTOP_ARCH)."),
++    Flag.withDescription("Build arch, for example arm64/x64/universal (env: MODE_DESKTOP_ARCH)."),
+     Flag.optional,
+   ),
+   buildVersion: Flag.string("build-version").pipe(
+-    Flag.withDescription("Artifact version metadata (env: T3CODE_DESKTOP_VERSION)."),
++    Flag.withDescription("Artifact version metadata (env: MODE_DESKTOP_VERSION)."),
+     Flag.optional,
+   ),
+   outputDir: Flag.string("output-dir").pipe(
+-    Flag.withDescription("Output directory for artifacts (env: T3CODE_DESKTOP_OUTPUT_DIR)."),
++    Flag.withDescription("Output directory for artifacts (env: MODE_DESKTOP_OUTPUT_DIR)."),
+     Flag.optional,
+   ),
+   skipBuild: Flag.boolean("skip-build").pipe(
+     Flag.withDescription(
+-      "Skip `bun run build:desktop` and use existing dist artifacts (env: T3CODE_DESKTOP_SKIP_BUILD).",
++      "Skip `bun run build:desktop` and use existing dist artifacts (env: MODE_DESKTOP_SKIP_BUILD).",
+     ),
+     Flag.optional,
+   ),
+   keepStage: Flag.boolean("keep-stage").pipe(
+-    Flag.withDescription("Keep temporary staging files (env: T3CODE_DESKTOP_KEEP_STAGE)."),
++    Flag.withDescription("Keep temporary staging files (env: MODE_DESKTOP_KEEP_STAGE)."),
+     Flag.optional,
+   ),
+   signed: Flag.boolean("signed").pipe(
+     Flag.withDescription(
+-      "Enable signing/notarization discovery; Windows uses Azure Trusted Signing (env: T3CODE_DESKTOP_SIGNED).",
++      "Enable signing/notarization discovery; Windows uses Azure Trusted Signing (env: MODE_DESKTOP_SIGNED).",
+     ),
+     Flag.optional,
+   ),
+   verbose: Flag.boolean("verbose").pipe(
+-    Flag.withDescription("Stream subprocess stdout (env: T3CODE_DESKTOP_VERBOSE)."),
++    Flag.withDescription("Stream subprocess stdout (env: MODE_DESKTOP_VERBOSE)."),
+     Flag.optional,
+   ),
+   mockUpdates: Flag.boolean("mock-updates").pipe(
+-    Flag.withDescription("Enable mock updates (env: T3CODE_DESKTOP_MOCK_UPDATES)."),
++    Flag.withDescription("Enable mock updates (env: MODE_DESKTOP_MOCK_UPDATES)."),
+     Flag.optional,
+   ),
+   mockUpdateServerPort: Flag.integer("mock-update-server-port").pipe(
+     Flag.withSchema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 }))),
+-    Flag.withDescription("Mock update server port (env: T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT)."),
++    Flag.withDescription("Mock update server port (env: MODE_DESKTOP_MOCK_UPDATE_SERVER_PORT)."),
+     Flag.optional,
+   ),
+ }).pipe(
+diff --git a/scripts/dev-runner.test.ts b/scripts/dev-runner.test.ts
+index 724b328c4c606bf3253ad5a983a3db1b1fe75d29..369e3d98aa88590311ef95b64ce93488a9f5bc65 100644
+--- a/scripts/dev-runner.test.ts
++++ b/scripts/dev-runner.test.ts
+@@ -14,12 +14,12 @@ import {
+ 
+ it.layer(NodeServices.layer)("dev-runner", (it) => {
+   describe("resolveOffset", () => {
+-    it.effect("uses explicit T3CODE_PORT_OFFSET when provided", () =>
++    it.effect("uses explicit MODE_PORT_OFFSET when provided", () =>
+       Effect.sync(() => {
+         const result = resolveOffset({ portOffset: 12, devInstance: undefined });
+         assert.deepStrictEqual(result, {
+           offset: 12,
+-          source: "T3CODE_PORT_OFFSET=12",
++          source: "MODE_PORT_OFFSET=12",
+         });
+       }),
+     );
+@@ -41,13 +41,13 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           }),
+         );
+ 
+-        assert.ok(error.includes("Invalid T3CODE_PORT_OFFSET"));
++        assert.ok(error.includes("Invalid MODE_PORT_OFFSET"));
+       }),
+     );
+   });
+ 
+   describe("createDevRunnerEnv", () => {
+-    it.effect("defaults T3CODE_HOME to ~/.t3 when not provided", () =>
++    it.effect("defaults MODE_HOME to ~/.t3 when not provided", () =>
+       Effect.gen(function* () {
+         const path = yield* Path.Path;
+         const env = yield* createDevRunnerEnv({
+@@ -64,7 +64,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: undefined,
+         });
+ 
+-        assert.equal(env.T3CODE_HOME, path.resolve(NodeOS.homedir(), ".t3"));
++        assert.equal(env.MODE_HOME, path.resolve(NodeOS.homedir(), ".mode"));
+       }),
+     );
+ 
+@@ -85,14 +85,14 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: new URL("http://localhost:7331"),
+         });
+ 
+-        assert.equal(env.T3CODE_HOME, path.resolve("/tmp/custom-t3"));
+-        assert.equal(env.T3CODE_PORT, "4222");
++        assert.equal(env.MODE_HOME, path.resolve("/tmp/custom-t3"));
++        assert.equal(env.MODE_PORT, "4222");
+         assert.equal(env.VITE_HTTP_URL, "http://localhost:4222");
+         assert.equal(env.VITE_WS_URL, "ws://localhost:4222");
+-        assert.equal(env.T3CODE_NO_BROWSER, "1");
+-        assert.equal(env.T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD, "0");
+-        assert.equal(env.T3CODE_LOG_WS_EVENTS, "1");
+-        assert.equal(env.T3CODE_HOST, "0.0.0.0");
++        assert.equal(env.MODE_NO_BROWSER, "1");
++        assert.equal(env.MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD, "0");
++        assert.equal(env.MODE_LOG_WS_EVENTS, "1");
++        assert.equal(env.MODE_HOST, "0.0.0.0");
+         assert.equal(env.VITE_DEV_SERVER_URL, "http://localhost:7331/");
+       }),
+     );
+@@ -102,7 +102,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+         const env = yield* createDevRunnerEnv({
+           mode: "dev",
+           baseEnv: {
+-            T3CODE_LOG_WS_EVENTS: "keep-me-out",
++            MODE_LOG_WS_EVENTS: "keep-me-out",
+           },
+           serverOffset: 0,
+           webOffset: 0,
+@@ -115,8 +115,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: undefined,
+         });
+ 
+-        assert.equal(env.T3CODE_MODE, "web");
+-        assert.equal(env.T3CODE_LOG_WS_EVENTS, undefined);
++        assert.equal(env.MODE_MODE, "web");
++        assert.equal(env.MODE_LOG_WS_EVENTS, undefined);
+       }),
+     );
+ 
+@@ -125,7 +125,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+         const env = yield* createDevRunnerEnv({
+           mode: "dev",
+           baseEnv: {
+-            T3CODE_LOG_WS_EVENTS: "1",
++            MODE_LOG_WS_EVENTS: "1",
+           },
+           serverOffset: 0,
+           webOffset: 0,
+@@ -138,7 +138,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: undefined,
+         });
+ 
+-        assert.equal(env.T3CODE_LOG_WS_EVENTS, "0");
++        assert.equal(env.MODE_LOG_WS_EVENTS, "0");
+       }),
+     );
+ 
+@@ -159,7 +159,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: undefined,
+         });
+ 
+-        assert.equal(env.T3CODE_HOME, path.resolve("/tmp/my-t3"));
++        assert.equal(env.MODE_HOME, path.resolve("/tmp/my-t3"));
+       }),
+     );
+ 
+@@ -169,10 +169,10 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+         const env = yield* createDevRunnerEnv({
+           mode: "dev:desktop",
+           baseEnv: {
+-            T3CODE_PORT: "13773",
+-            T3CODE_MODE: "web",
+-            T3CODE_NO_BROWSER: "0",
+-            T3CODE_HOST: "0.0.0.0",
++            MODE_PORT: "13773",
++            MODE_MODE: "web",
++            MODE_NO_BROWSER: "0",
++            MODE_HOST: "0.0.0.0",
+             VITE_WS_URL: "ws://localhost:13773",
+           },
+           serverOffset: 0,
+@@ -186,15 +186,15 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: undefined,
+         });
+ 
+-        assert.equal(env.T3CODE_HOME, path.resolve("/tmp/my-t3"));
++        assert.equal(env.MODE_HOME, path.resolve("/tmp/my-t3"));
+         assert.equal(env.PORT, "5733");
+         assert.equal(env.VITE_DEV_SERVER_URL, "http://127.0.0.1:5733");
+         assert.equal(env.HOST, "127.0.0.1");
+-        assert.equal(env.T3CODE_PORT, "4222");
++        assert.equal(env.MODE_PORT, "4222");
+         assert.equal(env.VITE_HTTP_URL, "http://127.0.0.1:4222");
+-        assert.equal(env.T3CODE_MODE, undefined);
+-        assert.equal(env.T3CODE_NO_BROWSER, undefined);
+-        assert.equal(env.T3CODE_HOST, undefined);
++        assert.equal(env.MODE_MODE, undefined);
++        assert.equal(env.MODE_NO_BROWSER, undefined);
++        assert.equal(env.MODE_HOST, undefined);
+         assert.equal(env.VITE_WS_URL, "ws://127.0.0.1:4222");
+       }),
+     );
+@@ -215,7 +215,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+           devUrl: undefined,
+         });
+ 
+-        assert.equal(env.T3CODE_PORT, "13773");
++        assert.equal(env.MODE_PORT, "13773");
+         assert.equal(env.VITE_HTTP_URL, "http://localhost:13773");
+         assert.equal(env.VITE_WS_URL, "ws://localhost:13773");
+       }),
+diff --git a/scripts/dev-runner.ts b/scripts/dev-runner.ts
+index cce408c827cd01c19a61da23a14178e411b8d6fd..c86b40ea552aaf83ffabd75203febbea71517cac 100644
+--- a/scripts/dev-runner.ts
++++ b/scripts/dev-runner.ts
+@@ -25,7 +25,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
+ const DEV_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::1", "::"] as const;
+ 
+ export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
+-  path.join(NodeOS.homedir(), ".t3"),
++  path.join(NodeOS.homedir(), ".mode"),
+ );
+ 
+ const MODE_ARGS = {
+@@ -80,8 +80,8 @@ const optionalUrlConfig = (name: string): Config.Config<URL | undefined> =>
+   );
+ 
+ const OffsetConfig = Config.all({
+-  portOffset: optionalIntegerConfig("T3CODE_PORT_OFFSET"),
+-  devInstance: optionalStringConfig("T3CODE_DEV_INSTANCE"),
++  portOffset: optionalIntegerConfig("MODE_PORT_OFFSET"),
++  devInstance: optionalStringConfig("MODE_DEV_INSTANCE"),
+ });
+ 
+ export function resolveOffset(config: {
+@@ -90,11 +90,11 @@ export function resolveOffset(config: {
+ }): { readonly offset: number; readonly source: string } {
+   if (config.portOffset !== undefined) {
+     if (config.portOffset < 0) {
+-      throw new Error(`Invalid T3CODE_PORT_OFFSET: ${config.portOffset}`);
++      throw new Error(`Invalid MODE_PORT_OFFSET: ${config.portOffset}`);
+     }
+     return {
+       offset: config.portOffset,
+-      source: `T3CODE_PORT_OFFSET=${config.portOffset}`,
++      source: `MODE_PORT_OFFSET=${config.portOffset}`,
+     };
+   }
+ 
+@@ -104,11 +104,11 @@ export function resolveOffset(config: {
+   }
+ 
+   if (/^\d+$/.test(seed)) {
+-    return { offset: Number(seed), source: `numeric T3CODE_DEV_INSTANCE=${seed}` };
++    return { offset: Number(seed), source: `numeric MODE_DEV_INSTANCE=${seed}` };
+   }
+ 
+   const offset = ((Hash.string(seed) >>> 0) % MAX_HASH_OFFSET) + 1;
+-  return { offset, source: `hashed T3CODE_DEV_INSTANCE=${seed}` };
++  return { offset, source: `hashed MODE_DEV_INSTANCE=${seed}` };
+ }
+ 
+ function resolveBaseDir(baseDir: string | undefined): Effect.Effect<string, never, Path.Path> {
+@@ -163,57 +163,57 @@ export function createDevRunnerEnv({
+       VITE_DEV_SERVER_URL:
+         devUrl?.toString() ??
+         `http://${isDesktopMode ? DESKTOP_DEV_LOOPBACK_HOST : "localhost"}:${webPort}`,
+-      T3CODE_HOME: resolvedBaseDir,
++      MODE_HOME: resolvedBaseDir,
+     };
+ 
+     if (!isDesktopMode) {
+-      output.T3CODE_PORT = String(serverPort);
++      output.MODE_PORT = String(serverPort);
+       output.VITE_HTTP_URL = `http://localhost:${serverPort}`;
+       output.VITE_WS_URL = `ws://localhost:${serverPort}`;
+     } else {
+-      output.T3CODE_PORT = String(serverPort);
++      output.MODE_PORT = String(serverPort);
+       output.VITE_HTTP_URL = `http://${DESKTOP_DEV_LOOPBACK_HOST}:${serverPort}`;
+       output.VITE_WS_URL = `ws://${DESKTOP_DEV_LOOPBACK_HOST}:${serverPort}`;
+-      delete output.T3CODE_MODE;
+-      delete output.T3CODE_NO_BROWSER;
+-      delete output.T3CODE_HOST;
++      delete output.MODE_MODE;
++      delete output.MODE_NO_BROWSER;
++      delete output.MODE_HOST;
+     }
+ 
+     if (!isDesktopMode && host !== undefined) {
+-      output.T3CODE_HOST = host;
++      output.MODE_HOST = host;
+     }
+ 
+     if (!isDesktopMode && noBrowser !== undefined) {
+-      output.T3CODE_NO_BROWSER = noBrowser ? "1" : "0";
++      output.MODE_NO_BROWSER = noBrowser ? "1" : "0";
+     } else if (!isDesktopMode) {
+-      delete output.T3CODE_NO_BROWSER;
++      delete output.MODE_NO_BROWSER;
+     }
+ 
+     if (autoBootstrapProjectFromCwd !== undefined) {
+-      output.T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD = autoBootstrapProjectFromCwd ? "1" : "0";
++      output.MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD = autoBootstrapProjectFromCwd ? "1" : "0";
+     } else {
+-      delete output.T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD;
++      delete output.MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD;
+     }
+ 
+     if (logWebSocketEvents !== undefined) {
+-      output.T3CODE_LOG_WS_EVENTS = logWebSocketEvents ? "1" : "0";
++      output.MODE_LOG_WS_EVENTS = logWebSocketEvents ? "1" : "0";
+     } else {
+-      delete output.T3CODE_LOG_WS_EVENTS;
++      delete output.MODE_LOG_WS_EVENTS;
+     }
+ 
+     if (mode === "dev") {
+-      output.T3CODE_MODE = "web";
+-      delete output.T3CODE_DESKTOP_WS_URL;
++      output.MODE_MODE = "web";
++      delete output.MODE_DESKTOP_WS_URL;
+     }
+ 
+     if (mode === "dev:server" || mode === "dev:web") {
+-      output.T3CODE_MODE = "web";
+-      delete output.T3CODE_DESKTOP_WS_URL;
++      output.MODE_MODE = "web";
++      delete output.MODE_DESKTOP_WS_URL;
+     }
+ 
+     if (isDesktopMode) {
+       output.HOST = DESKTOP_DEV_LOOPBACK_HOST;
+-      delete output.T3CODE_DESKTOP_WS_URL;
++      delete output.MODE_DESKTOP_WS_URL;
+     }
+ 
+     return output;
+@@ -389,7 +389,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
+       Effect.mapError(
+         (cause) =>
+           new DevRunnerError({
+-            message: "Failed to read T3CODE_PORT_OFFSET/T3CODE_DEV_INSTANCE configuration.",
++            message: "Failed to read MODE_PORT_OFFSET/MODE_DEV_INSTANCE configuration.",
+             cause,
+           }),
+       ),
+@@ -431,7 +431,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
+         : "";
+ 
+     yield* Effect.logInfo(
+-      `[dev-runner] mode=${input.mode} source=${source}${selectionSuffix} serverPort=${String(env.T3CODE_PORT)} webPort=${String(env.PORT)} baseDir=${String(env.T3CODE_HOME)}`,
++      `[dev-runner] mode=${input.mode} source=${source}${selectionSuffix} serverPort=${String(env.MODE_PORT)} webPort=${String(env.PORT)} baseDir=${String(env.MODE_HOME)}`,
+     );
+ 
+     if (input.dryRun) {
+@@ -480,32 +480,32 @@ const devRunnerCli = Command.make("dev-runner", {
+     Argument.withDescription("Development mode to run."),
+   ),
+   t3Home: Flag.string("home-dir").pipe(
+-    Flag.withDescription("Base directory for all T3 Code data (equivalent to T3CODE_HOME)."),
+-    Flag.withFallbackConfig(optionalStringConfig("T3CODE_HOME")),
++    Flag.withDescription("Base directory for all Mode data (equivalent to MODE_HOME)."),
++    Flag.withFallbackConfig(optionalStringConfig("MODE_HOME")),
+   ),
+   noBrowser: Flag.boolean("no-browser").pipe(
+-    Flag.withDescription("Browser auto-open toggle (equivalent to T3CODE_NO_BROWSER)."),
+-    Flag.withFallbackConfig(optionalBooleanConfig("T3CODE_NO_BROWSER")),
++    Flag.withDescription("Browser auto-open toggle (equivalent to MODE_NO_BROWSER)."),
++    Flag.withFallbackConfig(optionalBooleanConfig("MODE_NO_BROWSER")),
+   ),
+   autoBootstrapProjectFromCwd: Flag.boolean("auto-bootstrap-project-from-cwd").pipe(
+     Flag.withDescription(
+-      "Auto-bootstrap toggle (equivalent to T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD).",
++      "Auto-bootstrap toggle (equivalent to MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD).",
+     ),
+-    Flag.withFallbackConfig(optionalBooleanConfig("T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD")),
++    Flag.withFallbackConfig(optionalBooleanConfig("MODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD")),
+   ),
+   logWebSocketEvents: Flag.boolean("log-websocket-events").pipe(
+-    Flag.withDescription("WebSocket event logging toggle (equivalent to T3CODE_LOG_WS_EVENTS)."),
++    Flag.withDescription("WebSocket event logging toggle (equivalent to MODE_LOG_WS_EVENTS)."),
+     Flag.withAlias("log-ws-events"),
+-    Flag.withFallbackConfig(optionalBooleanConfig("T3CODE_LOG_WS_EVENTS")),
++    Flag.withFallbackConfig(optionalBooleanConfig("MODE_LOG_WS_EVENTS")),
+   ),
+   host: Flag.string("host").pipe(
+-    Flag.withDescription("Server host/interface override (forwards to T3CODE_HOST)."),
+-    Flag.withFallbackConfig(optionalStringConfig("T3CODE_HOST")),
++    Flag.withDescription("Server host/interface override (forwards to MODE_HOST)."),
++    Flag.withFallbackConfig(optionalStringConfig("MODE_HOST")),
+   ),
+   port: Flag.integer("port").pipe(
+     Flag.withSchema(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 65535 }))),
+-    Flag.withDescription("Server port override (forwards to T3CODE_PORT)."),
+-    Flag.withFallbackConfig(optionalPortConfig("T3CODE_PORT")),
++    Flag.withDescription("Server port override (forwards to MODE_PORT)."),
++    Flag.withFallbackConfig(optionalPortConfig("MODE_PORT")),
+   ),
+   devUrl: Flag.string("dev-url").pipe(
+     Flag.withSchema(Schema.URLFromString),
+diff --git a/scripts/mock-update-server.ts b/scripts/mock-update-server.ts
+index b1dde31e37e38737865c428d1d76291a8ce77358..994f5d4ca11b14c4805e84df0c5e538b7880d999 100644
+--- a/scripts/mock-update-server.ts
++++ b/scripts/mock-update-server.ts
+@@ -20,8 +20,8 @@ const resolveMockUpdateServerConfig = Effect.gen(function* () {
+   const fileSystem = yield* FileSystem.FileSystem;
+   const path = yield* Path.Path;
+   const config = yield* Config.all({
+-    port: Config.port("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.withDefault(3000)),
+-    root: Config.string("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_ROOT").pipe(
++    port: Config.port("MODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(Config.withDefault(3000)),
++    root: Config.string("MODE_DESKTOP_MOCK_UPDATE_SERVER_ROOT").pipe(
+       Config.withDefault("../release-mock"),
+     ),
+   });
+diff --git a/turbo.json b/turbo.json
+index 9a726d92e1a2dfa8dad384fbd0aa79206a2c35a6..c0ee0b4911162e5d652e8400c330dafed2a870b4 100644
+--- a/turbo.json
++++ b/turbo.json
+@@ -5,25 +5,25 @@
+     "PORT",
+     "VITE_WS_URL",
+     "VITE_DEV_SERVER_URL",
+-    "T3CODE_LOG_WS_EVENTS",
+-    "T3CODE_MODE",
+-    "T3CODE_PORT",
+-    "T3CODE_NO_BROWSER",
+-    "T3CODE_HOME",
+-    "T3CODE_AUTH_TOKEN",
+-    "T3CODE_TAILSCALE_SERVE",
+-    "T3CODE_TAILSCALE_SERVE_PORT",
+-    "T3CODE_DESKTOP_WS_URL",
+-    "T3CODE_TRACE_MIN_LEVEL",
+-    "T3CODE_TRACE_TIMING_ENABLED",
+-    "T3CODE_TRACE_FILE",
+-    "T3CODE_TRACE_MAX_BYTES",
+-    "T3CODE_TRACE_MAX_FILES",
+-    "T3CODE_TRACE_BATCH_WINDOW_MS",
+-    "T3CODE_OTLP_TRACES_URL",
+-    "T3CODE_OTLP_METRICS_URL",
+-    "T3CODE_OTLP_EXPORT_INTERVAL_MS",
+-    "T3CODE_OTLP_SERVICE_NAME",
++    "MODE_LOG_WS_EVENTS",
++    "MODE_MODE",
++    "MODE_PORT",
++    "MODE_NO_BROWSER",
++    "MODE_HOME",
++    "MODE_AUTH_TOKEN",
++    "MODE_TAILSCALE_SERVE",
++    "MODE_TAILSCALE_SERVE_PORT",
++    "MODE_DESKTOP_WS_URL",
++    "MODE_TRACE_MIN_LEVEL",
++    "MODE_TRACE_TIMING_ENABLED",
++    "MODE_TRACE_FILE",
++    "MODE_TRACE_MAX_BYTES",
++    "MODE_TRACE_MAX_FILES",
++    "MODE_TRACE_BATCH_WINDOW_MS",
++    "MODE_OTLP_TRACES_URL",
++    "MODE_OTLP_METRICS_URL",
++    "MODE_OTLP_EXPORT_INTERVAL_MS",
++    "MODE_OTLP_SERVICE_NAME",
+     "APP_VERSION",
+     "VITE_HOSTED_APP_URL",
+     "VITE_HOSTED_APP_CHANNEL"

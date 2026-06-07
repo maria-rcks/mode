@@ -2,6 +2,11 @@
 # Add patch paths relative to patches/, one per line.
 
 mode/0001-mode-apply-mode-0001-mode-worktree.patch.patch
+mode/0001-mode-apply-mode-0001-mode-worktree.patch.patch
+mode/0002-mode-apply-mode-0002-feat-provider-add-Droid-SDK-pro.patch
 mode/0002-mode-apply-mode-0002-feat-provider-add-Droid-SDK-pro.patch
 mode/0003-mode-apply-mode-0003-feat-mode-use-Mode-runtime-name.patch
+mode/0003-mode-apply-mode-0003-feat-mode-use-Mode-runtime-name.patch
 mode/0004-feat-droid-fold-model-variants-into-traits.patch
+mode/0004-feat-droid-fold-model-variants-into-traits.patch
+mode/0005-fix-provider-drop-stale-models-after-refresh.patch

@@ -1,0 +1,497 @@
+From 1b1b0d7818cb321548ce95d00d4c31f4e0061e3e Mon Sep 17 00:00:00 2001
+From: maria <maria@kuuro.net>
+Date: Sun, 7 Jun 2026 01:38:23 +0000
+Subject: [PATCH 4/4] feat(droid): fold model variants into traits
+
+Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+---
+ .../src/provider/Layers/DroidAdapter.test.ts  |  31 +++
+ .../src/provider/Layers/DroidAdapter.ts       |   6 +-
+ .../src/provider/Layers/DroidProvider.test.ts |  86 ++++++
+ .../src/provider/Layers/DroidProvider.ts      | 253 ++++++++++++++++--
+ .../src/provider/droid/DroidModelOptions.ts   |   1 +
+ 5 files changed, 352 insertions(+), 25 deletions(-)
+ create mode 100644 apps/server/src/provider/droid/DroidModelOptions.ts
+
+diff --git a/apps/server/src/provider/Layers/DroidAdapter.test.ts b/apps/server/src/provider/Layers/DroidAdapter.test.ts
+index 46fc12b7..ac8ee1ba 100644
+--- a/apps/server/src/provider/Layers/DroidAdapter.test.ts
++++ b/apps/server/src/provider/Layers/DroidAdapter.test.ts
+@@ -33,6 +33,7 @@ import * as Schema from "effect/Schema";
+ import * as Stream from "effect/Stream";
+ 
+ import { ServerConfig } from "../../config.ts";
++import { DROID_MODEL_VARIANT_OPTION_ID } from "../droid/DroidModelOptions.ts";
+ import { makeDroidAdapter } from "./DroidAdapter.ts";
+ 
+ const settings = Schema.decodeSync(DroidSettings)({
+@@ -205,6 +206,36 @@ it.effect("maps Droid SDK stream messages into canonical runtime events", () =>
+   ).pipe(Effect.provide(testLayer)),
+ );
+ 
++it.effect("uses the selected Droid model variant as the SDK model id", () =>
++  Effect.scoped(
++    Effect.gen(function* () {
++      let createOptions: CreateSessionOptions | undefined;
++      const adapter = yield* makeDroidAdapter(settings, {
++        sdk: {
++          createSession: async (options) => {
++            createOptions = options;
++            return fakeSession({});
++          },
++          resumeSession: async () => fakeSession({}),
++        },
++      });
++
++      yield* adapter.startSession({
++        threadId: ThreadId.make("thread-droid-variant"),
++        provider: ProviderDriverKind.make("droid"),
++        runtimeMode: "full-access",
++        modelSelection: createModelSelection(ProviderInstanceId.make("droid"), "claude-opus-4.8", [
++          { id: DROID_MODEL_VARIANT_OPTION_ID, value: "claude-opus-4.8-fast" },
++          { id: "reasoningEffort", value: "high" },
++        ]),
++      });
++
++      assert.equal(createOptions?.modelId, "claude-opus-4.8-fast");
++      assert.equal(createOptions?.reasoningEffort, ReasoningEffort.High);
++    }),
++  ).pipe(Effect.provide(testLayer)),
++);
++
+ it.effect("keeps Droid token usage cumulative across turns", () =>
+   Effect.scoped(
+     Effect.gen(function* () {
+diff --git a/apps/server/src/provider/Layers/DroidAdapter.ts b/apps/server/src/provider/Layers/DroidAdapter.ts
+index 45755642..cc777d7b 100644
+--- a/apps/server/src/provider/Layers/DroidAdapter.ts
++++ b/apps/server/src/provider/Layers/DroidAdapter.ts
+@@ -38,6 +38,7 @@ import {
+   type DroidContext,
+ } from "../droid/DroidAdapterTypes.ts";
+ import { compactDroidEnvironment } from "../droid/DroidEnvironment.ts";
++import { DROID_MODEL_VARIANT_OPTION_ID } from "../droid/DroidModelOptions.ts";
+ import {
+   handleDroidMessage,
+   makeDroidEventBase,
+@@ -166,7 +167,10 @@ export function makeDroidAdapter(settings: DroidSettings, options?: DroidAdapter
+             });
+           });
+         const modelSelection = input.modelSelection;
+-        const modelId = toModelId(modelSelection?.model);
++        const modelId = toModelId(
++          getModelSelectionStringOptionValue(modelSelection, DROID_MODEL_VARIANT_OPTION_ID) ??
++            modelSelection?.model,
++        );
+         const sdkOptions = {
+           ...(input.cwd ? { cwd: input.cwd } : {}),
+           execPath: settings.binaryPath,
+diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
+index 837deb2b..c6b10d6b 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.test.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
+@@ -10,6 +10,7 @@ import {
+   droidDiscoveryFailureMessage,
+   makePendingDroidProvider,
+ } from "./DroidProvider.ts";
++import { DROID_MODEL_VARIANT_OPTION_ID } from "../droid/DroidModelOptions.ts";
+ 
+ const sdkModel = (model: AvailableModelConfig): AvailableModelConfig => model;
+ const decodeDroidSettings = Schema.decodeSync(DroidSettings);
+@@ -79,6 +80,91 @@ describe("DroidProvider", () => {
+     });
+   });
+ 
++  it("folds built-in Droid model variants into a single model option", () => {
++    const models = buildDroidModelsFromSdkModels([
++      sdkModel({
++        id: "claude-opus-4.8",
++        modelId: "claude-opus-4.8",
++        displayName: "Claude Opus 4.8",
++        shortDisplayName: "Opus 4.8",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [
++          ReasoningEffort.Low,
++          ReasoningEffort.Medium,
++          ReasoningEffort.High,
++        ],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "claude-opus-4.8-fast",
++        modelId: "claude-opus-4.8-fast",
++        displayName: "Claude Opus 4.8 Fast",
++        shortDisplayName: "Opus 4.8 Fast",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [
++          ReasoningEffort.Low,
++          ReasoningEffort.Medium,
++          ReasoningEffort.High,
++        ],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "claude-opus-4.8-1m",
++        modelId: "claude-opus-4.8-1m",
++        displayName: "Claude Opus 4.8 1M Context",
++        shortDisplayName: "Opus 4.8 1M",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [
++          ReasoningEffort.Low,
++          ReasoningEffort.Medium,
++          ReasoningEffort.High,
++        ],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "gpt-5.1",
++        modelId: "gpt-5.1",
++        displayName: "GPT-5.1",
++        shortDisplayName: "GPT-5.1",
++        modelProvider: ModelProvider.OPENAI,
++        supportedReasoningEfforts: [ReasoningEffort.Minimal, ReasoningEffort.Medium],
++        defaultReasoningEffort: ReasoningEffort.Medium,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "gpt-5.1-fast",
++        modelId: "gpt-5.1-fast",
++        displayName: "GPT-5.1 Fast",
++        shortDisplayName: "GPT-5.1 Fast",
++        modelProvider: ModelProvider.OPENAI,
++        supportedReasoningEfforts: [ReasoningEffort.Minimal, ReasoningEffort.Medium],
++        defaultReasoningEffort: ReasoningEffort.Medium,
++        isCustom: false,
++      }),
++    ]);
++
++    expect(models.map((model) => [model.slug, model.name, model.shortName])).toEqual([
++      ["claude-opus-4.8", "Claude Opus 4.8", "Opus 4.8"],
++      ["gpt-5.1", "GPT-5.1", undefined],
++    ]);
++    const opusVariant = models[0]?.capabilities?.optionDescriptors?.find(
++      (descriptor) => descriptor.id === DROID_MODEL_VARIANT_OPTION_ID,
++    );
++    expect(opusVariant).toMatchObject({
++      id: DROID_MODEL_VARIANT_OPTION_ID,
++      label: "Variant",
++      currentValue: "claude-opus-4.8",
++      options: [
++        { id: "claude-opus-4.8", label: "Standard", isDefault: true },
++        { id: "claude-opus-4.8-fast", label: "Fast" },
++        { id: "claude-opus-4.8-1m", label: "1M Context" },
++      ],
++    });
++  });
++
+   it("keeps unknown Droid SDK model providers displayable", () => {
+     const models = buildDroidModelsFromSdkModels([
+       sdkModel({
+diff --git a/apps/server/src/provider/Layers/DroidProvider.ts b/apps/server/src/provider/Layers/DroidProvider.ts
+index e4fc931b..dffcb35a 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.ts
+@@ -23,6 +23,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+ import { createModelCapabilities } from "@t3tools/shared/model";
+ 
+ import { compactDroidEnvironment } from "../droid/DroidEnvironment.ts";
++import { DROID_MODEL_VARIANT_OPTION_ID } from "../droid/DroidModelOptions.ts";
+ import {
+   buildSelectOptionDescriptor,
+   buildServerProvider,
+@@ -55,6 +56,21 @@ const REASONING_EFFORT_LABELS: Readonly<Record<string, string>> = {
+   [ReasoningEffort.Max]: "Max",
+ };
+ 
++interface ResolvedDroidModel {
++  readonly source: AvailableModelConfig;
++  readonly slug: string;
++  readonly name: string;
++  readonly shortName?: string;
++  readonly baseName: string;
++  readonly baseShortName?: string;
++  readonly variantLabel?: string;
++}
++
++interface DroidModelGroup {
++  readonly key: string;
++  readonly models: ResolvedDroidModel[];
++}
++
+ const DROID_FALLBACK_MODEL_CAPABILITIES = createModelCapabilities({
+   optionDescriptors: [
+     buildSelectOptionDescriptor({
+@@ -129,29 +145,206 @@ const modelProviderLabel = (provider: ModelProvider): string => {
+ };
+ 
+ function droidModelCapabilities(model: AvailableModelConfig) {
+-  const options = model.supportedReasoningEfforts.map((effort) => ({
+-    value: effort,
+-    label: REASONING_EFFORT_LABELS[effort] ?? effort,
+-    isDefault: effort === model.defaultReasoningEffort,
+-  }));
+   return createModelCapabilities({
+-    optionDescriptors:
+-      options.length > 0
+-        ? [
+-            buildSelectOptionDescriptor({
+-              id: "reasoningEffort",
+-              label: "Reasoning",
+-              options,
+-            }),
+-          ]
+-        : [],
++    optionDescriptors: buildDroidModelOptionDescriptors([model], model),
+   });
+ }
+ 
+-function droidAvailableModelToServerModel(model: AvailableModelConfig): ServerProviderModel | null {
+-  const slug = model.isCustom
++function buildDroidModelOptionDescriptors(
++  models: ReadonlyArray<AvailableModelConfig>,
++  defaultModel: AvailableModelConfig,
++) {
++  const seenEfforts = new Set<string>();
++  const reasoningOptions = models.flatMap((model) =>
++    model.supportedReasoningEfforts.flatMap((effort) => {
++      if (seenEfforts.has(effort)) {
++        return [];
++      }
++      seenEfforts.add(effort);
++      return [
++        {
++          value: effort,
++          label: REASONING_EFFORT_LABELS[effort] ?? effort,
++          isDefault: effort === defaultModel.defaultReasoningEffort,
++        },
++      ];
++    }),
++  );
++  if (reasoningOptions.length === 0) {
++    return [];
++  }
++  return [
++    buildSelectOptionDescriptor({
++      id: "reasoningEffort",
++      label: "Reasoning",
++      options: reasoningOptions,
++    }),
++  ];
++}
++
++function droidModelGroupCapabilities(group: DroidModelGroup, defaultModel: ResolvedDroidModel) {
++  const variantOptions = uniqueDroidVariantOptions(group.models, defaultModel.slug);
++  return createModelCapabilities({
++    optionDescriptors: [
++      ...buildDroidModelOptionDescriptors(
++        group.models.map((model) => model.source),
++        defaultModel.source,
++      ),
++      buildSelectOptionDescriptor({
++        id: DROID_MODEL_VARIANT_OPTION_ID,
++        label: "Variant",
++        options: variantOptions,
++      }),
++    ],
++  });
++}
++
++function uniqueDroidVariantOptions(models: ReadonlyArray<ResolvedDroidModel>, defaultSlug: string) {
++  const labelCounts = new Map<string, number>();
++  for (const model of models) {
++    const label = model.variantLabel ?? "Standard";
++    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
++  }
++
++  return models.map((model) => {
++    const label = model.variantLabel ?? "Standard";
++    const uniqueLabel =
++      (labelCounts.get(label) ?? 0) > 1 ? `${label} (${model.shortName ?? model.name})` : label;
++    return {
++      value: model.slug,
++      label: uniqueLabel,
++      isDefault: model.slug === defaultSlug,
++    };
++  });
++}
++
++function splitDroidVariantName(name: string): {
++  readonly baseName: string;
++  readonly variantLabel: string | undefined;
++} {
++  let baseName = normalizeModelName(name);
++  const labels: string[] = [];
++  for (;;) {
++    const parenthetical = baseName.match(/^(?<base>.+?)\s+\((?<suffix>[^)]+)\)$/);
++    if (parenthetical?.groups) {
++      const { base, suffix: rawSuffix } = parenthetical.groups;
++      const suffix = rawSuffix ? droidVariantLabel(rawSuffix) : undefined;
++      if (base && suffix) {
++        baseName = normalizeModelName(base);
++        labels.unshift(suffix);
++        continue;
++      }
++    }
++
++    const fast = baseName.match(/^(?<base>.+?)[\s-]+fast$/i);
++    if (fast?.groups?.base) {
++      baseName = normalizeModelName(fast.groups.base);
++      labels.unshift("Fast");
++      continue;
++    }
++
++    const context = baseName.match(
++      /^(?<base>.+?)[\s-]+(?<size>\d+(?:\.\d+)?\s*(?:k|m)|\d+(?:\.\d+)?\s*million)(?:\s+(?:token\s*)?(?:context(?:\s+window)?|ctx))?$/i,
++    );
++    if (context?.groups?.base && context.groups.size) {
++      baseName = normalizeModelName(context.groups.base);
++      labels.unshift(`${formatContextWindowLabel(context.groups.size)} Context`);
++      continue;
++    }
++
++    break;
++  }
++
++  return {
++    baseName,
++    variantLabel: labels.length > 0 ? labels.join(" · ") : undefined,
++  };
++}
++
++function droidVariantLabel(value: string): string | undefined {
++  const normalized = normalizeModelName(value);
++  if (/^fast$/i.test(normalized)) {
++    return "Fast";
++  }
++  const context = normalized.match(
++    /^(?<size>\d+(?:\.\d+)?\s*(?:k|m)|\d+(?:\.\d+)?\s*million)(?:\s+(?:token\s*)?(?:context(?:\s+window)?|ctx))?$/i,
++  );
++  if (context?.groups?.size) {
++    return `${formatContextWindowLabel(context.groups.size)} Context`;
++  }
++  return undefined;
++}
++
++function formatContextWindowLabel(value: string): string {
++  const compact = normalizeModelName(value);
++  const million = compact.match(/^(?<amount>\d+(?:\.\d+)?)\s*million$/i);
++  if (million?.groups) {
++    return `${million.groups.amount}M`;
++  }
++  return compact.replace(/\s+/g, "").replace(/[km]$/i, (unit) => unit.toUpperCase());
++}
++
++function normalizeModelName(value: string): string {
++  return value.replace(/_+/g, " ").replace(/\s+/g, " ").trim();
++}
++
++function resolveDroidModel(model: AvailableModelConfig): ResolvedDroidModel | null {
++  const slug = droidModelSlug(model);
++  if (!slug) return null;
++  const name = nonEmpty(model.displayName) ?? slug;
++  const shortName = nonEmpty(model.shortDisplayName);
++  const parsedName = splitDroidVariantName(name);
++  const parsedShortName = shortName ? splitDroidVariantName(shortName) : undefined;
++  const baseShortName = parsedShortName?.baseName || shortName;
++  const variantLabel = parsedShortName?.variantLabel ?? parsedName.variantLabel;
++  return {
++    source: model,
++    slug,
++    name,
++    ...(shortName ? { shortName } : {}),
++    baseName: parsedName.baseName || name,
++    ...(baseShortName ? { baseShortName } : {}),
++    ...(variantLabel ? { variantLabel } : {}),
++  };
++}
++
++function droidModelSlug(model: AvailableModelConfig): string | undefined {
++  return model.isCustom
+     ? (nonEmpty(model.id) ?? nonEmpty(model.modelId))
+     : (nonEmpty(model.modelId) ?? nonEmpty(model.id));
++}
++
++function droidModelGroupKey(model: ResolvedDroidModel): string {
++  if (model.source.isCustom) {
++    return `slug:${model.slug}`;
++  }
++  return ["variant", model.source.modelProvider, model.baseName.toLowerCase()].join(":");
++}
++
++function droidGroupedModelToServerModel(group: DroidModelGroup): ServerProviderModel | null {
++  const firstModel = group.models[0];
++  if (!firstModel) {
++    return null;
++  }
++  if (group.models.length === 1) {
++    return droidAvailableModelToServerModel(firstModel.source);
++  }
++
++  const defaultModel = group.models.find((model) => !model.variantLabel) ?? firstModel;
++  return {
++    slug: defaultModel.slug,
++    name: defaultModel.baseName,
++    ...(defaultModel.baseShortName && defaultModel.baseShortName !== defaultModel.baseName
++      ? { shortName: defaultModel.baseShortName }
++      : {}),
++    subProvider: modelProviderLabel(defaultModel.source.modelProvider),
++    isCustom: defaultModel.source.isCustom,
++    capabilities: droidModelGroupCapabilities(group, defaultModel),
++  };
++}
++
++function droidAvailableModelToServerModel(model: AvailableModelConfig): ServerProviderModel | null {
++  const slug = droidModelSlug(model);
+   if (!slug) return null;
+   const name = nonEmpty(model.displayName) ?? slug;
+   const shortName = nonEmpty(model.shortDisplayName);
+@@ -173,17 +366,29 @@ const nonEmpty = (value: string | undefined): string | undefined => {
+ export function buildDroidModelsFromSdkModels(
+   models: ReadonlyArray<AvailableModelConfig> | undefined,
+ ): ReadonlyArray<ServerProviderModel> {
+-  const seen = new Set<string>();
+-  const resolved: ServerProviderModel[] = [];
++  const seenSlugs = new Set<string>();
++  const groups: DroidModelGroup[] = [];
++  const groupByKey = new Map<string, DroidModelGroup>();
+   for (const model of models ?? []) {
+-    const entry = droidAvailableModelToServerModel(model);
+-    if (!entry || seen.has(entry.slug)) {
++    const resolved = resolveDroidModel(model);
++    if (!resolved || seenSlugs.has(resolved.slug)) {
++      continue;
++    }
++    seenSlugs.add(resolved.slug);
++    const key = droidModelGroupKey(resolved);
++    const existing = groupByKey.get(key);
++    if (existing) {
++      existing.models.push(resolved);
+       continue;
+     }
+-    seen.add(entry.slug);
+-    resolved.push(entry);
++    const group = { key, models: [resolved] };
++    groups.push(group);
++    groupByKey.set(key, group);
+   }
+-  return resolved;
++  return groups.flatMap((group) => {
++    const model = droidGroupedModelToServerModel(group);
++    return model ? [model] : [];
++  });
+ }
+ 
+ const discoverDroidModels = (
+diff --git a/apps/server/src/provider/droid/DroidModelOptions.ts b/apps/server/src/provider/droid/DroidModelOptions.ts
+new file mode 100644
+index 00000000..e2fb1f63
+--- /dev/null
++++ b/apps/server/src/provider/droid/DroidModelOptions.ts
+@@ -0,0 +1 @@
++export const DROID_MODEL_VARIANT_OPTION_ID = "modelVariant";
+-- 
+2.34.1
+

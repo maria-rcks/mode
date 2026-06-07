@@ -136,7 +136,7 @@ function applyPatchStack() {
     if (!existsSync(patchPath)) throw new Error(`Patch listed in series does not exist: ${entry}`);
     const patchText = readFileSync(patchPath, "utf8");
     if (patchText.startsWith("From ")) {
-      git(["am", "--3way", "--keep-cr", patchPath], { cwd: checkout });
+      git(["-c", "user.name=Mode Bot", "-c", "user.email=mode-bot@example.invalid", "am", "--3way", "--keep-cr", patchPath], { cwd: checkout });
     } else {
       git(["apply", "--index", "--3way", patchPath], { cwd: checkout });
       git(

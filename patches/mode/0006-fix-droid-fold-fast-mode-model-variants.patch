@@ -1,0 +1,123 @@
+From ecf94b3fdbd6b60c8ed0d7650ceb368905eead44 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Mon, 8 Jun 2026 00:33:33 +0000
+Subject: [PATCH 6/6] fix(droid): fold fast mode model variants
+
+---
+ .../src/provider/Layers/DroidProvider.test.ts | 59 +++++++++++++++++++
+ .../src/provider/Layers/DroidProvider.ts      | 14 +++--
+ 2 files changed, 68 insertions(+), 5 deletions(-)
+
+diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
+index c6b10d6b..aa103ba9 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.test.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
+@@ -165,6 +165,65 @@ describe("DroidProvider", () => {
+     });
+   });
+ 
++  it("folds Droid Fast Mode models into the matching base model", () => {
++    const models = buildDroidModelsFromSdkModels([
++      sdkModel({
++        id: "claude-opus-4.8",
++        modelId: "claude-opus-4.8",
++        displayName: "Claude Opus 4.8",
++        shortDisplayName: "Opus 4.8",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "claude-opus-4.8-fast-mode",
++        modelId: "claude-opus-4.8-fast-mode",
++        displayName: "Claude Opus 4.8 Fast Mode",
++        shortDisplayName: "Opus 4.8 Fast Mode",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "claude-opus-4.7",
++        modelId: "claude-opus-4.7",
++        displayName: "Claude Opus 4.7",
++        shortDisplayName: "Opus 4.7",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "claude-opus-4.7-fast-mode",
++        modelId: "claude-opus-4.7-fast-mode",
++        displayName: "Claude Opus 4.7 Fast Mode",
++        shortDisplayName: "Opus 4.7 Fast Mode",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++    ]);
++
++    expect(models.map((model) => [model.slug, model.name, model.shortName])).toEqual([
++      ["claude-opus-4.8", "Claude Opus 4.8", "Opus 4.8"],
++      ["claude-opus-4.7", "Claude Opus 4.7", "Opus 4.7"],
++    ]);
++    for (const model of models) {
++      const variant = model.capabilities?.optionDescriptors?.find(
++        (descriptor) => descriptor.id === DROID_MODEL_VARIANT_OPTION_ID,
++      );
++      expect(variant).toMatchObject({
++        label: "Variant",
++        options: [{ label: "Standard", isDefault: true }, { label: "Fast Mode" }],
++      });
++    }
++  });
++
+   it("keeps unknown Droid SDK model providers displayable", () => {
+     const models = buildDroidModelsFromSdkModels([
+       sdkModel({
+diff --git a/apps/server/src/provider/Layers/DroidProvider.ts b/apps/server/src/provider/Layers/DroidProvider.ts
+index dffcb35a..c4f8f9bb 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.ts
+@@ -236,10 +236,10 @@ function splitDroidVariantName(name: string): {
+       }
+     }
+ 
+-    const fast = baseName.match(/^(?<base>.+?)[\s-]+fast$/i);
+-    if (fast?.groups?.base) {
++    const fast = baseName.match(/^(?<base>.+?)[\s-]+(?<suffix>fast(?:\s+mode)?)$/i);
++    if (fast?.groups?.base && fast.groups.suffix) {
+       baseName = normalizeModelName(fast.groups.base);
+-      labels.unshift("Fast");
++      labels.unshift(formatFastVariantLabel(fast.groups.suffix));
+       continue;
+     }
+ 
+@@ -263,8 +263,8 @@ function splitDroidVariantName(name: string): {
+ 
+ function droidVariantLabel(value: string): string | undefined {
+   const normalized = normalizeModelName(value);
+-  if (/^fast$/i.test(normalized)) {
+-    return "Fast";
++  if (/^fast(?:\s+mode)?$/i.test(normalized)) {
++    return formatFastVariantLabel(normalized);
+   }
+   const context = normalized.match(
+     /^(?<size>\d+(?:\.\d+)?\s*(?:k|m)|\d+(?:\.\d+)?\s*million)(?:\s+(?:token\s*)?(?:context(?:\s+window)?|ctx))?$/i,
+@@ -275,6 +275,10 @@ function droidVariantLabel(value: string): string | undefined {
+   return undefined;
+ }
+ 
++function formatFastVariantLabel(value: string): string {
++  return /\bmode$/i.test(value) ? "Fast Mode" : "Fast";
++}
++
+ function formatContextWindowLabel(value: string): string {
+   const compact = normalizeModelName(value);
+   const million = compact.match(/^(?<amount>\d+(?:\.\d+)?)\s*million$/i);
+-- 
+2.34.1
+

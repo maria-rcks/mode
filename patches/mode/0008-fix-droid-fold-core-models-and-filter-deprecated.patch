@@ -1,7 +1,7 @@
 From 05799cdf6f12074a7a3559b760e9d1e407f60aa5 Mon Sep 17 00:00:00 2001
 From: maria <maria@kuuro.net>
 Date: Mon, 8 Jun 2026 00:57:39 +0000
-Subject: [PATCH 08/11] fix(droid): fold core models and filter deprecated
+Subject: [PATCH 08/12] fix(droid): fold core models and filter deprecated
 
 Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 ---

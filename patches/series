@@ -12,3 +12,4 @@ mode/0008-fix-droid-fold-core-models-and-filter-deprecated.patch
 mode/0009-fix-droid-keep-core-grouped-label.patch
 mode/0010-fix-model-picker-hide-subprovider-in-selected-model.patch
 mode/0011-feat-ui-apply-Luma-shadcn-style.patch
+mode/0012-fix-ui-keep-command-dialog-children-mounted.patch

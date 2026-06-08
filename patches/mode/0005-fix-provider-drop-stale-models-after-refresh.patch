@@ -1,7 +1,7 @@
-From ec1dddd5cf165739a3d3c1704e2df1e78771937b Mon Sep 17 00:00:00 2001
+From 851d9475feabc75a85f4243c023da332794f5f38 Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Sun, 7 Jun 2026 02:04:53 +0000
-Subject: [PATCH 5/7] fix(provider): drop stale models after refresh
+Subject: [PATCH 5/9] fix(provider): drop stale models after refresh
 
 ---
  .../provider/Layers/ProviderRegistry.test.ts  | 45 +++++++++++++++++++

@@ -1,0 +1,41 @@
+From 8ed82aff8cd4757342afc90885c2fcaf3a171377 Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Mon, 8 Jun 2026 01:07:51 +0000
+Subject: [PATCH 9/9] fix(droid): keep core grouped label
+
+---
+ apps/server/src/provider/Layers/DroidProvider.test.ts | 1 +
+ apps/server/src/provider/Layers/DroidProvider.ts      | 5 ++++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
+index 447b079b..dabb48a7 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.test.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
+@@ -308,6 +308,7 @@ describe("DroidProvider", () => {
+     expect(models).toHaveLength(1);
+     expect(models[0]?.slug).toBe("nemotron-3-ultra");
+     expect(models[0]?.name).toBe("Droid Core");
++    expect(models[0]?.shortName).toBeUndefined();
+ 
+     const variant = models[0]?.capabilities?.optionDescriptors?.find(
+       (descriptor) => descriptor.id === DROID_MODEL_VARIANT_OPTION_ID,
+diff --git a/apps/server/src/provider/Layers/DroidProvider.ts b/apps/server/src/provider/Layers/DroidProvider.ts
+index 55c6596b..ae6f2eca 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.ts
+@@ -299,7 +299,10 @@ function resolveDroidModel(model: AvailableModelConfig): ResolvedDroidModel | nu
+   const shortName = nonEmpty(model.shortDisplayName);
+   const parsedName = splitDroidVariantName(name);
+   const parsedShortName = shortName ? splitDroidVariantName(shortName) : undefined;
+-  const baseShortName = parsedShortName?.baseName || shortName;
++  const baseShortName =
++    parsedShortName && (parsedShortName.variantLabel || !parsedName.variantLabel)
++      ? parsedShortName.baseName || shortName
++      : undefined;
+   const variantLabel = parsedShortName?.variantLabel ?? parsedName.variantLabel;
+   return {
+     source: model,
+-- 
+2.34.1
+

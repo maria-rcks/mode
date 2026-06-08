@@ -7,4 +7,6 @@ mode/0003-mode-apply-mode-0003-feat-mode-use-Mode-runtime-name.patch
 mode/0004-feat-droid-fold-model-variants-into-traits.patch
 mode/0005-fix-provider-drop-stale-models-after-refresh.patch
 mode/0006-fix-droid-fold-fast-mode-model-variants.patch
-mode/0007-fix-droid-fold-core-models-and-filter-deprecated.patch
+mode/0007-fix-droid-enlarge-provider-icon.patch
+mode/0008-fix-droid-fold-core-models-and-filter-deprecated.patch
+mode/0009-fix-droid-keep-core-grouped-label.patch

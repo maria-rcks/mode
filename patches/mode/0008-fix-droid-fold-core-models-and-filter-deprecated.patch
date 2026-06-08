@@ -1,0 +1,165 @@
+From 20cad402702aa05b4e024de83a35e754c9595003 Mon Sep 17 00:00:00 2001
+From: maria <maria@kuuro.net>
+Date: Mon, 8 Jun 2026 00:57:39 +0000
+Subject: [PATCH 8/9] fix(droid): fold core models and filter deprecated
+
+Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+---
+ .../src/provider/Layers/DroidProvider.test.ts | 99 +++++++++++++++++++
+ .../src/provider/Layers/DroidProvider.ts      |  9 +-
+ 2 files changed, 106 insertions(+), 2 deletions(-)
+
+diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
+index aa103ba9..447b079b 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.test.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
+@@ -224,6 +224,105 @@ describe("DroidProvider", () => {
+     }
+   });
+ 
++  it("excludes deprecated models from the model list", () => {
++    const models = buildDroidModelsFromSdkModels([
++      sdkModel({
++        id: "gpt-5.2-codex",
++        modelId: "gpt-5.2-codex",
++        displayName: "GPT-5.2-Codex [Deprecated]",
++        shortDisplayName: "GPT-5.2-Codex [Deprecated]",
++        modelProvider: ModelProvider.OPENAI,
++        supportedReasoningEfforts: [ReasoningEffort.Medium],
++        defaultReasoningEffort: ReasoningEffort.Medium,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "gpt-5.1-codex-max",
++        modelId: "gpt-5.1-codex-max",
++        displayName: "GPT-5.1-Codex-Max [Deprecated]",
++        shortDisplayName: "GPT-5.1-Codex-Max [Deprecated]",
++        modelProvider: ModelProvider.OPENAI,
++        supportedReasoningEfforts: [ReasoningEffort.Medium],
++        defaultReasoningEffort: ReasoningEffort.Medium,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "claude-opus-4.8",
++        modelId: "claude-opus-4.8",
++        displayName: "Claude Opus 4.8",
++        shortDisplayName: "Opus 4.8",
++        modelProvider: ModelProvider.ANTHROPIC,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++    ]);
++
++    expect(models.map((model) => model.slug)).toEqual(["claude-opus-4.8"]);
++  });
++
++  it("folds Droid Core models into a single grouped entry", () => {
++    const models = buildDroidModelsFromSdkModels([
++      sdkModel({
++        id: "nemotron-3-ultra",
++        modelId: "nemotron-3-ultra",
++        displayName: "Droid Core (Nemotron 3 Ultra)",
++        shortDisplayName: "Nemotron 3 Ultra",
++        modelProvider: ModelProvider.FACTORY,
++        supportedReasoningEfforts: [ReasoningEffort.Off, ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "deepseek-v4-pro",
++        modelId: "deepseek-v4-pro",
++        displayName: "Droid Core (DeepSeek V4 Pro)",
++        shortDisplayName: "DeepSeek V4 Pro",
++        modelProvider: ModelProvider.FACTORY,
++        supportedReasoningEfforts: [ReasoningEffort.Off, ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "minimax-m2.7",
++        modelId: "minimax-m2.7",
++        displayName: "Droid Core (MiniMax M2.7)",
++        shortDisplayName: "MiniMax M2.7",
++        modelProvider: ModelProvider.FACTORY,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++      sdkModel({
++        id: "minimax-m2.5",
++        modelId: "minimax-m2.5",
++        displayName: "Droid Core (MiniMax M2.5)",
++        shortDisplayName: "MiniMax M2.5",
++        modelProvider: ModelProvider.FACTORY,
++        supportedReasoningEfforts: [ReasoningEffort.High],
++        defaultReasoningEffort: ReasoningEffort.High,
++        isCustom: false,
++      }),
++    ]);
++
++    expect(models).toHaveLength(1);
++    expect(models[0]?.slug).toBe("nemotron-3-ultra");
++    expect(models[0]?.name).toBe("Droid Core");
++
++    const variant = models[0]?.capabilities?.optionDescriptors?.find(
++      (descriptor) => descriptor.id === DROID_MODEL_VARIANT_OPTION_ID,
++    );
++    expect(variant).toMatchObject({
++      label: "Variant",
++      options: [
++        { id: "nemotron-3-ultra", label: "Nemotron 3 Ultra", isDefault: true },
++        { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
++        { id: "minimax-m2.7", label: "MiniMax M2.7" },
++        { id: "minimax-m2.5", label: "MiniMax M2.5" },
++      ],
++    });
++  });
++
+   it("keeps unknown Droid SDK model providers displayable", () => {
+     const models = buildDroidModelsFromSdkModels([
+       sdkModel({
+diff --git a/apps/server/src/provider/Layers/DroidProvider.ts b/apps/server/src/provider/Layers/DroidProvider.ts
+index c4f8f9bb..55c6596b 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.ts
+@@ -261,7 +261,7 @@ function splitDroidVariantName(name: string): {
+   };
+ }
+ 
+-function droidVariantLabel(value: string): string | undefined {
++function droidVariantLabel(value: string): string {
+   const normalized = normalizeModelName(value);
+   if (/^fast(?:\s+mode)?$/i.test(normalized)) {
+     return formatFastVariantLabel(normalized);
+@@ -272,7 +272,7 @@ function droidVariantLabel(value: string): string | undefined {
+   if (context?.groups?.size) {
+     return `${formatContextWindowLabel(context.groups.size)} Context`;
+   }
+-  return undefined;
++  return normalized;
+ }
+ 
+ function formatFastVariantLabel(value: string): string {
+@@ -367,6 +367,10 @@ const nonEmpty = (value: string | undefined): string | undefined => {
+   return trimmed ? trimmed : undefined;
+ };
+ 
++function isDroidModelDeprecated(model: AvailableModelConfig): boolean {
++  return /\[deprecated\]/i.test(model.displayName);
++}
++
+ export function buildDroidModelsFromSdkModels(
+   models: ReadonlyArray<AvailableModelConfig> | undefined,
+ ): ReadonlyArray<ServerProviderModel> {
+@@ -374,6 +378,7 @@ export function buildDroidModelsFromSdkModels(
+   const groups: DroidModelGroup[] = [];
+   const groupByKey = new Map<string, DroidModelGroup>();
+   for (const model of models ?? []) {
++    if (isDroidModelDeprecated(model)) continue;
+     const resolved = resolveDroidModel(model);
+     if (!resolved || seenSlugs.has(resolved.slug)) {
+       continue;
+-- 
+2.34.1
+

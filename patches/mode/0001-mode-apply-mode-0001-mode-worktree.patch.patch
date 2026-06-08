@@ -1,7 +1,7 @@
 From 4ccfda8471deaed0d0342159b606feb98b95fbed Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 01/13] mode: apply mode/0001-mode-worktree.patch
+Subject: [PATCH 01/14] mode: apply mode/0001-mode-worktree.patch
 
 ---
  package.json | 2 +-

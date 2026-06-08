@@ -14,3 +14,4 @@ mode/0010-fix-model-picker-hide-subprovider-in-selected-model.patch
 mode/0011-feat-ui-apply-Luma-shadcn-style.patch
 mode/0012-fix-ui-keep-command-dialog-children-mounted.patch
 mode/0013-fix-ui-preserve-command-palette-search-state.patch
+mode/0014-fix-ui-activate-command-palette-items.patch

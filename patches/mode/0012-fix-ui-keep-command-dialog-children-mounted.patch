@@ -1,7 +1,7 @@
 From 7a4fe9609cb6243ddf448e86490e4d2c9b88523d Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 03:53:27 +0000
-Subject: [PATCH 12/13] fix(ui): keep command dialog children mounted
+Subject: [PATCH 12/14] fix(ui): keep command dialog children mounted
 
 ---
  apps/web/src/components/ui/command.tsx | 11 +++--------

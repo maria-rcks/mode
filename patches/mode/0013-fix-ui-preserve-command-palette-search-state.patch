@@ -1,7 +1,7 @@
 From 26fe831a16c2f6fa951294f9d2917026293b1f0f Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 04:04:46 +0000
-Subject: [PATCH 13/13] fix(ui): preserve command palette search state
+Subject: [PATCH 13/14] fix(ui): preserve command palette search state
 
 ---
  apps/web/src/components/ui/command.tsx | 54 +++++++++++++++++++++-----

@@ -1,7 +1,7 @@
 From c1969e1d4ed5fbf42cf09d169f02a70b7013b790 Mon Sep 17 00:00:00 2001
 From: maria <maria@kuuro.net>
 Date: Mon, 8 Jun 2026 03:40:34 +0000
-Subject: [PATCH 11/12] feat(ui): apply Luma shadcn style
+Subject: [PATCH 11/13] feat(ui): apply Luma shadcn style
 
 Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 ---

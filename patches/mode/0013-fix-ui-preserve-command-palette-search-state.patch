@@ -1,0 +1,121 @@
+From 26fe831a16c2f6fa951294f9d2917026293b1f0f Mon Sep 17 00:00:00 2001
+From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+Date: Mon, 8 Jun 2026 04:04:46 +0000
+Subject: [PATCH 13/14] fix(ui): preserve command palette search state
+
+---
+ apps/web/src/components/ui/command.tsx | 54 +++++++++++++++++++++-----
+ 1 file changed, 44 insertions(+), 10 deletions(-)
+
+diff --git a/apps/web/src/components/ui/command.tsx b/apps/web/src/components/ui/command.tsx
+index 6cb8847c..549f9117 100644
+--- a/apps/web/src/components/ui/command.tsx
++++ b/apps/web/src/components/ui/command.tsx
+@@ -16,27 +16,49 @@ import { InputGroup, InputGroupAddon } from "~/components/ui/input-group";
+ import { SearchIcon, CheckIcon } from "lucide-react";
+ 
+ const CommandGroupItemsContext = React.createContext<readonly unknown[]>([]);
++const EMPTY_COMMAND_GROUP_ITEMS: readonly unknown[] = [];
++const CommandSearchContext = React.createContext<{
++  value?: string | undefined;
++  onValueChange?: ((value: string) => void) | undefined;
++} | null>(null);
+ 
+ function Command({
+   className,
+   autoHighlight: _autoHighlight,
+   mode: _mode,
+-  onItemHighlighted: _onItemHighlighted,
++  onItemHighlighted,
++  onValueChange,
++  shouldFilter,
++  value,
+   ...props
+ }: React.ComponentProps<typeof CommandPrimitive> & {
+   autoHighlight?: boolean | "always";
+   mode?: string;
+   onItemHighlighted?: (value: unknown) => void;
+ }) {
++  const searchContextValue = React.useMemo(
++    () => ({
++      value: typeof value === "string" ? value : undefined,
++      onValueChange,
++    }),
++    [onValueChange, value],
++  );
++
+   return (
+-    <CommandPrimitive
+-      data-slot="command"
+-      className={cn(
+-        "flex size-full flex-col overflow-hidden rounded-4xl bg-popover p-1 text-popover-foreground",
+-        className,
+-      )}
+-      {...props}
+-    />
++    <CommandSearchContext.Provider value={searchContextValue}>
++      <CommandPrimitive
++        data-slot="command"
++        shouldFilter={shouldFilter ?? false}
++        onValueChange={(nextValue) => {
++          onItemHighlighted?.(nextValue);
++        }}
++        className={cn(
++          "flex size-full flex-col overflow-hidden rounded-4xl bg-popover p-1 text-popover-foreground",
++          className,
++        )}
++        {...props}
++      />
++    </CommandSearchContext.Provider>
+   );
+ }
+ 
+@@ -69,17 +91,27 @@ function CommandInput({
+   className,
+   wrapperClassName,
+   startAddon,
++  onValueChange,
++  value,
+   ...props
+ }: React.ComponentProps<typeof CommandPrimitive.Input> & {
+   wrapperClassName?: string | undefined;
+   startAddon?: React.ReactNode;
+ }) {
++  const search = React.useContext(CommandSearchContext);
++  const inputValue = value ?? search?.value;
++
+   return (
+     <div data-slot="command-input-wrapper" className={cn("p-1 pb-0", wrapperClassName)}>
+       <InputGroup className="h-9 bg-input/50">
+         {startAddon && <InputGroupAddon>{startAddon}</InputGroupAddon>}
+         <CommandPrimitive.Input
+           data-slot="command-input"
++          {...(inputValue !== undefined ? { value: inputValue } : {})}
++          onValueChange={(nextValue) => {
++            search?.onValueChange?.(nextValue);
++            onValueChange?.(nextValue);
++          }}
+           className={cn(
+             "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+             className,
+@@ -128,6 +160,8 @@ function CommandGroup({
+ }: React.ComponentProps<typeof CommandPrimitive.Group> & {
+   items?: readonly unknown[];
+ }) {
++  const contextItems = items ?? EMPTY_COMMAND_GROUP_ITEMS;
++
+   return (
+     <CommandPrimitive.Group
+       data-slot="command-group"
+@@ -137,7 +171,7 @@ function CommandGroup({
+       )}
+       {...props}
+     >
+-      <CommandGroupItemsContext.Provider value={items ?? []}>
++      <CommandGroupItemsContext.Provider value={contextItems}>
+         {children}
+       </CommandGroupItemsContext.Provider>
+     </CommandPrimitive.Group>
+-- 
+2.34.1
+

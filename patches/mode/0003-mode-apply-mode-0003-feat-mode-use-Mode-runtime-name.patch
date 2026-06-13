@@ -1,4 +1,4 @@
-From 2d69b7195f52ccc5d9530c098f56adf027b84279 Mon Sep 17 00:00:00 2001
+From b05bc92db95b2ffc6030b06814ea7c8bbcb25b8f Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
 Subject: [PATCH 03/13] mode: apply
@@ -7,16 +7,16 @@ Subject: [PATCH 03/13] mode: apply
 ---
  .github/workflows/release.yml                 | 12 +--
  apps/desktop/scripts/dev-electron.mjs         | 10 +--
- apps/desktop/scripts/electron-launcher.mjs    | 32 ++++----
+ apps/desktop/scripts/electron-launcher.mjs    | 28 +++----
  apps/desktop/src/app/DesktopApp.ts            |  2 +-
- .../src/app/DesktopAppIdentity.test.ts        |  2 +-
- apps/desktop/src/app/DesktopAppIdentity.ts    |  4 +-
+ .../src/app/DesktopAppIdentity.test.ts        | 43 +++++++++-
+ apps/desktop/src/app/DesktopAppIdentity.ts    |  5 +-
  apps/desktop/src/app/DesktopCloudAuth.test.ts | 26 +++----
  apps/desktop/src/app/DesktopCloudAuth.ts      | 12 +--
  .../app/DesktopCloudAuthTokenStore.test.ts    |  2 +-
  apps/desktop/src/app/DesktopConfig.ts         | 26 +++----
- .../src/app/DesktopEnvironment.test.ts        | 22 +++---
- apps/desktop/src/app/DesktopEnvironment.ts    | 10 +--
+ .../src/app/DesktopEnvironment.test.ts        | 20 ++---
+ apps/desktop/src/app/DesktopEnvironment.ts    |  8 +-
  .../src/app/DesktopObservability.test.ts      |  2 +-
  .../DesktopBackendConfiguration.test.ts       | 14 ++--
  .../backend/DesktopBackendConfiguration.ts    | 20 ++---
@@ -29,7 +29,7 @@ Subject: [PATCH 03/13] mode: apply
  .../src/updates/DesktopUpdates.test.ts        | 12 +--
  apps/desktop/src/updates/DesktopUpdates.ts    |  2 +-
  apps/desktop/src/window/DesktopWindow.test.ts |  2 +-
- apps/mobile/app.config.ts                     | 18 ++---
+ apps/mobile/app.config.ts                     |  6 +-
  .../src/features/connection/pairing.test.ts   |  2 +-
  .../mobile/src/features/connection/pairing.ts |  2 +-
  apps/server/src/cli/config.test.ts            | 58 +++++++-------
@@ -51,26 +51,30 @@ Subject: [PATCH 03/13] mode: apply
  apps/server/src/vcs/GitVcsDriver.ts           |  4 +-
  apps/server/src/vcs/VcsProjectConfig.test.ts  |  4 +-
  apps/server/src/vcs/VcsProjectConfig.ts       |  2 +-
- apps/web/index.html                           |  2 +-
- apps/web/src/clientPersistenceStorage.ts      |  4 +-
+ apps/web/index.html                           |  9 ++-
+ apps/web/src/clientPersistenceStorage.test.ts | 18 +++++
+ apps/web/src/clientPersistenceStorage.ts      | 15 +++-
  .../components/BranchToolbar.logic.test.ts    | 30 +++----
  apps/web/src/components/ChatView.browser.tsx  | 22 +++---
- apps/web/src/components/ChatView.logic.ts     |  2 +-
+ apps/web/src/components/ChatView.logic.ts     |  5 +-
+ apps/web/src/components/ChatView.tsx          |  2 +
  .../components/KeybindingsToast.browser.tsx   |  4 +-
  apps/web/src/components/Sidebar.logic.test.ts |  4 +-
  .../chat/ProviderModelPicker.browser.tsx      | 16 ++--
  .../settings/SettingsPanels.browser.tsx       | 10 +--
- apps/web/src/composerDraftStore.ts            |  2 +-
- apps/web/src/editorPreferences.ts             |  2 +-
- apps/web/src/hooks/useLocalStorage.ts         |  2 +-
- apps/web/src/hooks/useTheme.ts                |  2 +-
+ apps/web/src/composerDraftStore.test.ts       | 29 ++++++-
+ apps/web/src/composerDraftStore.ts            | 13 +++-
+ apps/web/src/editorPreferences.ts             | 12 ++-
+ apps/web/src/hooks/useLocalStorage.ts         | 37 +++++++--
+ apps/web/src/hooks/useTheme.ts                | 18 ++++-
  apps/web/src/hostedPairing.test.ts            |  2 +-
  apps/web/src/hostedPairing.ts                 |  2 +-
+ apps/web/src/lib/storage.ts                   | 28 +++++++
  apps/web/src/projectScripts.test.ts           | 10 +--
- apps/web/src/providerUpdateDismissal.ts       |  2 +-
- apps/web/src/terminalUiStateStore.ts          |  2 +-
- apps/web/src/uiStateStore.ts                  | 14 ++--
- apps/web/src/versionSkew.ts                   |  2 +-
+ apps/web/src/providerUpdateDismissal.ts       |  7 +-
+ apps/web/src/terminalUiStateStore.ts          | 13 +++-
+ apps/web/src/uiStateStore.ts                  | 26 +++++--
+ apps/web/src/versionSkew.ts                   |  6 +-
  apps/web/src/worktreeCleanup.test.ts          |  4 +-
  apps/web/vercel.ts                            |  6 +-
  apps/web/vite.config.ts                       |  2 +-
@@ -87,11 +91,11 @@ Subject: [PATCH 03/13] mode: apply
  packages/shared/src/shell.ts                  |  8 +-
  packages/ssh/src/tunnel.ts                    | 14 ++--
  scripts/build-desktop-artifact.test.ts        | 10 +--
- scripts/build-desktop-artifact.ts             | 56 ++++++-------
+ scripts/build-desktop-artifact.ts             | 58 +++++++-------
  scripts/dev-runner.test.ts                    | 54 ++++++-------
  scripts/dev-runner.ts                         | 78 +++++++++----------
  scripts/mock-update-server.ts                 |  4 +-
- 86 files changed, 485 insertions(+), 491 deletions(-)
+ 90 files changed, 705 insertions(+), 497 deletions(-)
 
 diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
 index e1fb9216..6b0c61aa 100644
@@ -166,18 +170,14 @@ index 2a2e5244..47525907 100644
      cwd: desktopDir,
      env: childEnv,
 diff --git a/apps/desktop/scripts/electron-launcher.mjs b/apps/desktop/scripts/electron-launcher.mjs
-index 8f20001b..0f30a8f1 100644
+index 8f20001b..c055cfcc 100644
 --- a/apps/desktop/scripts/electron-launcher.mjs
 +++ b/apps/desktop/scripts/electron-launcher.mjs
-@@ -27,15 +27,15 @@ const devBundleIdSuffix = basename(repoRoot)
-   .replaceAll(/[^a-z0-9]+/g, "");
- export const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+@@ -29,13 +29,13 @@ export const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alph
  export const APP_BUNDLE_ID = isDevelopment
--  ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
--  : "com.t3tools.t3code";
+   ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
+   : "com.t3tools.t3code";
 -const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
-+  ? `com.t3tools.mode.dev.${devBundleIdSuffix || "local"}`
-+  : "com.t3tools.mode";
 +const APP_PROTOCOL_SCHEMES = isDevelopment ? ["mode-dev"] : ["mode"];
  const LAUNCHER_VERSION = 10;
  const defaultIconPath = join(desktopDir, "resources", "icon.icns");
@@ -245,10 +245,19 @@ index 052a25e4..f44869b2 100644
  }
  
 diff --git a/apps/desktop/src/app/DesktopAppIdentity.test.ts b/apps/desktop/src/app/DesktopAppIdentity.test.ts
-index eafdbf05..5d014f17 100644
+index eafdbf05..67de1357 100644
 --- a/apps/desktop/src/app/DesktopAppIdentity.test.ts
 +++ b/apps/desktop/src/app/DesktopAppIdentity.test.ts
-@@ -169,7 +169,7 @@ describe("DesktopAppIdentity", () => {
+@@ -123,7 +123,7 @@ const withIdentity = <A, E, R>(
+             exists: (path) =>
+               Effect.succeed(input.legacyPathExists === true && path.includes("T3 Code (Alpha)")),
+             readFileString: () =>
+-              Effect.succeed(input.packageJson ?? '{"t3codeCommitHash":"abcdef1234567890"}'),
++              Effect.succeed(input.packageJson ?? '{"modeCommitHash":"abcdef1234567890"}'),
+           }),
+         ),
+         Layer.provideMerge(makeAssetsLayer(input.pngIconPath ?? Option.none())),
+@@ -169,11 +169,50 @@ describe("DesktopAppIdentity", () => {
          calls,
          environment: {
            env: {
@@ -257,25 +266,69 @@ index eafdbf05..5d014f17 100644
            },
          },
          pngIconPath: Option.some("/icon.png"),
+       },
+     );
+   });
++
++  it.effect("reads embedded Mode package metadata for the About panel commit", () => {
++    const calls: ElectronAppCalls = {
++      setAboutPanelOptions: [],
++      setDockIcon: [],
++      setName: [],
++    };
++
++    return withIdentity(
++      Effect.gen(function* () {
++        const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
++        yield* identity.configure;
++
++        assert.equal(calls.setAboutPanelOptions[0]?.version, "abcdef123456");
++      }),
++      { calls },
++    );
++  });
++
++  it.effect("keeps reading legacy package metadata for the About panel commit", () => {
++    const calls: ElectronAppCalls = {
++      setAboutPanelOptions: [],
++      setDockIcon: [],
++      setName: [],
++    };
++
++    return withIdentity(
++      Effect.gen(function* () {
++        const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
++        yield* identity.configure;
++
++        assert.equal(calls.setAboutPanelOptions[0]?.version, "fedcba987654");
++      }),
++      {
++        calls,
++        packageJson: '{"t3codeCommitHash":"fedcba9876543210"}',
++      },
++    );
++  });
+ });
 diff --git a/apps/desktop/src/app/DesktopAppIdentity.ts b/apps/desktop/src/app/DesktopAppIdentity.ts
-index 52f4b128..ee341950 100644
+index 52f4b128..11071ebf 100644
 --- a/apps/desktop/src/app/DesktopAppIdentity.ts
 +++ b/apps/desktop/src/app/DesktopAppIdentity.ts
-@@ -14,7 +14,7 @@ const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
+@@ -14,6 +14,7 @@ const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
  const COMMIT_HASH_DISPLAY_LENGTH = 12;
  
  const AppPackageMetadata = Schema.Struct({
--  t3codeCommitHash: Schema.optional(Schema.String),
 +  modeCommitHash: Schema.optional(Schema.String),
+   t3codeCommitHash: Schema.optional(Schema.String),
  });
  const decodeAppPackageMetadata = Schema.decodeEffect(Schema.fromJsonString(AppPackageMetadata));
- 
-@@ -50,7 +50,7 @@ const make = Effect.gen(function* () {
+@@ -50,7 +51,9 @@ const make = Effect.gen(function* () {
        onSome: (value) =>
          decodeAppPackageMetadata(value).pipe(
            Effect.map((parsed) =>
 -            Option.fromNullishOr(parsed.t3codeCommitHash).pipe(Option.flatMap(normalizeCommitHash)),
-+            Option.fromNullishOr(parsed.modeCommitHash).pipe(Option.flatMap(normalizeCommitHash)),
++            Option.fromNullishOr(parsed.modeCommitHash ?? parsed.t3codeCommitHash).pipe(
++              Option.flatMap(normalizeCommitHash),
++            ),
            ),
            Effect.orElseSucceed(() => Option.none<string>()),
          ),
@@ -464,7 +517,7 @@ index 4bf6b513..7a843a27 100644
    ),
  });
 diff --git a/apps/desktop/src/app/DesktopEnvironment.test.ts b/apps/desktop/src/app/DesktopEnvironment.test.ts
-index ee732bf8..ceaa1342 100644
+index ee732bf8..ad613a0c 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.test.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.test.ts
 @@ -40,13 +40,13 @@ describe("DesktopEnvironment", () => {
@@ -487,13 +540,11 @@ index ee732bf8..ceaa1342 100644
          },
        );
  
-@@ -63,8 +63,8 @@ describe("DesktopEnvironment", () => {
-       assert.equal(environment.appRoot, "/repo");
+@@ -64,7 +64,7 @@ describe("DesktopEnvironment", () => {
        assert.equal(environment.backendEntryPath, "/repo/apps/server/dist/bin.mjs");
        assert.equal(environment.backendCwd, "/repo");
--      assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev");
+       assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev");
 -      assert.equal(environment.linuxWmClass, "t3code-dev");
-+      assert.equal(environment.appUserModelId, "com.t3tools.mode.dev");
 +      assert.equal(environment.linuxWmClass, "mode-dev");
        assert.deepEqual(
          Option.map(environment.devServerUrl, (url) => url.href),
@@ -523,7 +574,7 @@ index ee732bf8..ceaa1342 100644
    );
  
 diff --git a/apps/desktop/src/app/DesktopEnvironment.ts b/apps/desktop/src/app/DesktopEnvironment.ts
-index 431e0d34..cc7947d8 100644
+index 431e0d34..913d7a38 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.ts
 @@ -151,7 +151,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
@@ -544,12 +595,9 @@ index 431e0d34..cc7947d8 100644
    const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
    const resourcesPath = input.resourcesPath;
  
-@@ -200,10 +200,10 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
-     branding,
-     displayName,
+@@ -202,8 +202,8 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
      appUserModelId: Option.getOrElse(config.appUserModelIdOverride, () =>
--      isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
-+      isDevelopment ? "com.t3tools.mode.dev" : "com.t3tools.mode",
+       isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
      ),
 -    linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code.desktop",
 -    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",
@@ -804,43 +852,34 @@ index 5e977de2..6ffa7b18 100644
        }),
      ),
 diff --git a/apps/mobile/app.config.ts b/apps/mobile/app.config.ts
-index 7cbb8335..b79eab89 100644
+index 7cbb8335..8e7c5227 100644
 --- a/apps/mobile/app.config.ts
 +++ b/apps/mobile/app.config.ts
-@@ -21,24 +21,24 @@ const VARIANT_CONFIG: Record<
+@@ -21,21 +21,21 @@ const VARIANT_CONFIG: Record<
  > = {
    development: {
      appName: "T3 Code Dev",
 -    scheme: "t3code-dev",
 +    scheme: "mode-dev",
      iosIcon: "./assets/icon-composer-dev.icon",
--    iosBundleIdentifier: "com.t3tools.t3code.dev",
--    androidPackage: "com.t3tools.t3code.dev",
-+    iosBundleIdentifier: "com.t3tools.mode.dev",
-+    androidPackage: "com.t3tools.mode.dev",
+     iosBundleIdentifier: "com.t3tools.t3code.dev",
+     androidPackage: "com.t3tools.t3code.dev",
    },
    preview: {
      appName: "T3 Code Preview",
 -    scheme: "t3code-preview",
 +    scheme: "mode-preview",
      iosIcon: "./assets/icon-composer-prod.icon",
--    iosBundleIdentifier: "com.t3tools.t3code.preview",
--    androidPackage: "com.t3tools.t3code.preview",
-+    iosBundleIdentifier: "com.t3tools.mode.preview",
-+    androidPackage: "com.t3tools.mode.preview",
+     iosBundleIdentifier: "com.t3tools.t3code.preview",
+     androidPackage: "com.t3tools.t3code.preview",
    },
    production: {
      appName: "T3 Code",
 -    scheme: "t3code",
 +    scheme: "mode",
      iosIcon: "./assets/icon-composer-prod.icon",
--    iosBundleIdentifier: "com.t3tools.t3code",
--    androidPackage: "com.t3tools.t3code",
-+    iosBundleIdentifier: "com.t3tools.mode",
-+    androidPackage: "com.t3tools.mode",
-   },
- };
- 
+     iosBundleIdentifier: "com.t3tools.t3code",
+     androidPackage: "com.t3tools.t3code",
 diff --git a/apps/mobile/src/features/connection/pairing.test.ts b/apps/mobile/src/features/connection/pairing.test.ts
 index 028c46c1..ca42956d 100644
 --- a/apps/mobile/src/features/connection/pairing.test.ts
@@ -1410,23 +1449,57 @@ index 3e5ee234..486c2b11 100644
          return candidate;
        }
 diff --git a/apps/web/index.html b/apps/web/index.html
-index dadef17d..c0d5c0f8 100644
+index dadef17d..78efcc4d 100644
 --- a/apps/web/index.html
 +++ b/apps/web/index.html
-@@ -17,7 +17,7 @@
+@@ -17,7 +17,14 @@
          const DARK_BACKGROUND = "#161616";
          const themeColorMeta = document.querySelector('meta[name="theme-color"]');
          try {
 -          const storedTheme = window.localStorage.getItem("t3code:theme");
-+          const storedTheme = window.localStorage.getItem("mode:theme");
++          let storedTheme = window.localStorage.getItem("mode:theme");
++          if (storedTheme === null) {
++            const legacyTheme = window.localStorage.getItem("t3code:theme");
++            if (legacyTheme === "light" || legacyTheme === "dark" || legacyTheme === "system") {
++              window.localStorage.setItem("mode:theme", legacyTheme);
++              storedTheme = legacyTheme;
++            }
++          }
            const theme =
              storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
                ? storedTheme
+diff --git a/apps/web/src/clientPersistenceStorage.test.ts b/apps/web/src/clientPersistenceStorage.test.ts
+index e2cf84cc..0b74f00c 100644
+--- a/apps/web/src/clientPersistenceStorage.test.ts
++++ b/apps/web/src/clientPersistenceStorage.test.ts
+@@ -83,4 +83,22 @@ describe("clientPersistenceStorage", () => {
+       ],
+     });
+   });
++
++  it("migrates the legacy saved environment registry storage key", async () => {
++    const testWindow = getTestWindow();
++    testWindow.localStorage.setItem(
++      "t3code:saved-environment-registry:v1",
++      JSON.stringify({
++        version: 1,
++        records: [savedRegistryRecord],
++      }),
++    );
++    const { SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY, readBrowserSavedEnvironmentRegistry } =
++      await import("./clientPersistenceStorage");
++
++    expect(readBrowserSavedEnvironmentRegistry()).toEqual([savedRegistryRecord]);
++    expect(testWindow.localStorage.getItem(SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY)).toBe(
++      testWindow.localStorage.getItem("t3code:saved-environment-registry:v1"),
++    );
++  });
+ });
 diff --git a/apps/web/src/clientPersistenceStorage.ts b/apps/web/src/clientPersistenceStorage.ts
-index 2838f502..3a15e9b1 100644
+index 2838f502..869444b4 100644
 --- a/apps/web/src/clientPersistenceStorage.ts
 +++ b/apps/web/src/clientPersistenceStorage.ts
-@@ -9,8 +9,8 @@ import * as Schema from "effect/Schema";
+@@ -9,8 +9,12 @@ import * as Schema from "effect/Schema";
  
  import { getLocalStorageItem, setLocalStorageItem } from "./hooks/useLocalStorage";
  
@@ -1434,9 +1507,34 @@ index 2838f502..3a15e9b1 100644
 -export const SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY = "t3code:saved-environment-registry:v1";
 +export const CLIENT_SETTINGS_STORAGE_KEY = "mode:client-settings:v1";
 +export const SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY = "mode:saved-environment-registry:v1";
++const LEGACY_CLIENT_SETTINGS_STORAGE_KEYS = ["t3code:client-settings:v1"] as const;
++const LEGACY_SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEYS = [
++  "t3code:saved-environment-registry:v1",
++] as const;
  
  const BrowserSavedEnvironmentRecordSchema = Schema.Struct({
    environmentId: EnvironmentId,
+@@ -67,7 +71,11 @@ export function readBrowserClientSettings(): ClientSettings | null {
+   }
+ 
+   try {
+-    return getLocalStorageItem(CLIENT_SETTINGS_STORAGE_KEY, ClientSettingsSchema);
++    return getLocalStorageItem(
++      CLIENT_SETTINGS_STORAGE_KEY,
++      ClientSettingsSchema,
++      LEGACY_CLIENT_SETTINGS_STORAGE_KEYS,
++    );
+   } catch {
+     return null;
+   }
+@@ -90,6 +98,7 @@ function readBrowserSavedEnvironmentRegistryDocument(): BrowserSavedEnvironmentR
+     const parsed = getLocalStorageItem(
+       SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEY,
+       BrowserSavedEnvironmentRegistryDocumentSchema,
++      LEGACY_SAVED_ENVIRONMENT_REGISTRY_STORAGE_KEYS,
+     );
+     return parsed ?? {};
+   } catch {
 diff --git a/apps/web/src/components/BranchToolbar.logic.test.ts b/apps/web/src/components/BranchToolbar.logic.test.ts
 index 94a3909a..8b2f7692 100644
 --- a/apps/web/src/components/BranchToolbar.logic.test.ts
@@ -1637,18 +1735,41 @@ index 5a92a244..db5910de 100644
              : thread,
          ),
 diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
-index b30d3be0..806327e6 100644
+index b30d3be0..72767691 100644
 --- a/apps/web/src/components/ChatView.logic.ts
 +++ b/apps/web/src/components/ChatView.logic.ts
-@@ -21,7 +21,7 @@ import {
+@@ -21,7 +21,10 @@ import {
  } from "../lib/terminalContext";
  import type { DraftThreadEnvMode } from "../composerDraftStore";
  
 -export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "t3code:last-invoked-script-by-project";
 +export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "mode:last-invoked-script-by-project";
++export const LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS = [
++  "t3code:last-invoked-script-by-project",
++] as const;
  export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
  
  export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 0a17fcf7..342a9632 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -168,6 +168,7 @@ import {
+   hasServerAcknowledgedLocalDispatch,
+   getStartedThreadModelChangeBlockReason,
+   LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
++  LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS,
+   LastInvokedScriptByProjectSchema,
+   type LocalDispatchSnapshot,
+   PullRequestDialogState,
+@@ -938,6 +939,7 @@ export default function ChatView(props: ChatViewProps) {
+     LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
+     {},
+     LastInvokedScriptByProjectSchema,
++    LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS,
+   );
+   const legendListRef = useRef<LegendListRef | null>(null);
+   const isAtEndRef = useRef(true);
 diff --git a/apps/web/src/components/KeybindingsToast.browser.tsx b/apps/web/src/components/KeybindingsToast.browser.tsx
 index e9e56282..076f0295 100644
 --- a/apps/web/src/components/KeybindingsToast.browser.tsx
@@ -1801,37 +1922,165 @@ index a4cdc867..320930c3 100644
    });
  
    it("shows an OpenCode server URL field in provider settings", async () => {
+diff --git a/apps/web/src/composerDraftStore.test.ts b/apps/web/src/composerDraftStore.test.ts
+index e6caedaa..3f4c613d 100644
+--- a/apps/web/src/composerDraftStore.test.ts
++++ b/apps/web/src/composerDraftStore.test.ts
+@@ -74,7 +74,7 @@ import {
+   insertInlineTerminalContextPlaceholder,
+   type TerminalContextDraft,
+ } from "./lib/terminalContext";
+-import { createDebouncedStorage } from "./lib/storage";
++import { createDebouncedStorage, createMigratingStorage } from "./lib/storage";
+ 
+ function makeImage(input: {
+   id: string;
+@@ -1446,6 +1446,33 @@ function createMockStorage() {
+   };
+ }
+ 
++describe("createMigratingStorage", () => {
++  it("copies a legacy value into the requested key on first read", () => {
++    const base = createMockStorage();
++    base.setItem("t3code:key", "legacy-value");
++    base.setItem.mockClear();
++    const storage = createMigratingStorage(base, {
++      "mode:key": ["t3code:key"],
++    });
++
++    expect(storage.getItem("mode:key")).toBe("legacy-value");
++    expect(base.setItem).toHaveBeenCalledWith("mode:key", "legacy-value");
++  });
++
++  it("prefers the requested key over legacy values", () => {
++    const base = createMockStorage();
++    base.setItem("mode:key", "current-value");
++    base.setItem("t3code:key", "legacy-value");
++    base.setItem.mockClear();
++    const storage = createMigratingStorage(base, {
++      "mode:key": ["t3code:key"],
++    });
++
++    expect(storage.getItem("mode:key")).toBe("current-value");
++    expect(base.setItem).not.toHaveBeenCalled();
++  });
++});
++
+ describe("createDebouncedStorage", () => {
+   beforeEach(() => {
+     vi.useFakeTimers();
 diff --git a/apps/web/src/composerDraftStore.ts b/apps/web/src/composerDraftStore.ts
-index 3de3b5d7..cb0d11e8 100644
+index 3de3b5d7..3415235e 100644
 --- a/apps/web/src/composerDraftStore.ts
 +++ b/apps/web/src/composerDraftStore.ts
-@@ -45,7 +45,7 @@ import { UnifiedSettings } from "@t3tools/contracts/settings";
+@@ -39,13 +39,14 @@ import {
+ import { create } from "zustand";
+ import { createJSONStorage, persist } from "zustand/middleware";
+ import { useShallow } from "zustand/react/shallow";
+-import { createDebouncedStorage, createMemoryStorage } from "./lib/storage";
++import { createDebouncedStorage, createMemoryStorage, createMigratingStorage } from "./lib/storage";
+ import { getDefaultServerModel } from "./providerModels";
+ import { UnifiedSettings } from "@t3tools/contracts/settings";
  const isRuntimeMode = Schema.is(RuntimeMode);
  const isProviderDriverKind = Schema.is(ProviderDriverKind);
  
 -export const COMPOSER_DRAFT_STORAGE_KEY = "t3code:composer-drafts:v1";
 +export const COMPOSER_DRAFT_STORAGE_KEY = "mode:composer-drafts:v1";
++const LEGACY_COMPOSER_DRAFT_STORAGE_KEYS = ["t3code:composer-drafts:v1"] as const;
  const COMPOSER_DRAFT_STORAGE_VERSION = 6;
  const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
  export type DraftThreadEnvMode = typeof DraftThreadEnvModeSchema.Type;
+@@ -56,7 +57,12 @@ export type DraftId = typeof DraftId.Type;
+ const COMPOSER_PERSIST_DEBOUNCE_MS = 300;
+ 
+ const composerDebouncedStorage = createDebouncedStorage(
+-  typeof localStorage !== "undefined" ? localStorage : createMemoryStorage(),
++  createMigratingStorage(
++    typeof localStorage !== "undefined" ? localStorage : createMemoryStorage(),
++    {
++      [COMPOSER_DRAFT_STORAGE_KEY]: LEGACY_COMPOSER_DRAFT_STORAGE_KEYS,
++    },
++  ),
+   COMPOSER_PERSIST_DEBOUNCE_MS,
+ );
+ 
+@@ -1770,6 +1776,7 @@ function readPersistedAttachmentIdsFromStorage(threadKey: string): string[] {
+     const persisted = getLocalStorageItem(
+       COMPOSER_DRAFT_STORAGE_KEY,
+       PersistedComposerDraftStoreStorage,
++      LEGACY_COMPOSER_DRAFT_STORAGE_KEYS,
+     );
+     if (!persisted || persisted.version !== COMPOSER_DRAFT_STORAGE_VERSION) {
+       return [];
 diff --git a/apps/web/src/editorPreferences.ts b/apps/web/src/editorPreferences.ts
-index 38c59115..0de23870 100644
+index 38c59115..7334038f 100644
 --- a/apps/web/src/editorPreferences.ts
 +++ b/apps/web/src/editorPreferences.ts
-@@ -2,7 +2,7 @@ import { EDITORS, EditorId, LocalApi } from "@t3tools/contracts";
+@@ -2,10 +2,16 @@ import { EDITORS, EditorId, LocalApi } from "@t3tools/contracts";
  import { getLocalStorageItem, setLocalStorageItem, useLocalStorage } from "./hooks/useLocalStorage";
  import { useMemo } from "react";
  
 -const LAST_EDITOR_KEY = "t3code:last-editor";
 +const LAST_EDITOR_KEY = "mode:last-editor";
++const LEGACY_LAST_EDITOR_KEYS = ["t3code:last-editor"] as const;
  
  export function usePreferredEditor(availableEditors: ReadonlyArray<EditorId>) {
-   const [lastEditor, setLastEditor] = useLocalStorage(LAST_EDITOR_KEY, null, EditorId);
+-  const [lastEditor, setLastEditor] = useLocalStorage(LAST_EDITOR_KEY, null, EditorId);
++  const [lastEditor, setLastEditor] = useLocalStorage(
++    LAST_EDITOR_KEY,
++    null,
++    EditorId,
++    LEGACY_LAST_EDITOR_KEYS,
++  );
+ 
+   const effectiveEditor = useMemo(() => {
+     if (lastEditor && availableEditors.includes(lastEditor)) return lastEditor;
+@@ -19,7 +25,7 @@ export function resolveAndPersistPreferredEditor(
+   availableEditors: readonly EditorId[],
+ ): EditorId | null {
+   const availableEditorIds = new Set(availableEditors);
+-  const stored = getLocalStorageItem(LAST_EDITOR_KEY, EditorId);
++  const stored = getLocalStorageItem(LAST_EDITOR_KEY, EditorId, LEGACY_LAST_EDITOR_KEYS);
+   if (stored && availableEditorIds.has(stored)) return stored;
+   const editor = EDITORS.find((editor) => availableEditorIds.has(editor.id))?.id ?? null;
+   if (editor) setLocalStorageItem(LAST_EDITOR_KEY, editor, EditorId);
 diff --git a/apps/web/src/hooks/useLocalStorage.ts b/apps/web/src/hooks/useLocalStorage.ts
-index 93d26f66..94b2fce8 100644
+index 93d26f66..984000e8 100644
 --- a/apps/web/src/hooks/useLocalStorage.ts
 +++ b/apps/web/src/hooks/useLocalStorage.ts
-@@ -43,7 +43,7 @@ export const removeLocalStorageItem = (key: string) => {
+@@ -29,9 +29,29 @@ const encode = <T, E>(schema: Schema.Codec<T, E>, value: T) => {
+   return encodeJson(value);
+ };
+ 
+-export const getLocalStorageItem = <T, E>(key: string, schema: Schema.Codec<T, E>): T | null => {
++const NO_LEGACY_KEYS: readonly string[] = [];
++
++export const getLocalStorageItem = <T, E>(
++  key: string,
++  schema: Schema.Codec<T, E>,
++  legacyKeys: readonly string[] = NO_LEGACY_KEYS,
++): T | null => {
+   const item = isomorphicLocalStorage.getItem(key);
+-  return item ? decode(schema, item) : null;
++  if (item) {
++    return decode(schema, item);
++  }
++
++  for (const legacyKey of legacyKeys) {
++    const legacyItem = isomorphicLocalStorage.getItem(legacyKey);
++    if (!legacyItem) {
++      continue;
++    }
++    const decoded = decode(schema, legacyItem);
++    isomorphicLocalStorage.setItem(key, legacyItem);
++    return decoded;
++  }
++
++  return null;
+ };
+ 
+ export const setLocalStorageItem = <T, E>(key: string, value: T, schema: Schema.Codec<T, E>) => {
+@@ -43,7 +63,7 @@ export const removeLocalStorageItem = (key: string) => {
    isomorphicLocalStorage.removeItem(key);
  };
  
@@ -1840,19 +2089,91 @@ index 93d26f66..94b2fce8 100644
  
  interface LocalStorageChangeDetail {
    key: string;
+@@ -62,11 +82,12 @@ export function useLocalStorage<T, E>(
+   key: string,
+   initialValue: T,
+   schema: Schema.Codec<T, E>,
++  legacyKeys: readonly string[] = NO_LEGACY_KEYS,
+ ): [T, (value: T | ((val: T) => T)) => void] {
+   // Get the initial value from localStorage or use the provided initialValue
+   const [storedValue, setStoredValue] = useState<T>(() => {
+     try {
+-      const item = getLocalStorageItem(key, schema);
++      const item = getLocalStorageItem(key, schema, legacyKeys);
+       return item ?? initialValue;
+     } catch (error) {
+       console.error("[LOCALSTORAGE] Error:", error);
+@@ -103,19 +124,19 @@ export function useLocalStorage<T, E>(
+     if (prevKeyRef.current !== key) {
+       prevKeyRef.current = key;
+       try {
+-        const newValue = getLocalStorageItem(key, schema);
++        const newValue = getLocalStorageItem(key, schema, legacyKeys);
+         setStoredValue(newValue ?? initialValue);
+       } catch (error) {
+         console.error("[LOCALSTORAGE] Error:", error);
+       }
+     }
+-  }, [key, initialValue, schema]);
++  }, [key, initialValue, legacyKeys, schema]);
+ 
+   // Listen for storage events from other tabs AND custom events from the same tab
+   useEffect(() => {
+     const syncFromStorage = () => {
+       try {
+-        const newValue = getLocalStorageItem(key, schema);
++        const newValue = getLocalStorageItem(key, schema, legacyKeys);
+         setStoredValue(newValue ?? initialValue);
+       } catch (error) {
+         console.error("[LOCALSTORAGE] Error:", error);
+@@ -141,7 +162,7 @@ export function useLocalStorage<T, E>(
+       window.removeEventListener("storage", handleStorageChange);
+       window.removeEventListener(LOCAL_STORAGE_CHANGE_EVENT, handleLocalChange as EventListener);
+     };
+-  }, [key, initialValue, schema]);
++  }, [key, initialValue, legacyKeys, schema]);
+ 
+   return [storedValue, setValue];
+ }
 diff --git a/apps/web/src/hooks/useTheme.ts b/apps/web/src/hooks/useTheme.ts
-index 78d063a9..fe5ff6d4 100644
+index 78d063a9..ae503888 100644
 --- a/apps/web/src/hooks/useTheme.ts
 +++ b/apps/web/src/hooks/useTheme.ts
-@@ -6,7 +6,7 @@ type ThemeSnapshot = {
+@@ -6,7 +6,8 @@ type ThemeSnapshot = {
    systemDark: boolean;
  };
  
 -const STORAGE_KEY = "t3code:theme";
 +const STORAGE_KEY = "mode:theme";
++const LEGACY_STORAGE_KEYS = ["t3code:theme"] as const;
  const MEDIA_QUERY = "(prefers-color-scheme: dark)";
  const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
    theme: "system",
+@@ -31,10 +32,23 @@ function getSystemDark() {
+   return typeof window !== "undefined" && window.matchMedia(MEDIA_QUERY).matches;
+ }
+ 
++function isTheme(value: string | null): value is Theme {
++  return value === "light" || value === "dark" || value === "system";
++}
++
+ function getStored(): Theme {
+   if (!hasThemeStorage()) return DEFAULT_THEME_SNAPSHOT.theme;
+   const raw = localStorage.getItem(STORAGE_KEY);
+-  if (raw === "light" || raw === "dark" || raw === "system") return raw;
++  if (isTheme(raw)) return raw;
++  if (raw !== null) return DEFAULT_THEME_SNAPSHOT.theme;
++  for (const legacyKey of LEGACY_STORAGE_KEYS) {
++    const legacyRaw = localStorage.getItem(legacyKey);
++    if (!isTheme(legacyRaw)) {
++      continue;
++    }
++    localStorage.setItem(STORAGE_KEY, legacyRaw);
++    return legacyRaw;
++  }
+   return DEFAULT_THEME_SNAPSHOT.theme;
+ }
+ 
 diff --git a/apps/web/src/hostedPairing.test.ts b/apps/web/src/hostedPairing.test.ts
 index 5bfeadf2..16ca5d08 100644
 --- a/apps/web/src/hostedPairing.test.ts
@@ -1879,6 +2200,45 @@ index 2caf844a..459b170f 100644
    url.searchParams.set("channel", input.channel);
    return url.toString();
  }
+diff --git a/apps/web/src/lib/storage.ts b/apps/web/src/lib/storage.ts
+index a37c6706..21ce66a1 100644
+--- a/apps/web/src/lib/storage.ts
++++ b/apps/web/src/lib/storage.ts
+@@ -39,6 +39,34 @@ export function resolveStorage(storage: Partial<StateStorage> | null | undefined
+   return isStateStorage(storage) ? storage : createMemoryStorage();
+ }
+ 
++export function createMigratingStorage(
++  baseStorage: Partial<StateStorage> | null | undefined,
++  legacyKeysByName: Readonly<Record<string, readonly string[]>>,
++): StateStorage {
++  const resolvedStorage = resolveStorage(baseStorage);
++  return {
++    getItem: (name) => {
++      const value = resolvedStorage.getItem(name);
++      if (value !== null) {
++        return value;
++      }
++
++      for (const legacyName of legacyKeysByName[name] ?? []) {
++        const legacyValue = resolvedStorage.getItem(legacyName);
++        if (typeof legacyValue !== "string") {
++          continue;
++        }
++        resolvedStorage.setItem(name, legacyValue);
++        return legacyValue;
++      }
++
++      return null;
++    },
++    setItem: (name, value) => resolvedStorage.setItem(name, value),
++    removeItem: (name) => resolvedStorage.removeItem(name),
++  };
++}
++
+ export function createDebouncedStorage(
+   baseStorage: Partial<StateStorage> | null | undefined,
+   debounceMs: number = 300,
 diff --git a/apps/web/src/projectScripts.test.ts b/apps/web/src/projectScripts.test.ts
 index 3597b714..b1ab949d 100644
 --- a/apps/web/src/projectScripts.test.ts
@@ -1913,70 +2273,151 @@ index 3597b714..b1ab949d 100644
  
    it("prefers the worktree path for script cwd resolution", () => {
 diff --git a/apps/web/src/providerUpdateDismissal.ts b/apps/web/src/providerUpdateDismissal.ts
-index 7cce819c..edbc500d 100644
+index 7cce819c..b7b2b087 100644
 --- a/apps/web/src/providerUpdateDismissal.ts
 +++ b/apps/web/src/providerUpdateDismissal.ts
-@@ -3,7 +3,7 @@ import * as Schema from "effect/Schema";
+@@ -3,7 +3,10 @@ import * as Schema from "effect/Schema";
  
  import { getLocalStorageItem, setLocalStorageItem, useLocalStorage } from "./hooks/useLocalStorage";
  
 -export const PROVIDER_UPDATE_DISMISSALS_STORAGE_KEY = "t3code:provider-update-dismissals:v1";
 +export const PROVIDER_UPDATE_DISMISSALS_STORAGE_KEY = "mode:provider-update-dismissals:v1";
++const LEGACY_PROVIDER_UPDATE_DISMISSALS_STORAGE_KEYS = [
++  "t3code:provider-update-dismissals:v1",
++] as const;
  
  const ProviderUpdateDismissalsSchema = Schema.Struct({
    keys: Schema.Array(Schema.String),
+@@ -17,6 +20,7 @@ function readProviderUpdateDismissals(): ProviderUpdateDismissals {
+       getLocalStorageItem(
+         PROVIDER_UPDATE_DISMISSALS_STORAGE_KEY,
+         ProviderUpdateDismissalsSchema,
++        LEGACY_PROVIDER_UPDATE_DISMISSALS_STORAGE_KEYS,
+       ) ?? {
+         keys: [],
+       }
+@@ -66,6 +70,7 @@ export function useDismissedProviderUpdateNotificationKeys() {
+     PROVIDER_UPDATE_DISMISSALS_STORAGE_KEY,
+     { keys: [] },
+     ProviderUpdateDismissalsSchema,
++    LEGACY_PROVIDER_UPDATE_DISMISSALS_STORAGE_KEYS,
+   );
+   const dismissedKeys = dismissals.keys;
+ 
 diff --git a/apps/web/src/terminalUiStateStore.ts b/apps/web/src/terminalUiStateStore.ts
-index 6c10ae44..b1f69146 100644
+index 6c10ae44..5d2eef30 100644
 --- a/apps/web/src/terminalUiStateStore.ts
 +++ b/apps/web/src/terminalUiStateStore.ts
-@@ -27,7 +27,7 @@ interface ThreadTerminalUiState {
+@@ -9,7 +9,7 @@ import { parseScopedThreadKey, scopedThreadKey } from "@t3tools/client-runtime";
+ import { type ScopedThreadRef } from "@t3tools/contracts";
+ import { create } from "zustand";
+ import { createJSONStorage, persist } from "zustand/middleware";
+-import { resolveStorage } from "./lib/storage";
++import { createMigratingStorage, resolveStorage } from "./lib/storage";
+ import {
+   DEFAULT_THREAD_TERMINAL_HEIGHT,
+   DEFAULT_THREAD_TERMINAL_ID,
+@@ -26,8 +26,8 @@ interface ThreadTerminalUiState {
+   activeTerminalGroupId: string;
  }
  
- // Keep the old storage key so existing drawer layout preferences migrate.
+-// Keep the old storage key so existing drawer layout preferences migrate.
 -const TERMINAL_UI_STATE_STORAGE_KEY = "t3code:terminal-state:v1";
 +const TERMINAL_UI_STATE_STORAGE_KEY = "mode:terminal-state:v1";
++const LEGACY_TERMINAL_UI_STATE_STORAGE_KEYS = ["t3code:terminal-state:v1"] as const;
  
  interface PersistedTerminalUiStateStoreState {
    terminalUiStateByThreadKey?: Record<string, ThreadTerminalUiState>;
+@@ -55,7 +55,12 @@ export function migratePersistedTerminalUiStateStoreState(
+ }
+ 
+ function createTerminalUiStateStorage() {
+-  return resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined);
++  return createMigratingStorage(
++    resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
++    {
++      [TERMINAL_UI_STATE_STORAGE_KEY]: LEGACY_TERMINAL_UI_STATE_STORAGE_KEYS,
++    },
++  );
+ }
+ 
+ function normalizeTerminalIds(terminalIds: string[]): string[] {
 diff --git a/apps/web/src/uiStateStore.ts b/apps/web/src/uiStateStore.ts
-index f16495be..b5e5bcba 100644
+index f16495be..e7e608ba 100644
 --- a/apps/web/src/uiStateStore.ts
 +++ b/apps/web/src/uiStateStore.ts
-@@ -1,14 +1,14 @@
+@@ -1,8 +1,15 @@
  import { Debouncer } from "@tanstack/react-pacer";
  import { create } from "zustand";
  
 -export const PERSISTED_STATE_KEY = "t3code:ui-state:v1";
+-const LEGACY_PERSISTED_STATE_KEYS = [
 +export const PERSISTED_STATE_KEY = "mode:ui-state:v1";
- const LEGACY_PERSISTED_STATE_KEYS = [
--  "t3code:renderer-state:v8",
--  "t3code:renderer-state:v7",
--  "t3code:renderer-state:v6",
--  "t3code:renderer-state:v5",
--  "t3code:renderer-state:v4",
--  "t3code:renderer-state:v3",
++const LEGACY_PERSISTED_STATE_KEY = "t3code:ui-state:v1";
++const LEGACY_RENDERER_STATE_KEYS = [
 +  "mode:renderer-state:v8",
 +  "mode:renderer-state:v7",
 +  "mode:renderer-state:v6",
 +  "mode:renderer-state:v5",
 +  "mode:renderer-state:v4",
 +  "mode:renderer-state:v3",
-   "codething:renderer-state:v4",
-   "codething:renderer-state:v3",
-   "codething:renderer-state:v2",
+   "t3code:renderer-state:v8",
+   "t3code:renderer-state:v7",
+   "t3code:renderer-state:v6",
+@@ -79,9 +86,17 @@ function readPersistedState(): UiState {
+     return initialState;
+   }
+   try {
+-    const raw = window.localStorage.getItem(PERSISTED_STATE_KEY);
++    const raw =
++      window.localStorage.getItem(PERSISTED_STATE_KEY) ??
++      (() => {
++        const legacyRaw = window.localStorage.getItem(LEGACY_PERSISTED_STATE_KEY);
++        if (legacyRaw) {
++          window.localStorage.setItem(PERSISTED_STATE_KEY, legacyRaw);
++        }
++        return legacyRaw;
++      })();
+     if (!raw) {
+-      for (const legacyKey of LEGACY_PERSISTED_STATE_KEYS) {
++      for (const legacyKey of LEGACY_RENDERER_STATE_KEYS) {
+         const legacyRaw = window.localStorage.getItem(legacyKey);
+         if (!legacyRaw) {
+           continue;
+@@ -199,7 +214,8 @@ export function persistState(state: UiState): void {
+     );
+     if (!legacyKeysCleanedUp) {
+       legacyKeysCleanedUp = true;
+-      for (const legacyKey of LEGACY_PERSISTED_STATE_KEYS) {
++      window.localStorage.removeItem(LEGACY_PERSISTED_STATE_KEY);
++      for (const legacyKey of LEGACY_RENDERER_STATE_KEYS) {
+         window.localStorage.removeItem(legacyKey);
+       }
+     }
 diff --git a/apps/web/src/versionSkew.ts b/apps/web/src/versionSkew.ts
-index cb0116c8..d9c02ecb 100644
+index cb0116c8..a302f858 100644
 --- a/apps/web/src/versionSkew.ts
 +++ b/apps/web/src/versionSkew.ts
-@@ -10,7 +10,7 @@ export interface VersionMismatch {
+@@ -10,7 +10,10 @@ export interface VersionMismatch {
    readonly hint: string;
  }
  
 -export const VERSION_MISMATCH_DISMISSALS_STORAGE_KEY = "t3code:version-mismatch-dismissals:v1";
 +export const VERSION_MISMATCH_DISMISSALS_STORAGE_KEY = "mode:version-mismatch-dismissals:v1";
++const LEGACY_VERSION_MISMATCH_DISMISSALS_STORAGE_KEYS = [
++  "t3code:version-mismatch-dismissals:v1",
++] as const;
  
  const VersionMismatchDismissalsSchema = Schema.Struct({
    keys: Schema.Array(Schema.String),
+@@ -62,6 +65,7 @@ function readVersionMismatchDismissals(): VersionMismatchDismissals {
+       getLocalStorageItem(
+         VERSION_MISMATCH_DISMISSALS_STORAGE_KEY,
+         VersionMismatchDismissalsSchema,
++        LEGACY_VERSION_MISMATCH_DISMISSALS_STORAGE_KEYS,
+       ) ?? { keys: [] }
+     );
+   } catch {
 diff --git a/apps/web/src/worktreeCleanup.test.ts b/apps/web/src/worktreeCleanup.test.ts
 index 0354a966..70b3895d 100644
 --- a/apps/web/src/worktreeCleanup.test.ts
@@ -2044,11 +2485,11 @@ index cc15820e..d0dcb60c 100644
  const buildSourcemap: boolean | "hidden" =
    sourcemapEnv === "0" || sourcemapEnv === "false"
 diff --git a/docs/getting-started/quick-start.md b/docs/getting-started/quick-start.md
-index 2206d53e..c6e768e2 100644
+index e6a8d7dc..5138bd43 100644
 --- a/docs/getting-started/quick-start.md
 +++ b/docs/getting-started/quick-start.md
-@@ -8,7 +8,7 @@ bun run dev
- bun run dev:desktop
+@@ -11,7 +11,7 @@ bun run dev:web
+ bun run dev:server
  
  # Desktop development on an isolated port set
 -T3CODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
@@ -2292,19 +2733,19 @@ index 8f149446..e88d7c93 100644
  - Required release assets for updater:
    - platform installers (`.exe`, `.dmg`, `.AppImage`, plus macOS `.zip` for Squirrel.Mac update payloads)
 diff --git a/docs/reference/scripts.md b/docs/reference/scripts.md
-index b3fcd4b3..f3304b89 100644
+index 25f51a04..2c43c11a 100644
 --- a/docs/reference/scripts.md
 +++ b/docs/reference/scripts.md
-@@ -3,7 +3,7 @@
- - `bun run dev` — Starts contracts, server, and web in `turbo watch` mode.
+@@ -4,7 +4,7 @@
  - `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
  - `bun run dev:web` — Starts just the Vite dev server for the web app.
+ - `bun run dev:desktop` — Starts desktop and web development mode together.
 -- Dev commands default `T3CODE_STATE_DIR` to `~/.t3/dev` to keep dev state isolated from desktop/prod state.
 +- Dev commands default `MODE_STATE_DIR` to `~/.mode/dev` to keep dev state isolated from desktop/prod state.
  - Override server CLI-equivalent flags from root dev commands with `--`, for example:
    `bun run dev -- --base-dir ~/.t3-2`
  - `bun run start` — Runs the production server (serves built web app as static files).
-@@ -33,10 +33,10 @@
+@@ -34,10 +34,10 @@
  
  ## Running multiple dev instances
  
@@ -2634,9 +3075,18 @@ index 8dc23484..8754b719 100644
              }),
            ),
 diff --git a/scripts/build-desktop-artifact.ts b/scripts/build-desktop-artifact.ts
-index 4d63a11d..336a4b75 100644
+index 4d63a11d..6f1e94ac 100644
 --- a/scripts/build-desktop-artifact.ts
 +++ b/scripts/build-desktop-artifact.ts
+@@ -255,7 +255,7 @@ interface StagePackageJson {
+   readonly name: string;
+   readonly version: string;
+   readonly buildVersion: string;
+-  readonly t3codeCommitHash: string;
++  readonly modeCommitHash: string;
+   readonly private: true;
+   readonly packageManager: string;
+   readonly description: string;
 @@ -307,17 +307,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
  });
  
@@ -2675,15 +3125,6 @@ index 4d63a11d..336a4b75 100644
      process.env.GITHUB_REPOSITORY?.trim() ||
      "";
    if (!rawRepo) return undefined;
-@@ -688,7 +688,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
-   mockUpdateServerPort: number | undefined,
- ) {
-   const buildConfig: Record<string, unknown> = {
--    appId: "com.t3tools.t3code",
-+    appId: "com.t3tools.mode",
-     productName: resolveDesktopProductName(version),
-     artifactName: "T3-Code-${version}-${arch}.${ext}",
-     directories: {
 @@ -716,7 +716,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
        protocols: [
          {
@@ -2708,7 +3149,7 @@ index 4d63a11d..336a4b75 100644
          },
        },
      };
-@@ -900,7 +900,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+@@ -900,10 +900,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
    };
    const stagePnpmConfig = createStagePnpmConfig(workspacePatchedDependencies, stageDependencies);
    const stagePackageJson: StagePackageJson = {
@@ -2716,7 +3157,11 @@ index 4d63a11d..336a4b75 100644
 +    name: "mode",
      version: appVersion,
      buildVersion: appVersion,
-     t3codeCommitHash: commitHash,
+-    t3codeCommitHash: commitHash,
++    modeCommitHash: commitHash,
+     private: true,
+     packageManager: rootPackageJson.packageManager,
+     description: "T3 Code desktop build",
 @@ -1025,54 +1025,54 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
  
  const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {

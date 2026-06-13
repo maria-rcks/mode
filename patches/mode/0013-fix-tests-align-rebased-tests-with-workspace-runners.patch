@@ -1,4 +1,4 @@
-From 96864da3d4cf9cf192ff134f6cc4ec97ecb914c4 Mon Sep 17 00:00:00 2001
+From 99b64e937a1b7eef2586ea014ec9c0df47d9db41 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sat, 13 Jun 2026 18:46:19 -0400
 Subject: [PATCH 13/13] fix(tests): align rebased tests with workspace runners

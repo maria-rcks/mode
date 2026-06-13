@@ -1,4 +1,4 @@
-From be38908d70c0f6fd116ed64a0e11cabfbfeb4bbd Mon Sep 17 00:00:00 2001
+From 4ff07bff9691db813051c086d2cc3950ceab137f Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 01:07:51 +0000
 Subject: [PATCH 09/13] fix(droid): keep core grouped label

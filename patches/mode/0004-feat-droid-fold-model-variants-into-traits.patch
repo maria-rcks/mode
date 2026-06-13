@@ -1,4 +1,4 @@
-From c6259da34e4f3c5ada2a11180138e5de5abb2bba Mon Sep 17 00:00:00 2001
+From b74c185dfa910e282edcfa1f49e613511117dfc6 Mon Sep 17 00:00:00 2001
 From: maria <maria@kuuro.net>
 Date: Sun, 7 Jun 2026 01:38:23 +0000
 Subject: [PATCH 04/13] feat(droid): fold model variants into traits

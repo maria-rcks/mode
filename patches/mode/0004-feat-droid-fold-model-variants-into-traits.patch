@@ -1,7 +1,7 @@
-From 9c21aed7f4e8fea770c12329ab12fd4660469e28 Mon Sep 17 00:00:00 2001
+From b74c185dfa910e282edcfa1f49e613511117dfc6 Mon Sep 17 00:00:00 2001
 From: maria <maria@kuuro.net>
 Date: Sun, 7 Jun 2026 01:38:23 +0000
-Subject: [PATCH 04/10] feat(droid): fold model variants into traits
+Subject: [PATCH 04/13] feat(droid): fold model variants into traits
 
 Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 ---
@@ -493,5 +493,5 @@ index 00000000..e2fb1f63
 @@ -0,0 +1 @@
 +export const DROID_MODEL_VARIANT_OPTION_ID = "modelVariant";
 -- 
-2.34.1
+2.50.1 (Apple Git-155)
 

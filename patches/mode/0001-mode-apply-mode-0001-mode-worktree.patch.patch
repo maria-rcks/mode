@@ -1,17 +1,56 @@
-From 210a7813ae0ee176302decdc0a39204681277f27 Mon Sep 17 00:00:00 2001
+From c2e2433c9474cca942e98159c93d9cff2c5cf76e Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 01/10] mode: apply mode/0001-mode-worktree.patch
+Subject: [PATCH 01/13] mode: apply mode/0001-mode-worktree.patch
 
 ---
- package.json | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ docs/getting-started/quick-start.md | 9 ++++++---
+ docs/reference/scripts.md           | 3 ++-
+ package.json                        | 2 +-
+ 3 files changed, 9 insertions(+), 5 deletions(-)
 
+diff --git a/docs/getting-started/quick-start.md b/docs/getting-started/quick-start.md
+index 2206d53e..e6a8d7dc 100644
+--- a/docs/getting-started/quick-start.md
++++ b/docs/getting-started/quick-start.md
+@@ -1,11 +1,14 @@
+ # Quick start
+ 
+ ```bash
+-# Development (with hot reload)
++# Desktop development (with hot reload)
+ bun run dev
+ 
+-# Desktop development
+-bun run dev:desktop
++# Web-only development
++bun run dev:web
++
++# Server-only development
++bun run dev:server
+ 
+ # Desktop development on an isolated port set
+ T3CODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
+diff --git a/docs/reference/scripts.md b/docs/reference/scripts.md
+index b3fcd4b3..25f51a04 100644
+--- a/docs/reference/scripts.md
++++ b/docs/reference/scripts.md
+@@ -1,8 +1,9 @@
+ # Scripts
+ 
+-- `bun run dev` — Starts contracts, server, and web in `turbo watch` mode.
++- `bun run dev` — Starts desktop development mode (same target as `bun run dev:desktop`).
+ - `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
+ - `bun run dev:web` — Starts just the Vite dev server for the web app.
++- `bun run dev:desktop` — Starts desktop and web development mode together.
+ - Dev commands default `T3CODE_STATE_DIR` to `~/.t3/dev` to keep dev state isolated from desktop/prod state.
+ - Override server CLI-equivalent flags from root dev commands with `--`, for example:
+   `bun run dev -- --base-dir ~/.t3-2`
 diff --git a/package.json b/package.json
-index 8bd251ce..099e5cc9 100644
+index ec11096b..c18fdabd 100644
 --- a/package.json
 +++ b/package.json
-@@ -30,7 +30,7 @@
+@@ -4,7 +4,7 @@
    "type": "module",
    "scripts": {
      "prepare": "effect-tsgo patch",
@@ -19,7 +58,7 @@ index 8bd251ce..099e5cc9 100644
 +    "dev": "node scripts/dev-runner.ts dev:desktop",
      "dev:server": "node scripts/dev-runner.ts dev:server",
      "dev:web": "node scripts/dev-runner.ts dev:web",
-     "dev:marketing": "turbo run dev --filter=@t3tools/marketing",
+     "dev:marketing": "vp run --filter @t3tools/marketing dev",
 -- 
-2.34.1
+2.50.1 (Apple Git-155)
 

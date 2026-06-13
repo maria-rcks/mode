@@ -10,10 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.24.0
       - run: bun install
       - run: bun mode setup
       - run: bun mode apply
-      - run: bun install .
+      - run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: .mode/t3code
       - run: bun mode check
-

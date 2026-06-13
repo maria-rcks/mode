@@ -1,0 +1,40 @@
+From 99b64e937a1b7eef2586ea014ec9c0df47d9db41 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Sat, 13 Jun 2026 18:46:19 -0400
+Subject: [PATCH 13/13] fix(tests): align rebased tests with workspace runners
+
+---
+ apps/server/src/provider/Layers/DroidProvider.test.ts        | 3 +--
+ apps/web/src/components/chat/runtimeModePresentation.test.ts | 2 +-
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
+index c4484b65..6c9699ba 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.test.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
+@@ -1,10 +1,9 @@
+ import { ModelProvider, ReasoningEffort, type AvailableModelConfig } from "@factory/droid-sdk";
+-import { it } from "@effect/vitest";
++import { describe, expect, it } from "@effect/vitest";
+ import { DroidSettings } from "@t3tools/contracts";
+ import * as Cause from "effect/Cause";
+ import * as Effect from "effect/Effect";
+ import * as Schema from "effect/Schema";
+-import { describe, expect } from "vitest";
+ 
+ import {
+   buildDroidModelsFromSdkModels,
+diff --git a/apps/web/src/components/chat/runtimeModePresentation.test.ts b/apps/web/src/components/chat/runtimeModePresentation.test.ts
+index e3a613f6..d972905d 100644
+--- a/apps/web/src/components/chat/runtimeModePresentation.test.ts
++++ b/apps/web/src/components/chat/runtimeModePresentation.test.ts
+@@ -1,5 +1,5 @@
+ import { ProviderDriverKind } from "@t3tools/contracts";
+-import { describe, expect, it } from "vitest";
++import { describe, expect, it } from "vite-plus/test";
+ 
+ import { getRuntimeModeOptions, normalizeRuntimeModeForProvider } from "./runtimeModePresentation";
+ 
+-- 
+2.50.1 (Apple Git-155)
+

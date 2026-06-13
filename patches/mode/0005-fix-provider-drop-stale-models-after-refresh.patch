@@ -1,7 +1,7 @@
-From e9a45ef6bfb82474c8e7406261975e5db2d6c400 Mon Sep 17 00:00:00 2001
+From 2fbf23b3c42f7b8011583dd4fbb6820ac74da480 Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Sun, 7 Jun 2026 02:04:53 +0000
-Subject: [PATCH 05/10] fix(provider): drop stale models after refresh
+Subject: [PATCH 05/13] fix(provider): drop stale models after refresh
 
 ---
  .../provider/Layers/ProviderRegistry.test.ts  | 45 +++++++++++++++++++
@@ -9,12 +9,12 @@ Subject: [PATCH 05/10] fix(provider): drop stale models after refresh
  2 files changed, 46 insertions(+), 2 deletions(-)
 
 diff --git a/apps/server/src/provider/Layers/ProviderRegistry.test.ts b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
-index 1b9abd65..55f995b2 100644
+index f4ea1320..6aefc6f2 100644
 --- a/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 +++ b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
-@@ -594,6 +594,51 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest(), T
-         ]);
-       });
+@@ -665,6 +665,51 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest(), T
+         }),
+       );
  
 +      it("drops stale models when a successful refresh returns a non-empty replacement list", () => {
 +        const previousProvider = {
@@ -65,7 +65,7 @@ index 1b9abd65..55f995b2 100644
          const previousProviders = [
            {
 diff --git a/apps/server/src/provider/Layers/ProviderRegistry.ts b/apps/server/src/provider/Layers/ProviderRegistry.ts
-index 22a120f0..a356331f 100644
+index 2df63e53..fb24eeac 100644
 --- a/apps/server/src/provider/Layers/ProviderRegistry.ts
 +++ b/apps/server/src/provider/Layers/ProviderRegistry.ts
 @@ -97,8 +97,7 @@ const mergeProviderModels = (
@@ -79,5 +79,5 @@ index 22a120f0..a356331f 100644
  
  export const mergeProviderSnapshot = (
 -- 
-2.34.1
+2.50.1 (Apple Git-155)
 

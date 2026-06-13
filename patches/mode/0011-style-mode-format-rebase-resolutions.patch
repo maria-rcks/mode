@@ -1,0 +1,50 @@
+From c43ea8a3fb47f581e33a3f3046ae3191eb9425ac Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Sat, 13 Jun 2026 18:39:26 -0400
+Subject: [PATCH 11/13] style(mode): format rebase resolutions
+
+---
+ apps/desktop/src/app/DesktopCloudAuth.test.ts          |  5 +----
+ apps/web/src/components/settings/providerDriverMeta.ts | 10 +++++++++-
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/apps/desktop/src/app/DesktopCloudAuth.test.ts b/apps/desktop/src/app/DesktopCloudAuth.test.ts
+index 8be00b64..f5e6c267 100644
+--- a/apps/desktop/src/app/DesktopCloudAuth.test.ts
++++ b/apps/desktop/src/app/DesktopCloudAuth.test.ts
+@@ -130,10 +130,7 @@ const flushCloudAuthDispatch = Effect.promise(() => Promise.resolve());
+ 
+ describe("DesktopCloudAuth", () => {
+   it("uses separate callback schemes for packaged and development builds", () => {
+-    assert.equal(
+-      DesktopCloudAuth.resolveCloudAuthCallbackScheme({ isDevelopment: false }),
+-      "mode",
+-    );
++    assert.equal(DesktopCloudAuth.resolveCloudAuthCallbackScheme({ isDevelopment: false }), "mode");
+     assert.equal(
+       DesktopCloudAuth.resolveCloudAuthCallbackScheme({ isDevelopment: true }),
+       "mode-dev",
+diff --git a/apps/web/src/components/settings/providerDriverMeta.ts b/apps/web/src/components/settings/providerDriverMeta.ts
+index 96ad0558..a4c7f025 100644
+--- a/apps/web/src/components/settings/providerDriverMeta.ts
++++ b/apps/web/src/components/settings/providerDriverMeta.ts
+@@ -8,7 +8,15 @@ import {
+   ProviderDriverKind,
+ } from "@t3tools/contracts";
+ import type * as Schema from "effect/Schema";
+-import { ClaudeAI, CursorIcon, DroidIcon, GrokIcon, type Icon, OpenAI, OpenCodeIcon } from "../Icons";
++import {
++  ClaudeAI,
++  CursorIcon,
++  DroidIcon,
++  GrokIcon,
++  type Icon,
++  OpenAI,
++  OpenCodeIcon,
++} from "../Icons";
+ 
+ type ProviderSettingsSchema = {
+   readonly fields: Readonly<Record<string, Schema.Top>>;
+-- 
+2.50.1 (Apple Git-155)
+

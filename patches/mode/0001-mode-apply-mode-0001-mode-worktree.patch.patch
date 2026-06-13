@@ -1,17 +1,17 @@
-From 210a7813ae0ee176302decdc0a39204681277f27 Mon Sep 17 00:00:00 2001
+From a66855f980eda7e39aaf7d284851cefa73a87934 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 01/10] mode: apply mode/0001-mode-worktree.patch
+Subject: [PATCH 01/13] mode: apply mode/0001-mode-worktree.patch
 
 ---
  package.json | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/package.json b/package.json
-index 8bd251ce..099e5cc9 100644
+index ec11096b..c18fdabd 100644
 --- a/package.json
 +++ b/package.json
-@@ -30,7 +30,7 @@
+@@ -4,7 +4,7 @@
    "type": "module",
    "scripts": {
      "prepare": "effect-tsgo patch",
@@ -19,7 +19,7 @@ index 8bd251ce..099e5cc9 100644
 +    "dev": "node scripts/dev-runner.ts dev:desktop",
      "dev:server": "node scripts/dev-runner.ts dev:server",
      "dev:web": "node scripts/dev-runner.ts dev:web",
-     "dev:marketing": "turbo run dev --filter=@t3tools/marketing",
+     "dev:marketing": "vp run --filter @t3tools/marketing dev",
 -- 
-2.34.1
+2.50.1 (Apple Git-155)
 

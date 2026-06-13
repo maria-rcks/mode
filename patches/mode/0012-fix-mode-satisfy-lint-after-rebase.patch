@@ -1,0 +1,84 @@
+From 7d560248ca0c340270aee834d0f97578626d5f36 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Sat, 13 Jun 2026 18:41:34 -0400
+Subject: [PATCH 12/13] fix(mode): satisfy lint after rebase
+
+---
+ .../src/provider/Layers/DroidProvider.test.ts | 27 ++++++++++---------
+ apps/web/src/components/chat/ChatComposer.tsx | 12 +--------
+ 2 files changed, 16 insertions(+), 23 deletions(-)
+
+diff --git a/apps/server/src/provider/Layers/DroidProvider.test.ts b/apps/server/src/provider/Layers/DroidProvider.test.ts
+index dabb48a7..c4484b65 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.test.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.test.ts
+@@ -1,9 +1,10 @@
+ import { ModelProvider, ReasoningEffort, type AvailableModelConfig } from "@factory/droid-sdk";
++import { it } from "@effect/vitest";
+ import { DroidSettings } from "@t3tools/contracts";
+ import * as Cause from "effect/Cause";
+ import * as Effect from "effect/Effect";
+ import * as Schema from "effect/Schema";
+-import { describe, expect, it } from "vitest";
++import { describe, expect } from "vitest";
+ 
+ import {
+   buildDroidModelsFromSdkModels,
+@@ -16,18 +17,20 @@ const sdkModel = (model: AvailableModelConfig): AvailableModelConfig => model;
+ const decodeDroidSettings = Schema.decodeSync(DroidSettings);
+ 
+ describe("DroidProvider", () => {
+-  it("reports disabled pending provider status when Droid is disabled", async () => {
+-    const settings = decodeDroidSettings({
+-      enabled: false,
+-      binaryPath: "fake-droid",
+-    });
+-    const provider = await Effect.runPromise(makePendingDroidProvider(settings));
++  it.effect("reports disabled pending provider status when Droid is disabled", () =>
++    Effect.gen(function* () {
++      const settings = decodeDroidSettings({
++        enabled: false,
++        binaryPath: "fake-droid",
++      });
++      const provider = yield* makePendingDroidProvider(settings);
+ 
+-    expect(provider.enabled).toBe(false);
+-    expect(provider.status).toBe("disabled");
+-    expect(provider.installed).toBe(false);
+-    expect(provider.message).toBe("Droid is disabled in T3 Code settings.");
+-  });
++      expect(provider.enabled).toBe(false);
++      expect(provider.status).toBe("disabled");
++      expect(provider.installed).toBe(false);
++      expect(provider.message).toBe("Droid is disabled in T3 Code settings.");
++    }),
++  );
+ 
+   it("maps Droid SDK built-in and custom models into provider models", () => {
+     const models = buildDroidModelsFromSdkModels([
+diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
+index a311395a..b6a7c7fd 100644
+--- a/apps/web/src/components/chat/ChatComposer.tsx
++++ b/apps/web/src/components/chat/ChatComposer.tsx
+@@ -82,17 +82,7 @@ import { Button } from "../ui/button";
+ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
+ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+ import { toastManager } from "../ui/toast";
+-import {
+-  BotIcon,
+-  CircleAlertIcon,
+-  ListTodoIcon,
+-  PencilRulerIcon,
+-  type LucideIcon,
+-  LockIcon,
+-  LockOpenIcon,
+-  PenLineIcon,
+-  XIcon,
+-} from "lucide-react";
++import { BotIcon, CircleAlertIcon, ListTodoIcon, PencilRulerIcon, XIcon } from "lucide-react";
+ import { proposedPlanTitle } from "../../proposedPlan";
+ import { getProviderDisplayName, getProviderInteractionModeToggle } from "../../providerModels";
+ import {
+-- 
+2.50.1 (Apple Git-155)
+

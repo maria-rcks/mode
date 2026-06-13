@@ -1,22 +1,21 @@
-From 3e76a835cc8ad4c93e776d13058d925e27d0ada9 Mon Sep 17 00:00:00 2001
+From 2d69b7195f52ccc5d9530c098f56adf027b84279 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 03/10] mode: apply
+Subject: [PATCH 03/13] mode: apply
  mode/0003-feat-mode-use-Mode-runtime-namespace.patch
 
 ---
- .docs/quick-start.md                          |  2 +-
- .docs/scripts.md                              | 10 +--
  .github/workflows/release.yml                 | 12 +--
- KEYBINDINGS.md                                |  2 +-
- REMOTE.md                                     |  4 +-
- apps/desktop/scripts/dev-electron.mjs         |  4 +-
- apps/desktop/scripts/electron-launcher.mjs    |  2 +-
+ apps/desktop/scripts/dev-electron.mjs         | 10 +--
+ apps/desktop/scripts/electron-launcher.mjs    | 32 ++++----
  apps/desktop/src/app/DesktopApp.ts            |  2 +-
  .../src/app/DesktopAppIdentity.test.ts        |  2 +-
  apps/desktop/src/app/DesktopAppIdentity.ts    |  4 +-
- apps/desktop/src/app/DesktopConfig.ts         | 24 +++---
- .../src/app/DesktopEnvironment.test.ts        | 18 ++---
+ apps/desktop/src/app/DesktopCloudAuth.test.ts | 26 +++----
+ apps/desktop/src/app/DesktopCloudAuth.ts      | 12 +--
+ .../app/DesktopCloudAuthTokenStore.test.ts    |  2 +-
+ apps/desktop/src/app/DesktopConfig.ts         | 26 +++----
+ .../src/app/DesktopEnvironment.test.ts        | 22 +++---
  apps/desktop/src/app/DesktopEnvironment.ts    | 10 +--
  .../src/app/DesktopObservability.test.ts      |  2 +-
  .../DesktopBackendConfiguration.test.ts       | 14 ++--
@@ -75,68 +74,30 @@ Subject: [PATCH 03/10] mode: apply
  apps/web/src/worktreeCleanup.test.ts          |  4 +-
  apps/web/vercel.ts                            |  6 +-
  apps/web/vite.config.ts                       |  2 +-
- docs/observability.md                         | 62 +++++++--------
- docs/release.md                               | 18 ++---
- docs/source-control-providers.md              |  4 +-
+ docs/getting-started/quick-start.md           |  2 +-
+ docs/integrations/source-control-providers.md |  4 +-
+ docs/operations/observability.md              | 62 +++++++--------
+ docs/operations/release.md                    | 18 ++---
+ docs/reference/scripts.md                     | 10 +--
+ docs/user/keybindings.md                      |  2 +-
+ docs/user/remote-access.md                    |  4 +-
  packages/contracts/src/terminal.test.ts       | 12 +--
  packages/shared/src/projectScripts.ts         |  4 +-
  packages/shared/src/shell.test.ts             | 36 ++++-----
  packages/shared/src/shell.ts                  |  8 +-
  packages/ssh/src/tunnel.ts                    | 14 ++--
  scripts/build-desktop-artifact.test.ts        | 10 +--
- scripts/build-desktop-artifact.ts             | 54 ++++++-------
+ scripts/build-desktop-artifact.ts             | 56 ++++++-------
  scripts/dev-runner.test.ts                    | 54 ++++++-------
  scripts/dev-runner.ts                         | 78 +++++++++----------
  scripts/mock-update-server.ts                 |  4 +-
- turbo.json                                    | 38 ++++-----
- 84 files changed, 462 insertions(+), 468 deletions(-)
+ 86 files changed, 485 insertions(+), 491 deletions(-)
 
-diff --git a/.docs/quick-start.md b/.docs/quick-start.md
-index 2206d53e..c6e768e2 100644
---- a/.docs/quick-start.md
-+++ b/.docs/quick-start.md
-@@ -8,7 +8,7 @@ bun run dev
- bun run dev:desktop
- 
- # Desktop development on an isolated port set
--T3CODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
-+MODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
- 
- # Production
- bun run build
-diff --git a/.docs/scripts.md b/.docs/scripts.md
-index b3fcd4b3..f3304b89 100644
---- a/.docs/scripts.md
-+++ b/.docs/scripts.md
-@@ -3,7 +3,7 @@
- - `bun run dev` — Starts contracts, server, and web in `turbo watch` mode.
- - `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
- - `bun run dev:web` — Starts just the Vite dev server for the web app.
--- Dev commands default `T3CODE_STATE_DIR` to `~/.t3/dev` to keep dev state isolated from desktop/prod state.
-+- Dev commands default `MODE_STATE_DIR` to `~/.mode/dev` to keep dev state isolated from desktop/prod state.
- - Override server CLI-equivalent flags from root dev commands with `--`, for example:
-   `bun run dev -- --base-dir ~/.t3-2`
- - `bun run start` — Runs the production server (serves built web app as static files).
-@@ -33,10 +33,10 @@
- 
- ## Running multiple dev instances
- 
--Set `T3CODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
-+Set `MODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
- 
- - Default ports: server `3773`, web `5733`
--- Shifted ports: `base + offset` (offset is hashed from `T3CODE_DEV_INSTANCE`)
--- Example: `T3CODE_DEV_INSTANCE=branch-a bun run dev:desktop`
-+- Shifted ports: `base + offset` (offset is hashed from `MODE_DEV_INSTANCE`)
-+- Example: `MODE_DEV_INSTANCE=branch-a bun run dev:desktop`
- 
--If you want full control instead of hashing, set `T3CODE_PORT_OFFSET` to a numeric offset.
-+If you want full control instead of hashing, set `MODE_PORT_OFFSET` to a numeric offset.
 diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
-index 2a23e0d1..2f81de62 100644
+index e1fb9216..6b0c61aa 100644
 --- a/.github/workflows/release.yml
 +++ b/.github/workflows/release.yml
-@@ -594,9 +594,9 @@ jobs:
+@@ -650,9 +650,9 @@ jobs:
        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -149,7 +110,7 @@ index 2a23e0d1..2f81de62 100644
        VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
      steps:
        - name: Checkout
-@@ -633,9 +633,9 @@ jobs:
+@@ -686,9 +686,9 @@ jobs:
              exit 1
            fi
  
@@ -162,46 +123,31 @@ index 2a23e0d1..2f81de62 100644
            router_domain="${router_url#http://}"
            router_domain="${router_domain#https://}"
            router_domain="${router_domain%%/*}"
-diff --git a/KEYBINDINGS.md b/KEYBINDINGS.md
-index b57c1303..361488a4 100644
---- a/KEYBINDINGS.md
-+++ b/KEYBINDINGS.md
-@@ -2,7 +2,7 @@
- 
- T3 Code reads keybindings from:
- 
--- `~/.t3/keybindings.json`
-+- `~/.mode/keybindings.json`
- 
- The file must be a JSON array of rules:
- 
-diff --git a/REMOTE.md b/REMOTE.md
-index 56510e62..d7172833 100644
---- a/REMOTE.md
-+++ b/REMOTE.md
-@@ -117,7 +117,7 @@ SSH launch is a desktop feature because it needs local process and SSH access. O
- 
- #### SSH Launch Troubleshooting
- 
--The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.t3/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
-+The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.mode/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
- 
- The remote host must have a compatible Node.js runtime. T3 Code uses the server package's `engines.node` requirement:
- 
-@@ -150,7 +150,7 @@ nvm alias default 24
- 
- With mise/asdf/fnm/nodenv, make sure the tool's shim directory is installed and points at a Node version satisfying the range above.
- 
--If reconnecting after an app update fails, retry the SSH launch once. The launcher now compares its generated runner script, stops stale launcher-managed remote servers, clears the SSH launch PID/port state, and starts a fresh remote server. You should not normally need to delete `~/.t3/ssh-launch` or kill `t3` processes manually.
-+If reconnecting after an app update fails, retry the SSH launch once. The launcher now compares its generated runner script, stops stale launcher-managed remote servers, clears the SSH launch PID/port state, and starts a fresh remote server. You should not normally need to delete `~/.mode/ssh-launch` or kill `t3` processes manually.
- 
- ## How Pairing Works
- 
 diff --git a/apps/desktop/scripts/dev-electron.mjs b/apps/desktop/scripts/dev-electron.mjs
-index 9a7e68df..525b7a9f 100644
+index 2a2e5244..47525907 100644
 --- a/apps/desktop/scripts/dev-electron.mjs
 +++ b/apps/desktop/scripts/dev-electron.mjs
-@@ -59,7 +59,7 @@ function cleanupStaleDevApps() {
+@@ -28,7 +28,7 @@ const watchedDirectories = [
+ const forcedShutdownTimeoutMs = 1_500;
+ const restartDebounceMs = 120;
+ const childTreeGracePeriodMs = 1_200;
+-const remoteDebuggingPort = process.env.T3CODE_DESKTOP_REMOTE_DEBUGGING_PORT?.trim();
++const remoteDebuggingPort = process.env.MODE_DESKTOP_REMOTE_DEBUGGING_PORT?.trim();
+ 
+ await waitForResources({
+   baseDir: desktopDir,
+@@ -41,8 +41,8 @@ const childEnv = { ...process.env };
+ delete childEnv.ELECTRON_RUN_AS_NODE;
+ const devProtocolClient = resolveDevProtocolClient();
+ if (devProtocolClient) {
+-  childEnv.T3CODE_DESKTOP_APP_USER_MODEL_ID = devProtocolClient.appBundleId;
+-  childEnv.T3CODE_DESKTOP_PROTOCOL_REGISTRATION_MANAGED = "1";
++  childEnv.MODE_DESKTOP_APP_USER_MODEL_ID = devProtocolClient.appBundleId;
++  childEnv.MODE_DESKTOP_PROTOCOL_REGISTRATION_MANAGED = "1";
+ }
+ 
+ let shuttingDown = false;
+@@ -65,7 +65,7 @@ function cleanupStaleDevApps() {
      return;
    }
  
@@ -210,33 +156,86 @@ index 9a7e68df..525b7a9f 100644
  }
  
  function startApp() {
-@@ -69,7 +69,7 @@ function startApp() {
- 
-   const app = spawn(
-     resolveElectronPath(),
--    [`--t3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"],
-+    [`--mode-dev-root=${desktopDir}`, "dist-electron/main.cjs"],
-     {
-       cwd: desktopDir,
-       env: childEnv,
+@@ -78,7 +78,7 @@ function startApp() {
+     : [];
+   const launchArgs = devProtocolClient
+     ? electronArgs
+-    : [...electronArgs, `--t3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"];
++    : [...electronArgs, `--mode-dev-root=${desktopDir}`, "dist-electron/main.cjs"];
+   const app = spawn(resolveElectronPath(), launchArgs, {
+     cwd: desktopDir,
+     env: childEnv,
 diff --git a/apps/desktop/scripts/electron-launcher.mjs b/apps/desktop/scripts/electron-launcher.mjs
-index 1453cbe6..c3bcba00 100644
+index 8f20001b..0f30a8f1 100644
 --- a/apps/desktop/scripts/electron-launcher.mjs
 +++ b/apps/desktop/scripts/electron-launcher.mjs
-@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
+@@ -27,15 +27,15 @@ const devBundleIdSuffix = basename(repoRoot)
+   .replaceAll(/[^a-z0-9]+/g, "");
+ export const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+ export const APP_BUNDLE_ID = isDevelopment
+-  ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
+-  : "com.t3tools.t3code";
+-const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
++  ? `com.t3tools.mode.dev.${devBundleIdSuffix || "local"}`
++  : "com.t3tools.mode";
++const APP_PROTOCOL_SCHEMES = isDevelopment ? ["mode-dev"] : ["mode"];
+ const LAUNCHER_VERSION = 10;
+ const defaultIconPath = join(desktopDir, "resources", "icon.icns");
+ const developmentMacIconPngPath = join(repoRoot, "assets", "dev", "blueprint-macos-1024.png");
  
- const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
- const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
--const APP_BUNDLE_ID = isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code";
-+const APP_BUNDLE_ID = isDevelopment ? "com.t3tools.mode.dev" : "com.t3tools.mode";
- const LAUNCHER_VERSION = 2;
- 
- const __dirname = dirname(fileURLToPath(import.meta.url));
+ function resolveDevelopmentProtocolCallbackPort() {
+-  const configuredPort = Number.parseInt(process.env.T3CODE_PORT ?? "", 10);
++  const configuredPort = Number.parseInt(process.env.MODE_PORT ?? "", 10);
+   if (Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65535) {
+     return configuredPort + 1;
+   }
+@@ -100,14 +100,14 @@ function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
+   const protocolCallbackUrl = `http://127.0.0.1:${resolveDevelopmentProtocolCallbackPort()}/auth/callback`;
+   const envEntries = [
+     ["VITE_DEV_SERVER_URL", process.env.VITE_DEV_SERVER_URL],
+-    ["T3CODE_PORT", process.env.T3CODE_PORT],
+-    ["T3CODE_HOME", process.env.T3CODE_HOME],
+-    ["T3CODE_COMMIT_HASH", process.env.T3CODE_COMMIT_HASH],
+-    ["T3CODE_OTLP_TRACES_URL", process.env.T3CODE_OTLP_TRACES_URL],
+-    ["T3CODE_OTLP_EXPORT_INTERVAL_MS", process.env.T3CODE_OTLP_EXPORT_INTERVAL_MS],
+-    ["T3CODE_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
+-    ["T3CODE_DESKTOP_PROTOCOL_REGISTRATION_MANAGED", "1"],
+-    ["T3CODE_DESKTOP_PROTOCOL_CALLBACK_URL", protocolCallbackUrl],
++    ["MODE_PORT", process.env.MODE_PORT],
++    ["MODE_HOME", process.env.MODE_HOME],
++    ["MODE_COMMIT_HASH", process.env.MODE_COMMIT_HASH],
++    ["MODE_OTLP_TRACES_URL", process.env.MODE_OTLP_TRACES_URL],
++    ["MODE_OTLP_EXPORT_INTERVAL_MS", process.env.MODE_OTLP_EXPORT_INTERVAL_MS],
++    ["MODE_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
++    ["MODE_DESKTOP_PROTOCOL_REGISTRATION_MANAGED", "1"],
++    ["MODE_DESKTOP_PROTOCOL_CALLBACK_URL", protocolCallbackUrl],
+   ].filter((entry) => typeof entry[1] === "string" && entry[1].trim().length > 0);
+   writeFileSync(
+     targetBinaryPath,
+@@ -116,14 +116,14 @@ function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
+       ...envEntries.map(([name, value]) => `export ${name}=${shellSingleQuote(value)}`),
+       'for arg in "$@"; do',
+       '  case "$arg" in',
+-      "    t3code-dev://auth/callback*)",
+-      '      if [ -n "$T3CODE_DESKTOP_PROTOCOL_CALLBACK_URL" ]; then',
+-      '        /usr/bin/curl -fsS --max-time 2 -X POST --data-binary "$arg" "$T3CODE_DESKTOP_PROTOCOL_CALLBACK_URL" >/dev/null 2>&1 && exit 0',
++      "    mode-dev://auth/callback*)",
++      '      if [ -n "$MODE_DESKTOP_PROTOCOL_CALLBACK_URL" ]; then',
++      '        /usr/bin/curl -fsS --max-time 2 -X POST --data-binary "$arg" "$MODE_DESKTOP_PROTOCOL_CALLBACK_URL" >/dev/null 2>&1 && exit 0',
+       "      fi",
+       "      ;;",
+       "  esac",
+       "done",
+-      `exec ${shellSingleQuote(electronBinaryPath)} --t3code-dev-root=${shellSingleQuote(desktopDir)} ${shellSingleQuote(mainEntryPath)} "$@"`,
++      `exec ${shellSingleQuote(electronBinaryPath)} --mode-dev-root=${shellSingleQuote(desktopDir)} ${shellSingleQuote(mainEntryPath)} "$@"`,
+       "",
+     ].join("\n"),
+   );
 diff --git a/apps/desktop/src/app/DesktopApp.ts b/apps/desktop/src/app/DesktopApp.ts
-index 85b8aed4..3e9fd6b7 100644
+index 052a25e4..f44869b2 100644
 --- a/apps/desktop/src/app/DesktopApp.ts
 +++ b/apps/desktop/src/app/DesktopApp.ts
-@@ -47,7 +47,7 @@ class DesktopDevelopmentBackendPortRequiredError extends Data.TaggedError(
+@@ -48,7 +48,7 @@ class DesktopDevelopmentBackendPortRequiredError extends Data.TaggedError(
    "DesktopDevelopmentBackendPortRequiredError",
  )<{}> {
    override get message() {
@@ -246,10 +245,10 @@ index 85b8aed4..3e9fd6b7 100644
  }
  
 diff --git a/apps/desktop/src/app/DesktopAppIdentity.test.ts b/apps/desktop/src/app/DesktopAppIdentity.test.ts
-index f95fd1be..b0bda8f5 100644
+index eafdbf05..5d014f17 100644
 --- a/apps/desktop/src/app/DesktopAppIdentity.test.ts
 +++ b/apps/desktop/src/app/DesktopAppIdentity.test.ts
-@@ -166,7 +166,7 @@ describe("DesktopAppIdentity", () => {
+@@ -169,7 +169,7 @@ describe("DesktopAppIdentity", () => {
          calls,
          environment: {
            env: {
@@ -259,7 +258,7 @@ index f95fd1be..b0bda8f5 100644
          },
          pngIconPath: Option.some("/icon.png"),
 diff --git a/apps/desktop/src/app/DesktopAppIdentity.ts b/apps/desktop/src/app/DesktopAppIdentity.ts
-index 7a566194..78f79277 100644
+index 52f4b128..ee341950 100644
 --- a/apps/desktop/src/app/DesktopAppIdentity.ts
 +++ b/apps/desktop/src/app/DesktopAppIdentity.ts
 @@ -14,7 +14,7 @@ const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
@@ -278,19 +277,165 @@ index 7a566194..78f79277 100644
 -            Option.fromNullishOr(parsed.t3codeCommitHash).pipe(Option.flatMap(normalizeCommitHash)),
 +            Option.fromNullishOr(parsed.modeCommitHash).pipe(Option.flatMap(normalizeCommitHash)),
            ),
-           Effect.catch(() => Effect.succeed(Option.none<string>())),
+           Effect.orElseSucceed(() => Option.none<string>()),
          ),
+diff --git a/apps/desktop/src/app/DesktopCloudAuth.test.ts b/apps/desktop/src/app/DesktopCloudAuth.test.ts
+index 002fd86b..8be00b64 100644
+--- a/apps/desktop/src/app/DesktopCloudAuth.test.ts
++++ b/apps/desktop/src/app/DesktopCloudAuth.test.ts
+@@ -132,43 +132,43 @@ describe("DesktopCloudAuth", () => {
+   it("uses separate callback schemes for packaged and development builds", () => {
+     assert.equal(
+       DesktopCloudAuth.resolveCloudAuthCallbackScheme({ isDevelopment: false }),
+-      "t3code",
++      "mode",
+     );
+     assert.equal(
+       DesktopCloudAuth.resolveCloudAuthCallbackScheme({ isDevelopment: true }),
+-      "t3code-dev",
++      "mode-dev",
+     );
+   });
+ 
+   it("builds a native callback URL with request state", () => {
+     assert.equal(
+       DesktopCloudAuth.buildCloudAuthCallbackUrl({
+-        scheme: "t3code",
++        scheme: "mode",
+         state: "state-1",
+       }),
+-      "t3code://auth/callback?t3_state=state-1",
++      "mode://auth/callback?t3_state=state-1",
+     );
+   });
+ 
+   it("accepts only the expected scheme, host, path, and state", () => {
+     assert.isNotNull(
+       DesktopCloudAuth.parseCloudAuthCallbackUrl({
+-        rawUrl: "t3code://auth/callback?rotating_token_nonce=nonce&t3_state=state-1",
+-        scheme: "t3code",
++        rawUrl: "mode://auth/callback?rotating_token_nonce=nonce&t3_state=state-1",
++        scheme: "mode",
+         state: "state-1",
+       }),
+     );
+     assert.isNull(
+       DesktopCloudAuth.parseCloudAuthCallbackUrl({
+-        rawUrl: "t3code://auth/callback?rotating_token_nonce=nonce&t3_state=wrong",
+-        scheme: "t3code",
++        rawUrl: "mode://auth/callback?rotating_token_nonce=nonce&t3_state=wrong",
++        scheme: "mode",
+         state: "state-1",
+       }),
+     );
+     assert.isNull(
+       DesktopCloudAuth.parseCloudAuthCallbackUrl({
+         rawUrl: "https://example.com/callback?rotating_token_nonce=nonce&t3_state=state-1",
+-        scheme: "t3code",
++        scheme: "mode",
+         state: "state-1",
+       }),
+     );
+@@ -177,10 +177,10 @@ describe("DesktopCloudAuth", () => {
+   it("builds a native development callback URL with request state", () => {
+     assert.equal(
+       DesktopCloudAuth.buildCloudAuthCallbackUrl({
+-        scheme: "t3code-dev",
++        scheme: "mode-dev",
+         state: "state-1",
+       }),
+-      "t3code-dev://auth/callback?t3_state=state-1",
++      "mode-dev://auth/callback?t3_state=state-1",
+     );
+   });
+ 
+@@ -206,7 +206,7 @@ describe("DesktopCloudAuth", () => {
+       assert.isTrue(prevented);
+       assert.deepEqual(
+         harness.protocolRegistrations.map((registration) => registration.protocol),
+-        ["t3code-dev"],
++        ["mode-dev"],
+       );
+       assert.isString(harness.protocolRegistrations[0]?.path);
+       assert.isArray(harness.protocolRegistrations[0]?.args);
+@@ -258,7 +258,7 @@ describe("DesktopCloudAuth", () => {
+ 
+       assert.deepEqual(
+         harness.protocolRegistrations.map((registration) => registration.protocol),
+-        ["t3code"],
++        ["mode"],
+       );
+       assert.deepEqual(harness.sends, [
+         {
+diff --git a/apps/desktop/src/app/DesktopCloudAuth.ts b/apps/desktop/src/app/DesktopCloudAuth.ts
+index 732de27b..da7686b3 100644
+--- a/apps/desktop/src/app/DesktopCloudAuth.ts
++++ b/apps/desktop/src/app/DesktopCloudAuth.ts
+@@ -17,8 +17,8 @@ import type * as Electron from "electron";
+ export const CLOUD_AUTH_CALLBACK_HOST = "auth";
+ export const CLOUD_AUTH_CALLBACK_PATHNAME = "/callback";
+ export const CLOUD_AUTH_CALLBACK_STATE_PARAM = "t3_state";
+-export const CLOUD_AUTH_CALLBACK_SCHEME = "t3code";
+-export const DEVELOPMENT_CLOUD_AUTH_CALLBACK_SCHEME = "t3code-dev";
++export const CLOUD_AUTH_CALLBACK_SCHEME = "mode";
++export const DEVELOPMENT_CLOUD_AUTH_CALLBACK_SCHEME = "mode-dev";
+ 
+ const CLOUD_AUTH_REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+ 
+@@ -113,12 +113,12 @@ function resolveConfiguredProtocolClient(): {
+   readonly path: string;
+   readonly args: readonly string[];
+ } | null {
+-  const path = process.env.T3CODE_DESKTOP_PROTOCOL_CLIENT_PATH?.trim();
++  const path = process.env.MODE_DESKTOP_PROTOCOL_CLIENT_PATH?.trim();
+   if (!path) return null;
+ 
+   return {
+     path,
+-    args: (process.env.T3CODE_DESKTOP_PROTOCOL_CLIENT_ARGS ?? "")
++    args: (process.env.MODE_DESKTOP_PROTOCOL_CLIENT_ARGS ?? "")
+       .split("\n")
+       .map((arg) => arg.trim())
+       .filter((arg) => arg.length > 0),
+@@ -126,11 +126,11 @@ function resolveConfiguredProtocolClient(): {
+ }
+ 
+ function isProtocolRegistrationManagedExternally(): boolean {
+-  return process.env.T3CODE_DESKTOP_PROTOCOL_REGISTRATION_MANAGED?.trim() === "1";
++  return process.env.MODE_DESKTOP_PROTOCOL_REGISTRATION_MANAGED?.trim() === "1";
+ }
+ 
+ function resolveProtocolCallbackForwardUrl(): URL | null {
+-  const rawUrl = process.env.T3CODE_DESKTOP_PROTOCOL_CALLBACK_URL?.trim();
++  const rawUrl = process.env.MODE_DESKTOP_PROTOCOL_CALLBACK_URL?.trim();
+   if (!rawUrl) return null;
+ 
+   try {
+diff --git a/apps/desktop/src/app/DesktopCloudAuthTokenStore.test.ts b/apps/desktop/src/app/DesktopCloudAuthTokenStore.test.ts
+index 3257edca..ba61e604 100644
+--- a/apps/desktop/src/app/DesktopCloudAuthTokenStore.test.ts
++++ b/apps/desktop/src/app/DesktopCloudAuthTokenStore.test.ts
+@@ -44,7 +44,7 @@ function makeLayer(baseDir: string, input?: { readonly encryptionAvailable?: boo
+     runningUnderArm64Translation: false,
+   }).pipe(
+     Layer.provide(
+-      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ T3CODE_HOME: baseDir })),
++      Layer.mergeAll(NodeServices.layer, DesktopConfig.layerTest({ MODE_HOME: baseDir })),
+     ),
+   );
+ 
 diff --git a/apps/desktop/src/app/DesktopConfig.ts b/apps/desktop/src/app/DesktopConfig.ts
-index a9218314..2cf344d3 100644
+index 4bf6b513..7a843a27 100644
 --- a/apps/desktop/src/app/DesktopConfig.ts
 +++ b/apps/desktop/src/app/DesktopConfig.ts
-@@ -35,21 +35,19 @@ const compactEnv = (env: Readonly<Record<string, string | undefined>>): Record<s
+@@ -35,22 +35,20 @@ const compactEnv = (env: Readonly<Record<string, string | undefined>>): Record<s
  export const DesktopConfig = Config.all({
    appDataDirectory: trimmedString("APPDATA"),
    xdgConfigHome: trimmedString("XDG_CONFIG_HOME"),
 -  t3Home: trimmedString("T3CODE_HOME"),
 +  t3Home: trimmedString("MODE_HOME"),
    devServerUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option),
+-  appUserModelIdOverride: trimmedString("T3CODE_DESKTOP_APP_USER_MODEL_ID"),
 -  devRemoteT3ServerEntryPath: trimmedString("T3CODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH"),
 -  configuredBackendPort: Config.port("T3CODE_PORT").pipe(Config.option),
 -  commitHashOverride: trimmedString("T3CODE_COMMIT_HASH"),
@@ -300,6 +445,7 @@ index a9218314..2cf344d3 100644
 -  otlpExportIntervalMs: Config.int("T3CODE_OTLP_EXPORT_INTERVAL_MS").pipe(
 -    Config.withDefault(10_000),
 -  ),
++  appUserModelIdOverride: trimmedString("MODE_DESKTOP_APP_USER_MODEL_ID"),
 +  devRemoteT3ServerEntryPath: trimmedString("MODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH"),
 +  configuredBackendPort: Config.port("MODE_PORT").pipe(Config.option),
 +  commitHashOverride: trimmedString("MODE_COMMIT_HASH"),
@@ -318,7 +464,7 @@ index a9218314..2cf344d3 100644
    ),
  });
 diff --git a/apps/desktop/src/app/DesktopEnvironment.test.ts b/apps/desktop/src/app/DesktopEnvironment.test.ts
-index 11ea03f6..d57136cc 100644
+index ee732bf8..ceaa1342 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.test.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.test.ts
 @@ -40,13 +40,13 @@ describe("DesktopEnvironment", () => {
@@ -361,8 +507,23 @@ index 11ea03f6..d57136cc 100644
          },
        );
  
+@@ -98,12 +98,12 @@ describe("DesktopEnvironment", () => {
+       const environment = yield* makeEnvironment(
+         {},
+         {
+-          T3CODE_DESKTOP_APP_USER_MODEL_ID: " com.t3tools.t3code.dev.local ",
++          MODE_DESKTOP_APP_USER_MODEL_ID: " com.t3tools.mode.dev.local ",
+           VITE_DEV_SERVER_URL: "http://localhost:5173",
+         },
+       );
+ 
+-      assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev.local");
++      assert.equal(environment.appUserModelId, "com.t3tools.mode.dev.local");
+     }),
+   );
+ 
 diff --git a/apps/desktop/src/app/DesktopEnvironment.ts b/apps/desktop/src/app/DesktopEnvironment.ts
-index 2c5db8a1..a94f7306 100644
+index 431e0d34..cc7947d8 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.ts
 @@ -151,7 +151,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
@@ -383,14 +544,15 @@ index 2c5db8a1..a94f7306 100644
    const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
    const resourcesPath = input.resourcesPath;
  
-@@ -199,9 +199,9 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
-     otlpExportIntervalMs: config.otlpExportIntervalMs,
+@@ -200,10 +200,10 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
      branding,
      displayName,
--    appUserModelId: isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
+     appUserModelId: Option.getOrElse(config.appUserModelIdOverride, () =>
+-      isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
++      isDevelopment ? "com.t3tools.mode.dev" : "com.t3tools.mode",
+     ),
 -    linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code.desktop",
 -    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",
-+    appUserModelId: isDevelopment ? "com.t3tools.mode.dev" : "com.t3tools.mode",
 +    linuxDesktopEntryName: isDevelopment ? "mode-dev.desktop" : "mode.desktop",
 +    linuxWmClass: isDevelopment ? "mode-dev" : "mode",
      userDataDirName,
@@ -473,10 +635,10 @@ index 5e4e034b..a35fc8ee 100644
  
  const backendChildEnvPatch = (): Record<string, string | undefined> =>
 diff --git a/apps/desktop/src/backend/DesktopServerExposure.test.ts b/apps/desktop/src/backend/DesktopServerExposure.test.ts
-index 0f3e9eae..baaa3a3b 100644
+index e5fbb84c..62458d38 100644
 --- a/apps/desktop/src/backend/DesktopServerExposure.test.ts
 +++ b/apps/desktop/src/backend/DesktopServerExposure.test.ts
-@@ -77,7 +77,7 @@ function makeEnvironmentLayer(baseDir: string, env: Record<string, string | unde
+@@ -84,7 +84,7 @@ function makeEnvironmentLayer(baseDir: string, env: Record<string, string | unde
      runningUnderArm64Translation: false,
    }).pipe(
      Layer.provide(
@@ -485,16 +647,16 @@ index 0f3e9eae..baaa3a3b 100644
      ),
    );
  }
-@@ -87,7 +87,7 @@ function makeLayer(input: {
-   readonly networkInterfaces?: DesktopNetworkInterfaces;
+@@ -95,7 +95,7 @@ function makeLayer(input: {
    readonly env?: Record<string, string | undefined>;
+   readonly spawnerLayer?: Layer.Layer<ChildProcessSpawner.ChildProcessSpawner>;
  }) {
 -  const env = { T3CODE_HOME: input.baseDir, ...input.env };
 +  const env = { MODE_HOME: input.baseDir, ...input.env };
    const environmentLayer = makeEnvironmentLayer(input.baseDir, env);
    const networkLayer = Layer.succeed(DesktopServerExposure.DesktopNetworkInterfacesService, {
      read: Effect.succeed(input.networkInterfaces ?? emptyNetworkInterfaces),
-@@ -257,8 +257,8 @@ describe("DesktopServerExposure", () => {
+@@ -296,8 +296,8 @@ describe("DesktopServerExposure", () => {
          );
        }),
        {
@@ -505,7 +667,7 @@ index 0f3e9eae..baaa3a3b 100644
        },
      ),
    );
-@@ -357,7 +357,7 @@ describe("DesktopServerExposure", () => {
+@@ -396,7 +396,7 @@ describe("DesktopServerExposure", () => {
          ]);
        }),
        {
@@ -571,7 +733,7 @@ index 897e7336..c0914230 100644
  }
  
 diff --git a/apps/desktop/src/shell/DesktopShellEnvironment.ts b/apps/desktop/src/shell/DesktopShellEnvironment.ts
-index f57873d9..142337d8 100644
+index 13ac35b6..0af65de5 100644
 --- a/apps/desktop/src/shell/DesktopShellEnvironment.ts
 +++ b/apps/desktop/src/shell/DesktopShellEnvironment.ts
 @@ -125,8 +125,8 @@ const knownWindowsCliDirs = (env: NodeJS.ProcessEnv): ReadonlyArray<string> => [
@@ -616,7 +778,7 @@ index 34d18f11..91354ec7 100644
        }),
      ),
 diff --git a/apps/desktop/src/updates/DesktopUpdates.ts b/apps/desktop/src/updates/DesktopUpdates.ts
-index 056bca4a..193d262f 100644
+index e6c81d8d..4309a00a 100644
 --- a/apps/desktop/src/updates/DesktopUpdates.ts
 +++ b/apps/desktop/src/updates/DesktopUpdates.ts
 @@ -173,7 +173,7 @@ function getAutoUpdateDisabledReason(args: {
@@ -629,10 +791,10 @@ index 056bca4a..193d262f 100644
    if (args.platform === "linux" && !args.appImage) {
      return "Automatic updates on Linux require running the AppImage build.";
 diff --git a/apps/desktop/src/window/DesktopWindow.test.ts b/apps/desktop/src/window/DesktopWindow.test.ts
-index fbcc6093..6928f0ba 100644
+index 5e977de2..6ffa7b18 100644
 --- a/apps/desktop/src/window/DesktopWindow.test.ts
 +++ b/apps/desktop/src/window/DesktopWindow.test.ts
-@@ -112,7 +112,7 @@ const desktopEnvironmentLayer = DesktopEnvironment.layer(environmentInput).pipe(
+@@ -111,7 +111,7 @@ const desktopEnvironmentLayer = DesktopEnvironment.layer(environmentInput).pipe(
      Layer.mergeAll(
        NodeServices.layer,
        DesktopConfig.layerTest({
@@ -642,10 +804,10 @@ index fbcc6093..6928f0ba 100644
        }),
      ),
 diff --git a/apps/mobile/app.config.ts b/apps/mobile/app.config.ts
-index 5c46d01b..85daf454 100644
+index 7cbb8335..b79eab89 100644
 --- a/apps/mobile/app.config.ts
 +++ b/apps/mobile/app.config.ts
-@@ -16,24 +16,24 @@ const VARIANT_CONFIG: Record<
+@@ -21,24 +21,24 @@ const VARIANT_CONFIG: Record<
  > = {
    development: {
      appName: "T3 Code Dev",
@@ -680,7 +842,7 @@ index 5c46d01b..85daf454 100644
  };
  
 diff --git a/apps/mobile/src/features/connection/pairing.test.ts b/apps/mobile/src/features/connection/pairing.test.ts
-index e0af038b..f5e5a0cb 100644
+index 028c46c1..ca42956d 100644
 --- a/apps/mobile/src/features/connection/pairing.test.ts
 +++ b/apps/mobile/src/features/connection/pairing.test.ts
 @@ -12,7 +12,7 @@ describe("extractPairingUrlFromQrPayload", () => {
@@ -913,7 +1075,7 @@ index 7182854e..ece4c172 100644
      Config.map(Option.getOrUndefined),
    ),
 diff --git a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
-index 59787e0b..95c4d8b4 100644
+index 3e5978f4..49e6a8a5 100644
 --- a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
 +++ b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
 @@ -54,7 +54,7 @@ const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(120);
@@ -939,7 +1101,7 @@ index 93a40ae7..85ac6417 100644
    return resolve(yield* expandHomePath(raw.trim()));
  });
 diff --git a/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts b/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
-index 55e44747..cec42822 100644
+index 051a7d20..cc6b66f1 100644
 --- a/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
 +++ b/apps/server/src/project/Layers/ProjectSetupScriptRunner.test.ts
 @@ -152,8 +152,8 @@ describe("ProjectSetupScriptRunner", () => {
@@ -954,7 +1116,7 @@ index 55e44747..cec42822 100644
      });
      expect(write).toHaveBeenCalledWith({
 diff --git a/apps/server/src/provider/Layers/ProviderRegistry.test.ts b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
-index 52465fdc..1b9abd65 100644
+index cd09ae53..f4ea1320 100644
 --- a/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 +++ b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 @@ -59,7 +59,7 @@ const disabledCodexSettings: CodexSettings = Schema.decodeSync(CodexSettings)({
@@ -966,7 +1128,7 @@ index 52465fdc..1b9abd65 100644
  
  // ── Test helpers ────────────────────────────────────────────────────
  
-@@ -1000,7 +1000,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest(), T
+@@ -1072,7 +1072,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, ServerSettingsService.layerTest(), T
                  // accepts + decodes them. Cast the patch to `unknown` so
                  // the `Schema.decodeSync` below does the real validation.
                  providerInstances: {
@@ -993,7 +1155,7 @@ index e93362b8..2a89edd6 100644
          }),
        ),
 diff --git a/apps/server/src/sourceControl/BitbucketApi.ts b/apps/server/src/sourceControl/BitbucketApi.ts
-index 3bcba65f..f64c6ae2 100644
+index 632778ec..b3b89432 100644
 --- a/apps/server/src/sourceControl/BitbucketApi.ts
 +++ b/apps/server/src/sourceControl/BitbucketApi.ts
 @@ -23,12 +23,12 @@ import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
@@ -1036,10 +1198,10 @@ index f3fd502f..3c589074 100644
    } satisfies SourceControlProviderDiscovery.SourceControlApiDiscoverySpec;
  });
 diff --git a/apps/server/src/sourceControl/SourceControlDiscovery.test.ts b/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
-index d1c6c65c..efbcbb64 100644
+index f65710c4..5f3d71fa 100644
 --- a/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
 +++ b/apps/server/src/sourceControl/SourceControlDiscovery.test.ts
-@@ -94,7 +94,7 @@ Logged in to github.com account juliusmarminge (keyring)
+@@ -103,7 +103,7 @@ it.effect("reports implemented tools separately from locally available executabl
              account: Option.none(),
              host: Option.some("bitbucket.org"),
              detail: Option.some(
@@ -1049,7 +1211,7 @@ index d1c6c65c..efbcbb64 100644
            }),
          },
 diff --git a/apps/server/src/telemetry/Identify.ts b/apps/server/src/telemetry/Identify.ts
-index ade6ac48..01676567 100644
+index da04bd0b..ab69ba32 100644
 --- a/apps/server/src/telemetry/Identify.ts
 +++ b/apps/server/src/telemetry/Identify.ts
 @@ -81,7 +81,7 @@ const upsertAnonymousId = Effect.gen(function* () {
@@ -1062,7 +1224,7 @@ index ade6ac48..01676567 100644
  export const getTelemetryIdentifier = Effect.gen(function* () {
    const codexAccountId = yield* Effect.result(getCodexAccountId);
 diff --git a/apps/server/src/telemetry/Layers/AnalyticsService.test.ts b/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
-index 03ebd2fd..1f9d1ed2 100644
+index 5aa47406..3db2b40d 100644
 --- a/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
 +++ b/apps/server/src/telemetry/Layers/AnalyticsService.test.ts
 @@ -47,10 +47,10 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
@@ -1106,7 +1268,7 @@ index 27bf64c7..2b29f96b 100644
    ),
  });
 diff --git a/apps/server/src/terminal/Layers/Manager.test.ts b/apps/server/src/terminal/Layers/Manager.test.ts
-index c7a321d1..54e64da1 100644
+index 2ebf8481..4e403059 100644
 --- a/apps/server/src/terminal/Layers/Manager.test.ts
 +++ b/apps/server/src/terminal/Layers/Manager.test.ts
 @@ -338,7 +338,7 @@ it.layer(
@@ -1168,10 +1330,10 @@ index c7a321d1..54e64da1 100644
      }),
    );
 diff --git a/apps/server/src/terminal/Layers/Manager.ts b/apps/server/src/terminal/Layers/Manager.ts
-index 82eb9502..2d81d813 100644
+index cd490de1..6cbe9817 100644
 --- a/apps/server/src/terminal/Layers/Manager.ts
 +++ b/apps/server/src/terminal/Layers/Manager.ts
-@@ -886,7 +886,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
+@@ -885,7 +885,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
  
  function shouldExcludeTerminalEnvKey(key: string): boolean {
    const normalizedKey = key.toUpperCase();
@@ -1181,10 +1343,10 @@ index 82eb9502..2d81d813 100644
    }
    if (normalizedKey.startsWith("VITE_")) {
 diff --git a/apps/server/src/textGeneration/CodexTextGeneration.test.ts b/apps/server/src/textGeneration/CodexTextGeneration.test.ts
-index 87a2f95f..b88a97a3 100644
+index cf0ad7d5..268357fa 100644
 --- a/apps/server/src/textGeneration/CodexTextGeneration.test.ts
 +++ b/apps/server/src/textGeneration/CodexTextGeneration.test.ts
-@@ -142,9 +142,9 @@ function makeFakeCodexBinary(
+@@ -144,9 +144,9 @@ function makeFakeCodexBinary(
              ]
            : []),
          'if [ -n "$output_path" ]; then',
@@ -1197,10 +1359,10 @@ index 87a2f95f..b88a97a3 100644
          `exit ${input.exitCode ?? 0}`,
          "",
 diff --git a/apps/server/src/vcs/GitVcsDriver.ts b/apps/server/src/vcs/GitVcsDriver.ts
-index c75570d4..c60132ee 100644
+index adf99155..fa90fd00 100644
 --- a/apps/server/src/vcs/GitVcsDriver.ts
 +++ b/apps/server/src/vcs/GitVcsDriver.ts
-@@ -614,9 +614,9 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
+@@ -628,9 +628,9 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
          ...process.env,
          GIT_INDEX_FILE: tempIndexPath,
          GIT_AUTHOR_NAME: "T3 Code",
@@ -1248,7 +1410,7 @@ index 3e5ee234..486c2b11 100644
          return candidate;
        }
 diff --git a/apps/web/index.html b/apps/web/index.html
-index 88e1c8b4..e5ea6de6 100644
+index dadef17d..c0d5c0f8 100644
 --- a/apps/web/index.html
 +++ b/apps/web/index.html
 @@ -17,7 +17,7 @@
@@ -1261,7 +1423,7 @@ index 88e1c8b4..e5ea6de6 100644
              storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
                ? storedTheme
 diff --git a/apps/web/src/clientPersistenceStorage.ts b/apps/web/src/clientPersistenceStorage.ts
-index 30c949b3..390f40bf 100644
+index 2838f502..3a15e9b1 100644
 --- a/apps/web/src/clientPersistenceStorage.ts
 +++ b/apps/web/src/clientPersistenceStorage.ts
 @@ -9,8 +9,8 @@ import * as Schema from "effect/Schema";
@@ -1276,7 +1438,7 @@ index 30c949b3..390f40bf 100644
  const BrowserSavedEnvironmentRecordSchema = Schema.Struct({
    environmentId: EnvironmentId,
 diff --git a/apps/web/src/components/BranchToolbar.logic.test.ts b/apps/web/src/components/BranchToolbar.logic.test.ts
-index 3db52373..a2f77986 100644
+index 94a3909a..8b2f7692 100644
 --- a/apps/web/src/components/BranchToolbar.logic.test.ts
 +++ b/apps/web/src/components/BranchToolbar.logic.test.ts
 @@ -22,7 +22,7 @@ describe("resolveDraftEnvModeAfterBranchChange", () => {
@@ -1384,10 +1546,10 @@ index 3db52373..a2f77986 100644
      });
    });
 diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
-index d4eb3da3..cbd5a7c5 100644
+index 5a92a244..db5910de 100644
 --- a/apps/web/src/components/ChatView.browser.tsx
 +++ b/apps/web/src/components/ChatView.browser.tsx
-@@ -198,7 +198,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -207,7 +207,7 @@ function createBaseServerConfig(): ServerConfig {
        sessionCookieName: "t3_session",
      },
      cwd: "/repo/project",
@@ -1396,7 +1558,7 @@ index d4eb3da3..cbd5a7c5 100644
      keybindings: [],
      issues: [],
      providers: [
-@@ -218,7 +218,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -227,7 +227,7 @@ function createBaseServerConfig(): ServerConfig {
      ],
      availableEditors: [],
      observability: {
@@ -1405,7 +1567,7 @@ index d4eb3da3..cbd5a7c5 100644
        localTracingEnabled: true,
        otlpTracesEnabled: false,
        otlpMetricsEnabled: false,
-@@ -1995,10 +1995,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2006,10 +2006,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
              cwd: "/repo/project",
              worktreePath: null,
              env: {
@@ -1418,7 +1580,7 @@ index d4eb3da3..cbd5a7c5 100644
          },
          { timeout: 8_000, interval: 16 },
        );
-@@ -2248,7 +2248,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2259,7 +2259,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
    });
  
    it("falls back to the first installed editor when the stored favorite is unavailable", async () => {
@@ -1427,7 +1589,7 @@ index d4eb3da3..cbd5a7c5 100644
      setDraftThreadWithoutWorktree();
  
      const mounted = await mountChatView({
-@@ -2348,7 +2348,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2359,7 +2359,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
              threadId: THREAD_ID,
              cwd: "/repo/project",
              env: {
@@ -1436,7 +1598,7 @@ index d4eb3da3..cbd5a7c5 100644
              },
            });
          },
-@@ -2427,8 +2427,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2438,8 +2438,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
              threadId: THREAD_ID,
              cwd: "/repo/worktrees/feature-draft",
              env: {
@@ -1447,7 +1609,7 @@ index d4eb3da3..cbd5a7c5 100644
              },
            });
          },
-@@ -3957,7 +3957,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4097,7 +4097,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
  
    it("shows the confirm archive action after clicking the archive button", async () => {
      localStorage.setItem(
@@ -1456,7 +1618,7 @@ index d4eb3da3..cbd5a7c5 100644
        JSON.stringify({
          ...DEFAULT_CLIENT_SETTINGS,
          confirmThreadArchive: true,
-@@ -3986,7 +3986,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4126,7 +4126,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
        await expect.element(confirmButton).toBeInTheDocument();
        await expect.element(confirmButton).toBeVisible();
      } finally {
@@ -1465,7 +1627,7 @@ index d4eb3da3..cbd5a7c5 100644
        await mounted.cleanup();
      }
    });
-@@ -4109,7 +4109,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4249,7 +4249,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
            thread.id === THREAD_ID
              ? Object.assign({}, thread, {
                  branch: "feature/existing",
@@ -1475,10 +1637,10 @@ index d4eb3da3..cbd5a7c5 100644
              : thread,
          ),
 diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
-index 687d965b..0bf259bd 100644
+index b30d3be0..806327e6 100644
 --- a/apps/web/src/components/ChatView.logic.ts
 +++ b/apps/web/src/components/ChatView.logic.ts
-@@ -20,7 +20,7 @@ import {
+@@ -21,7 +21,7 @@ import {
  } from "../lib/terminalContext";
  import type { DraftThreadEnvMode } from "../composerDraftStore";
  
@@ -1488,10 +1650,10 @@ index 687d965b..0bf259bd 100644
  
  export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
 diff --git a/apps/web/src/components/KeybindingsToast.browser.tsx b/apps/web/src/components/KeybindingsToast.browser.tsx
-index a3e5af1d..28f218f3 100644
+index e9e56282..076f0295 100644
 --- a/apps/web/src/components/KeybindingsToast.browser.tsx
 +++ b/apps/web/src/components/KeybindingsToast.browser.tsx
-@@ -100,7 +100,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -109,7 +109,7 @@ function createBaseServerConfig(): ServerConfig {
        sessionCookieName: "t3_session",
      },
      cwd: "/repo/project",
@@ -1500,7 +1662,7 @@ index a3e5af1d..28f218f3 100644
      keybindings: [],
      issues: [],
      providers: [
-@@ -120,7 +120,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -129,7 +129,7 @@ function createBaseServerConfig(): ServerConfig {
      ],
      availableEditors: [],
      observability: {
@@ -1510,7 +1672,7 @@ index a3e5af1d..28f218f3 100644
        otlpTracesEnabled: false,
        otlpMetricsEnabled: false,
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index 926c117c..fb0e02cd 100644
+index bdbbf6f8..3d6e45b9 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
 @@ -199,12 +199,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
@@ -1529,19 +1691,19 @@ index 926c117c..fb0e02cd 100644
          },
        }),
 diff --git a/apps/web/src/components/chat/ProviderModelPicker.browser.tsx b/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
-index d3b16887..4196089b 100644
+index 1952d77d..a9b8d559 100644
 --- a/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
 +++ b/apps/web/src/components/chat/ProviderModelPicker.browser.tsx
-@@ -463,7 +463,7 @@ describe("ProviderModelPicker", () => {
+@@ -467,7 +467,7 @@ describe("ProviderModelPicker", () => {
  
-   it("shows locked provider header and only its models in locked mode", async () => {
+   it("keeps the full provider rail in locked mode and only lists compatible models", async () => {
      localStorage.setItem(
 -      "t3code:client-settings:v1",
 +      "mode:client-settings:v1",
        JSON.stringify({
          ...DEFAULT_CLIENT_SETTINGS,
          favorites: [
-@@ -493,7 +493,7 @@ describe("ProviderModelPicker", () => {
+@@ -510,7 +510,7 @@ describe("ProviderModelPicker", () => {
          ]);
        });
      } finally {
@@ -1550,7 +1712,7 @@ index d3b16887..4196089b 100644
        await mounted.cleanup();
      }
    });
-@@ -945,7 +945,7 @@ describe("ProviderModelPicker", () => {
+@@ -977,7 +977,7 @@ describe("ProviderModelPicker", () => {
    });
  
    it("toggles favorite stars when clicked", async () => {
@@ -1559,7 +1721,7 @@ index d3b16887..4196089b 100644
  
      const mounted = await mountPicker({
        activeInstanceId: CLAUDE_INSTANCE_ID,
-@@ -985,12 +985,12 @@ describe("ProviderModelPicker", () => {
+@@ -1020,12 +1020,12 @@ describe("ProviderModelPicker", () => {
        });
      } finally {
        await mounted.cleanup();
@@ -1574,7 +1736,7 @@ index d3b16887..4196089b 100644
  
      const mounted = await mountPicker({
        activeInstanceId: CLAUDE_INSTANCE_ID,
-@@ -1019,13 +1019,13 @@ describe("ProviderModelPicker", () => {
+@@ -1054,13 +1054,13 @@ describe("ProviderModelPicker", () => {
        });
      } finally {
        await mounted.cleanup();
@@ -1590,7 +1752,7 @@ index d3b16887..4196089b 100644
        JSON.stringify({
          ...DEFAULT_CLIENT_SETTINGS,
          favorites: [{ provider: "codex", model: "gpt-5.3-codex" }],
-@@ -1046,7 +1046,7 @@ describe("ProviderModelPicker", () => {
+@@ -1081,7 +1081,7 @@ describe("ProviderModelPicker", () => {
        });
      } finally {
        await mounted.cleanup();
@@ -1600,10 +1762,10 @@ index d3b16887..4196089b 100644
    });
  
 diff --git a/apps/web/src/components/settings/SettingsPanels.browser.tsx b/apps/web/src/components/settings/SettingsPanels.browser.tsx
-index 34f24006..d66ac91a 100644
+index a4cdc867..320930c3 100644
 --- a/apps/web/src/components/settings/SettingsPanels.browser.tsx
 +++ b/apps/web/src/components/settings/SettingsPanels.browser.tsx
-@@ -221,13 +221,13 @@ function createBaseServerConfig(): ServerConfig {
+@@ -235,13 +235,13 @@ function createBaseServerConfig(): ServerConfig {
        sessionCookieName: "t3_session",
      },
      cwd: "/repo/project",
@@ -1619,7 +1781,7 @@ index 34f24006..d66ac91a 100644
        localTracingEnabled: true,
        otlpTracesUrl: "http://localhost:4318/v1/traces",
        otlpTracesEnabled: true,
-@@ -1084,8 +1084,8 @@ describe("GeneralSettingsPanel observability", () => {
+@@ -1122,8 +1122,8 @@ describe("GeneralSettingsPanel observability", () => {
            .fn()
            .mockResolvedValue(createEmptyProcessResourceHistoryResult()),
          getTraceDiagnostics: vi.fn().mockResolvedValue({
@@ -1630,7 +1792,7 @@ index 34f24006..d66ac91a 100644
            readAt: makeUtc("2036-04-07T00:00:00.000Z"),
            recordCount: 0,
            parseErrorCount: 0,
-@@ -1118,7 +1118,7 @@ describe("GeneralSettingsPanel observability", () => {
+@@ -1156,7 +1156,7 @@ describe("GeneralSettingsPanel observability", () => {
      const openLogsButton = page.getByLabelText("Open logs folder");
      await openLogsButton.click();
  
@@ -1679,7 +1841,7 @@ index 93d26f66..94b2fce8 100644
  interface LocalStorageChangeDetail {
    key: string;
 diff --git a/apps/web/src/hooks/useTheme.ts b/apps/web/src/hooks/useTheme.ts
-index cd254c97..49233eec 100644
+index 78d063a9..fe5ff6d4 100644
 --- a/apps/web/src/hooks/useTheme.ts
 +++ b/apps/web/src/hooks/useTheme.ts
 @@ -6,7 +6,7 @@ type ThemeSnapshot = {
@@ -1692,7 +1854,7 @@ index cd254c97..49233eec 100644
  const DEFAULT_THEME_SNAPSHOT: ThemeSnapshot = {
    theme: "system",
 diff --git a/apps/web/src/hostedPairing.test.ts b/apps/web/src/hostedPairing.test.ts
-index 983094c1..694beb37 100644
+index 5bfeadf2..16ca5d08 100644
 --- a/apps/web/src/hostedPairing.test.ts
 +++ b/apps/web/src/hostedPairing.test.ts
 @@ -53,7 +53,7 @@ describe("hostedPairing", () => {
@@ -1705,7 +1867,7 @@ index 983094c1..694beb37 100644
      expect(url.searchParams.has("next")).toBe(false);
    });
 diff --git a/apps/web/src/hostedPairing.ts b/apps/web/src/hostedPairing.ts
-index cc547323..0333513a 100644
+index 2caf844a..459b170f 100644
 --- a/apps/web/src/hostedPairing.ts
 +++ b/apps/web/src/hostedPairing.ts
 @@ -83,7 +83,7 @@ export function buildHostedPairingUrl(input: {
@@ -1718,7 +1880,7 @@ index cc547323..0333513a 100644
    return url.toString();
  }
 diff --git a/apps/web/src/projectScripts.test.ts b/apps/web/src/projectScripts.test.ts
-index 1e05ff5e..210927aa 100644
+index 3597b714..b1ab949d 100644
 --- a/apps/web/src/projectScripts.test.ts
 +++ b/apps/web/src/projectScripts.test.ts
 @@ -55,8 +55,8 @@ describe("projectScripts helpers", () => {
@@ -1816,7 +1978,7 @@ index cb0116c8..d9c02ecb 100644
  const VersionMismatchDismissalsSchema = Schema.Struct({
    keys: Schema.Array(Schema.String),
 diff --git a/apps/web/src/worktreeCleanup.test.ts b/apps/web/src/worktreeCleanup.test.ts
-index 9c833c03..7c3e7901 100644
+index 0354a966..70b3895d 100644
 --- a/apps/web/src/worktreeCleanup.test.ts
 +++ b/apps/web/src/worktreeCleanup.test.ts
 @@ -86,7 +86,7 @@ describe("getOrphanedWorktreePathForThread", () => {
@@ -1838,7 +2000,7 @@ index 9c833c03..7c3e7901 100644
      expect(result).toBe("my-worktree");
    });
 diff --git a/apps/web/vercel.ts b/apps/web/vercel.ts
-index a0aeb57f..5f0ea4a9 100644
+index 784eceff..56f24877 100644
 --- a/apps/web/vercel.ts
 +++ b/apps/web/vercel.ts
 @@ -1,7 +1,7 @@
@@ -1851,7 +2013,7 @@ index a0aeb57f..5f0ea4a9 100644
  const NIGHTLY_ORIGIN = "https://nightly.app.t3.codes";
  const CLEAN_CHANNEL_QUERY_TRANSFORMS = [
 @@ -33,7 +33,7 @@ export const config: VercelConfig = {
-     "bun add -g turbo && bun install --filter '@t3tools/contracts' --filter '@t3tools/client-runtime' --filter '@t3tools/scripts' --filter '@t3tools/web'",
+     "npm install -g vite-plus && vp install --filter '@t3tools/scripts...' --filter '@t3tools/web...'",
    routes: [
      {
 -      src: "/__t3code/channel",
@@ -1869,22 +2031,50 @@ index a0aeb57f..5f0ea4a9 100644
        headers: {
          Location: "/",
 diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
-index 38819e28..c645210b 100644
+index cc15820e..d0dcb60c 100644
 --- a/apps/web/vite.config.ts
 +++ b/apps/web/vite.config.ts
-@@ -23,7 +23,7 @@ const configuredHostedAppUrl = (() => {
+@@ -34,7 +34,7 @@ const configuredHostedAppUrl = (() => {
    }
    return undefined;
  })();
 -const sourcemapEnv = process.env.T3CODE_WEB_SOURCEMAP?.trim().toLowerCase();
 +const sourcemapEnv = process.env.MODE_WEB_SOURCEMAP?.trim().toLowerCase();
  
- const buildSourcemap =
+ const buildSourcemap: boolean | "hidden" =
    sourcemapEnv === "0" || sourcemapEnv === "false"
-diff --git a/docs/observability.md b/docs/observability.md
+diff --git a/docs/getting-started/quick-start.md b/docs/getting-started/quick-start.md
+index 2206d53e..c6e768e2 100644
+--- a/docs/getting-started/quick-start.md
++++ b/docs/getting-started/quick-start.md
+@@ -8,7 +8,7 @@ bun run dev
+ bun run dev:desktop
+ 
+ # Desktop development on an isolated port set
+-T3CODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
++MODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
+ 
+ # Production
+ bun run build
+diff --git a/docs/integrations/source-control-providers.md b/docs/integrations/source-control-providers.md
+index c496d551..13a72ed9 100644
+--- a/docs/integrations/source-control-providers.md
++++ b/docs/integrations/source-control-providers.md
+@@ -86,8 +86,8 @@ Bitbucket uses API tokens instead of a CLI tool:
+ 1. Create an API token in your Atlassian account with read/write access to pull requests and repositories
+ 2. Add these environment variables to the environment running T3 Code:
+    ```bash
+-   export T3CODE_BITBUCKET_EMAIL="you@example.com"
+-   export T3CODE_BITBUCKET_API_TOKEN="your-token"
++   export MODE_BITBUCKET_EMAIL="you@example.com"
++   export MODE_BITBUCKET_API_TOKEN="your-token"
+    ```
+ 3. Restart T3 Code and verify the connection in **Source Control settings**
+ 
+diff --git a/docs/operations/observability.md b/docs/operations/observability.md
 index 5b98d116..07062042 100644
---- a/docs/observability.md
-+++ b/docs/observability.md
+--- a/docs/operations/observability.md
++++ b/docs/operations/observability.md
 @@ -22,7 +22,7 @@ If you want a log message to show up in the trace file, emit it inside an active
  
  ### Traces
@@ -2049,11 +2239,11 @@ index 5b98d116..07062042 100644
  
  If the OTLP URLs are unset, local tracing still works and metrics stay in-process only.
  
-diff --git a/docs/release.md b/docs/release.md
-index df903321..490c7dfa 100644
---- a/docs/release.md
-+++ b/docs/release.md
-@@ -45,9 +45,9 @@ Required GitHub Actions secrets:
+diff --git a/docs/operations/release.md b/docs/operations/release.md
+index 8f149446..e88d7c93 100644
+--- a/docs/operations/release.md
++++ b/docs/operations/release.md
+@@ -104,9 +104,9 @@ Required GitHub Actions secrets:
  Optional GitHub Actions variables:
  
  - `VERCEL_TEAM_SLUG`: overrides the Vercel CLI scope when the team slug is preferred over the `VERCEL_ORG_ID` secret.
@@ -2066,7 +2256,7 @@ index df903321..490c7dfa 100644
  
  Required Vercel domains:
  
-@@ -56,9 +56,9 @@ Required Vercel domains:
+@@ -115,9 +115,9 @@ Required Vercel domains:
  - `nightly.app.t3.codes`: channel alias updated by nightly releases.
  
  The router domain uses `apps/web/vercel.ts` routes. Users opt into a channel by
@@ -2079,7 +2269,7 @@ index df903321..490c7dfa 100644
  the matching channel alias.
  
  The release deploy job rewrites release package versions before upload so the
-@@ -67,7 +67,7 @@ same deployment to both the `latest` channel and the router domain so the router
+@@ -126,7 +126,7 @@ same deployment to both the `latest` channel and the router domain so the router
  rules stay current. Nightly deploys only alias the `nightly` channel. The job
  also passes `VITE_HOSTED_APP_CHANNEL=latest|nightly`, which renders the hosted
  update track selector in the About panel. Changing the selector navigates
@@ -2088,7 +2278,7 @@ index df903321..490c7dfa 100644
  updated before redirecting to the hosted app root.
  
  One-time Vercel dashboard setup:
-@@ -106,10 +106,10 @@ One-time Vercel dashboard setup:
+@@ -165,10 +165,10 @@ One-time Vercel dashboard setup:
    - The desktop UI shows a rocket update button when an update is available; click once to download, click again after download to restart/install.
  - Provider: GitHub Releases (`provider: github`) configured at build time.
  - Repository slug source:
@@ -2101,23 +2291,71 @@ index df903321..490c7dfa 100644
    - the app forwards it as an `Authorization: Bearer <token>` request header for updater HTTP calls.
  - Required release assets for updater:
    - platform installers (`.exe`, `.dmg`, `.AppImage`, plus macOS `.zip` for Squirrel.Mac update payloads)
-diff --git a/docs/source-control-providers.md b/docs/source-control-providers.md
-index c496d551..13a72ed9 100644
---- a/docs/source-control-providers.md
-+++ b/docs/source-control-providers.md
-@@ -86,8 +86,8 @@ Bitbucket uses API tokens instead of a CLI tool:
- 1. Create an API token in your Atlassian account with read/write access to pull requests and repositories
- 2. Add these environment variables to the environment running T3 Code:
-    ```bash
--   export T3CODE_BITBUCKET_EMAIL="you@example.com"
--   export T3CODE_BITBUCKET_API_TOKEN="your-token"
-+   export MODE_BITBUCKET_EMAIL="you@example.com"
-+   export MODE_BITBUCKET_API_TOKEN="your-token"
-    ```
- 3. Restart T3 Code and verify the connection in **Source Control settings**
+diff --git a/docs/reference/scripts.md b/docs/reference/scripts.md
+index b3fcd4b3..f3304b89 100644
+--- a/docs/reference/scripts.md
++++ b/docs/reference/scripts.md
+@@ -3,7 +3,7 @@
+ - `bun run dev` — Starts contracts, server, and web in `turbo watch` mode.
+ - `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
+ - `bun run dev:web` — Starts just the Vite dev server for the web app.
+-- Dev commands default `T3CODE_STATE_DIR` to `~/.t3/dev` to keep dev state isolated from desktop/prod state.
++- Dev commands default `MODE_STATE_DIR` to `~/.mode/dev` to keep dev state isolated from desktop/prod state.
+ - Override server CLI-equivalent flags from root dev commands with `--`, for example:
+   `bun run dev -- --base-dir ~/.t3-2`
+ - `bun run start` — Runs the production server (serves built web app as static files).
+@@ -33,10 +33,10 @@
+ 
+ ## Running multiple dev instances
+ 
+-Set `T3CODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
++Set `MODE_DEV_INSTANCE` to any value to deterministically shift all dev ports together.
+ 
+ - Default ports: server `3773`, web `5733`
+-- Shifted ports: `base + offset` (offset is hashed from `T3CODE_DEV_INSTANCE`)
+-- Example: `T3CODE_DEV_INSTANCE=branch-a bun run dev:desktop`
++- Shifted ports: `base + offset` (offset is hashed from `MODE_DEV_INSTANCE`)
++- Example: `MODE_DEV_INSTANCE=branch-a bun run dev:desktop`
+ 
+-If you want full control instead of hashing, set `T3CODE_PORT_OFFSET` to a numeric offset.
++If you want full control instead of hashing, set `MODE_PORT_OFFSET` to a numeric offset.
+diff --git a/docs/user/keybindings.md b/docs/user/keybindings.md
+index 67652cc9..1c83c784 100644
+--- a/docs/user/keybindings.md
++++ b/docs/user/keybindings.md
+@@ -2,7 +2,7 @@
+ 
+ T3 Code reads keybindings from:
+ 
+-- `~/.t3/keybindings.json`
++- `~/.mode/keybindings.json`
+ 
+ The file must be a JSON array of rules:
+ 
+diff --git a/docs/user/remote-access.md b/docs/user/remote-access.md
+index 56510e62..d7172833 100644
+--- a/docs/user/remote-access.md
++++ b/docs/user/remote-access.md
+@@ -117,7 +117,7 @@ SSH launch is a desktop feature because it needs local process and SSH access. O
+ 
+ #### SSH Launch Troubleshooting
+ 
+-The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.t3/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
++The desktop SSH launcher connects with a non-interactive `sh` session, writes a small launcher script under `~/.mode/ssh-launch/<host-key>/`, starts or reuses a remote T3 server, and forwards the remote loopback port back to your desktop.
+ 
+ The remote host must have a compatible Node.js runtime. T3 Code uses the server package's `engines.node` requirement:
+ 
+@@ -150,7 +150,7 @@ nvm alias default 24
+ 
+ With mise/asdf/fnm/nodenv, make sure the tool's shim directory is installed and points at a Node version satisfying the range above.
+ 
+-If reconnecting after an app update fails, retry the SSH launch once. The launcher now compares its generated runner script, stops stale launcher-managed remote servers, clears the SSH launch PID/port state, and starts a fresh remote server. You should not normally need to delete `~/.t3/ssh-launch` or kill `t3` processes manually.
++If reconnecting after an app update fails, retry the SSH launch once. The launcher now compares its generated runner script, stops stale launcher-managed remote servers, clears the SSH launch PID/port state, and starts a fresh remote server. You should not normally need to delete `~/.mode/ssh-launch` or kill `t3` processes manually.
+ 
+ ## How Pairing Works
  
 diff --git a/packages/contracts/src/terminal.test.ts b/packages/contracts/src/terminal.test.ts
-index 90c2b0b1..f1fbbb55 100644
+index a08ed492..1b45b81d 100644
 --- a/packages/contracts/src/terminal.test.ts
 +++ b/packages/contracts/src/terminal.test.ts
 @@ -80,19 +80,19 @@ describe("TerminalOpenInput", () => {
@@ -2173,7 +2411,7 @@ index 199a55bf..26f576b2 100644
    if (input.extraEnv) {
      return { ...env, ...input.extraEnv };
 diff --git a/packages/shared/src/shell.test.ts b/packages/shared/src/shell.test.ts
-index 214c03a7..c752cf9a 100644
+index a9e2dff6..9db72bf4 100644
 --- a/packages/shared/src/shell.test.ts
 +++ b/packages/shared/src/shell.test.ts
 @@ -19,7 +19,7 @@ describe("extractPathFromShellOutput", () => {
@@ -2322,10 +2560,10 @@ index c88ccc10..c0cbd306 100644
  
  function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {
 diff --git a/packages/ssh/src/tunnel.ts b/packages/ssh/src/tunnel.ts
-index 0de48b57..52423177 100644
+index 029b7644..2d60c485 100644
 --- a/packages/ssh/src/tunnel.ts
 +++ b/packages/ssh/src/tunnel.ts
-@@ -465,8 +465,8 @@ exit 1
+@@ -461,8 +461,8 @@ exit 1
  export const REMOTE_LAUNCH_SCRIPT = `set -eu
  @@T3_NODE_ENV_SCRIPT@@
  STATE_KEY="$1"
@@ -2336,7 +2574,7 @@ index 0de48b57..52423177 100644
  DEFAULT_RUNTIME_FILE="$DEFAULT_SERVER_HOME/userdata/server-runtime.json"
  PORT_FILE="$STATE_DIR/port"
  PID_FILE="$STATE_DIR/pid"
-@@ -600,7 +600,7 @@ if [ -z "$REMOTE_PORT" ]; then
+@@ -596,7 +596,7 @@ if [ -z "$REMOTE_PORT" ]; then
      printf 'Failed to find an available port on the remote host. Ensure node is available on PATH.\\n' >&2
      exit 1
    fi
@@ -2345,7 +2583,7 @@ index 0de48b57..52423177 100644
    REMOTE_PID="$!"
    printf '%s\\n' "$REMOTE_PID" >"$PID_FILE"
    printf '%s\\n' "$REMOTE_PORT" >"$PORT_FILE"
-@@ -618,8 +618,8 @@ printf '{"remotePort":%s,"serverKind":"%s"}\\n' "$REMOTE_PORT" "\${REMOTE_MANAGE
+@@ -614,8 +614,8 @@ printf '{"remotePort":%s,"serverKind":"%s"}\\n' "$REMOTE_PORT" "\${REMOTE_MANAGE
  `;
  
  export const REMOTE_PAIRING_SCRIPT = `set -eu
@@ -2356,7 +2594,7 @@ index 0de48b57..52423177 100644
  RUNNER_FILE="$STATE_DIR/run-t3.sh"
  mkdir -p "$STATE_DIR"
  cat >"$RUNNER_FILE" <<'SH'
-@@ -631,7 +631,7 @@ PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"
+@@ -627,7 +627,7 @@ PAIRING_BASE_DIR="$DEFAULT_SERVER_HOME"
  `;
  
  export const REMOTE_STOP_SCRIPT = `set -eu
@@ -2365,7 +2603,7 @@ index 0de48b57..52423177 100644
  PID_FILE="$STATE_DIR/pid"
  PORT_FILE="$STATE_DIR/port"
  MANAGED_FILE="$STATE_DIR/managed"
-@@ -650,7 +650,7 @@ printf '{"stopped":true}\\n'
+@@ -646,7 +646,7 @@ printf '{"stopped":true}\\n'
  `;
  
  const REMOTE_LOG_TAIL_SCRIPT = `set -eu
@@ -2375,10 +2613,10 @@ index 0de48b57..52423177 100644
  if [ -f "$LOG_FILE" ]; then
    tail -n 80 "$LOG_FILE" 2>/dev/null || true
 diff --git a/scripts/build-desktop-artifact.test.ts b/scripts/build-desktop-artifact.test.ts
-index 743263d4..a12c4ffc 100644
+index 8dc23484..8754b719 100644
 --- a/scripts/build-desktop-artifact.test.ts
 +++ b/scripts/build-desktop-artifact.test.ts
-@@ -107,11 +107,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
+@@ -141,11 +141,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
            ConfigProvider.layer(
              ConfigProvider.fromEnv({
                env: {
@@ -2396,10 +2634,10 @@ index 743263d4..a12c4ffc 100644
              }),
            ),
 diff --git a/scripts/build-desktop-artifact.ts b/scripts/build-desktop-artifact.ts
-index 20b8c456..f237a014 100644
+index 4d63a11d..336a4b75 100644
 --- a/scripts/build-desktop-artifact.ts
 +++ b/scripts/build-desktop-artifact.ts
-@@ -238,17 +238,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
+@@ -307,17 +307,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
  });
  
  const BuildEnvConfig = Config.all({
@@ -2428,7 +2666,7 @@ index 20b8c456..f237a014 100644
  });
  
  const MockUpdateServerPortSchema = Schema.NumberFromString.check(
-@@ -512,7 +512,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
+@@ -632,7 +632,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
      }
    | undefined {
    const rawRepo =
@@ -2437,7 +2675,7 @@ index 20b8c456..f237a014 100644
      process.env.GITHUB_REPOSITORY?.trim() ||
      "";
    if (!rawRepo) return undefined;
-@@ -568,7 +568,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+@@ -688,7 +688,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
    mockUpdateServerPort: number | undefined,
  ) {
    const buildConfig: Record<string, unknown> = {
@@ -2446,13 +2684,22 @@ index 20b8c456..f237a014 100644
      productName: resolveDesktopProductName(version),
      artifactName: "T3-Code-${version}-${arch}.${ext}",
      directories: {
-@@ -599,12 +599,12 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+@@ -716,7 +716,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+       protocols: [
+         {
+           name: "T3 Code",
+-          schemes: ["t3code"],
++          schemes: ["mode"],
+         },
+       ],
+     };
+@@ -725,12 +725,12 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
    if (platform === "linux") {
      buildConfig.linux = {
        target: [target],
 -      executableName: "t3code",
 +      executableName: "mode",
-       icon: "icon.png",
+       icon: "icons",
        category: "Development",
        desktop: {
          entry: {
@@ -2461,16 +2708,16 @@ index 20b8c456..f237a014 100644
          },
        },
      };
-@@ -779,7 +779,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
-   yield* fs.copy(stageResourcesDir, path.join(stageAppDir, "apps/desktop/prod-resources"));
- 
+@@ -900,7 +900,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   };
+   const stagePnpmConfig = createStagePnpmConfig(workspacePatchedDependencies, stageDependencies);
    const stagePackageJson: StagePackageJson = {
 -    name: "t3code",
 +    name: "mode",
      version: appVersion,
      buildVersion: appVersion,
      t3codeCommitHash: commitHash,
-@@ -892,54 +892,54 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+@@ -1025,54 +1025,54 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
  
  const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
    platform: Flag.choice("platform", BuildPlatform.literals).pipe(
@@ -2502,8 +2749,8 @@ index 20b8c456..f237a014 100644
    ),
    skipBuild: Flag.boolean("skip-build").pipe(
      Flag.withDescription(
--      "Skip `bun run build:desktop` and use existing dist artifacts (env: T3CODE_DESKTOP_SKIP_BUILD).",
-+      "Skip `bun run build:desktop` and use existing dist artifacts (env: MODE_DESKTOP_SKIP_BUILD).",
+-      "Skip `vp run build:desktop` and use existing dist artifacts (env: T3CODE_DESKTOP_SKIP_BUILD).",
++      "Skip `vp run build:desktop` and use existing dist artifacts (env: MODE_DESKTOP_SKIP_BUILD).",
      ),
      Flag.optional,
    ),
@@ -2537,12 +2784,12 @@ index 20b8c456..f237a014 100644
    ),
  }).pipe(
 diff --git a/scripts/dev-runner.test.ts b/scripts/dev-runner.test.ts
-index 724b328c..369e3d98 100644
+index f6df387e..bbe3dfe3 100644
 --- a/scripts/dev-runner.test.ts
 +++ b/scripts/dev-runner.test.ts
-@@ -14,12 +14,12 @@ import {
+@@ -41,12 +41,12 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+   });
  
- it.layer(NodeServices.layer)("dev-runner", (it) => {
    describe("resolveOffset", () => {
 -    it.effect("uses explicit T3CODE_PORT_OFFSET when provided", () =>
 +    it.effect("uses explicit MODE_PORT_OFFSET when provided", () =>
@@ -2555,7 +2802,7 @@ index 724b328c..369e3d98 100644
          });
        }),
      );
-@@ -41,13 +41,13 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -68,13 +68,13 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            }),
          );
  
@@ -2571,7 +2818,7 @@ index 724b328c..369e3d98 100644
        Effect.gen(function* () {
          const path = yield* Path.Path;
          const env = yield* createDevRunnerEnv({
-@@ -64,7 +64,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -91,7 +91,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: undefined,
          });
  
@@ -2580,7 +2827,7 @@ index 724b328c..369e3d98 100644
        }),
      );
  
-@@ -85,14 +85,14 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -112,14 +112,14 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: new URL("http://localhost:7331"),
          });
  
@@ -2601,7 +2848,7 @@ index 724b328c..369e3d98 100644
          assert.equal(env.VITE_DEV_SERVER_URL, "http://localhost:7331/");
        }),
      );
-@@ -102,7 +102,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -129,7 +129,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
          const env = yield* createDevRunnerEnv({
            mode: "dev",
            baseEnv: {
@@ -2610,7 +2857,7 @@ index 724b328c..369e3d98 100644
            },
            serverOffset: 0,
            webOffset: 0,
-@@ -115,8 +115,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -142,8 +142,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: undefined,
          });
  
@@ -2621,7 +2868,7 @@ index 724b328c..369e3d98 100644
        }),
      );
  
-@@ -125,7 +125,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -152,7 +152,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
          const env = yield* createDevRunnerEnv({
            mode: "dev",
            baseEnv: {
@@ -2630,7 +2877,7 @@ index 724b328c..369e3d98 100644
            },
            serverOffset: 0,
            webOffset: 0,
-@@ -138,7 +138,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -165,7 +165,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: undefined,
          });
  
@@ -2639,7 +2886,7 @@ index 724b328c..369e3d98 100644
        }),
      );
  
-@@ -159,7 +159,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -186,7 +186,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: undefined,
          });
  
@@ -2648,7 +2895,7 @@ index 724b328c..369e3d98 100644
        }),
      );
  
-@@ -169,10 +169,10 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -196,10 +196,10 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
          const env = yield* createDevRunnerEnv({
            mode: "dev:desktop",
            baseEnv: {
@@ -2663,7 +2910,7 @@ index 724b328c..369e3d98 100644
              VITE_WS_URL: "ws://localhost:13773",
            },
            serverOffset: 0,
-@@ -186,15 +186,15 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -213,15 +213,15 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: undefined,
          });
  
@@ -2684,7 +2931,7 @@ index 724b328c..369e3d98 100644
          assert.equal(env.VITE_WS_URL, "ws://127.0.0.1:4222");
        }),
      );
-@@ -215,7 +215,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
+@@ -242,7 +242,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
            devUrl: undefined,
          });
  
@@ -2694,10 +2941,10 @@ index 724b328c..369e3d98 100644
          assert.equal(env.VITE_WS_URL, "ws://localhost:13773");
        }),
 diff --git a/scripts/dev-runner.ts b/scripts/dev-runner.ts
-index cce408c8..c86b40ea 100644
+index 3c53d45d..2cd00dab 100644
 --- a/scripts/dev-runner.ts
 +++ b/scripts/dev-runner.ts
-@@ -25,7 +25,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
+@@ -29,7 +29,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
  const DEV_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::1", "::"] as const;
  
  export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
@@ -2706,7 +2953,7 @@ index cce408c8..c86b40ea 100644
  );
  
  const MODE_ARGS = {
-@@ -80,8 +80,8 @@ const optionalUrlConfig = (name: string): Config.Config<URL | undefined> =>
+@@ -87,8 +87,8 @@ const optionalUrlConfig = (name: string): Config.Config<URL | undefined> =>
    );
  
  const OffsetConfig = Config.all({
@@ -2717,7 +2964,7 @@ index cce408c8..c86b40ea 100644
  });
  
  export function resolveOffset(config: {
-@@ -90,11 +90,11 @@ export function resolveOffset(config: {
+@@ -97,11 +97,11 @@ export function resolveOffset(config: {
  }): { readonly offset: number; readonly source: string } {
    if (config.portOffset !== undefined) {
      if (config.portOffset < 0) {
@@ -2731,7 +2978,7 @@ index cce408c8..c86b40ea 100644
      };
    }
  
-@@ -104,11 +104,11 @@ export function resolveOffset(config: {
+@@ -111,11 +111,11 @@ export function resolveOffset(config: {
    }
  
    if (/^\d+$/.test(seed)) {
@@ -2745,7 +2992,7 @@ index cce408c8..c86b40ea 100644
  }
  
  function resolveBaseDir(baseDir: string | undefined): Effect.Effect<string, never, Path.Path> {
-@@ -163,57 +163,57 @@ export function createDevRunnerEnv({
+@@ -170,57 +170,57 @@ export function createDevRunnerEnv({
        VITE_DEV_SERVER_URL:
          devUrl?.toString() ??
          `http://${isDesktopMode ? DESKTOP_DEV_LOOPBACK_HOST : "localhost"}:${webPort}`,
@@ -2821,7 +3068,7 @@ index cce408c8..c86b40ea 100644
      }
  
      return output;
-@@ -389,7 +389,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
+@@ -396,7 +396,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
        Effect.mapError(
          (cause) =>
            new DevRunnerError({
@@ -2830,7 +3077,7 @@ index cce408c8..c86b40ea 100644
              cause,
            }),
        ),
-@@ -431,7 +431,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
+@@ -438,7 +438,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
          : "";
  
      yield* Effect.logInfo(
@@ -2839,7 +3086,7 @@ index cce408c8..c86b40ea 100644
      );
  
      if (input.dryRun) {
-@@ -480,32 +480,32 @@ const devRunnerCli = Command.make("dev-runner", {
+@@ -483,32 +483,32 @@ const devRunnerCli = Command.make("dev-runner", {
      Argument.withDescription("Development mode to run."),
    ),
    t3Home: Flag.string("home-dir").pipe(
@@ -2885,10 +3132,10 @@ index cce408c8..c86b40ea 100644
    devUrl: Flag.string("dev-url").pipe(
      Flag.withSchema(Schema.URLFromString),
 diff --git a/scripts/mock-update-server.ts b/scripts/mock-update-server.ts
-index b1dde31e..994f5d4c 100644
+index de50a6c0..a702eb7f 100644
 --- a/scripts/mock-update-server.ts
 +++ b/scripts/mock-update-server.ts
-@@ -20,8 +20,8 @@ const resolveMockUpdateServerConfig = Effect.gen(function* () {
+@@ -18,8 +18,8 @@ const resolveMockUpdateServerConfig = Effect.gen(function* () {
    const fileSystem = yield* FileSystem.FileSystem;
    const path = yield* Path.Path;
    const config = yield* Config.all({
@@ -2899,55 +3146,6 @@ index b1dde31e..994f5d4c 100644
        Config.withDefault("../release-mock"),
      ),
    });
-diff --git a/turbo.json b/turbo.json
-index 9a726d92..c0ee0b49 100644
---- a/turbo.json
-+++ b/turbo.json
-@@ -5,25 +5,25 @@
-     "PORT",
-     "VITE_WS_URL",
-     "VITE_DEV_SERVER_URL",
--    "T3CODE_LOG_WS_EVENTS",
--    "T3CODE_MODE",
--    "T3CODE_PORT",
--    "T3CODE_NO_BROWSER",
--    "T3CODE_HOME",
--    "T3CODE_AUTH_TOKEN",
--    "T3CODE_TAILSCALE_SERVE",
--    "T3CODE_TAILSCALE_SERVE_PORT",
--    "T3CODE_DESKTOP_WS_URL",
--    "T3CODE_TRACE_MIN_LEVEL",
--    "T3CODE_TRACE_TIMING_ENABLED",
--    "T3CODE_TRACE_FILE",
--    "T3CODE_TRACE_MAX_BYTES",
--    "T3CODE_TRACE_MAX_FILES",
--    "T3CODE_TRACE_BATCH_WINDOW_MS",
--    "T3CODE_OTLP_TRACES_URL",
--    "T3CODE_OTLP_METRICS_URL",
--    "T3CODE_OTLP_EXPORT_INTERVAL_MS",
--    "T3CODE_OTLP_SERVICE_NAME",
-+    "MODE_LOG_WS_EVENTS",
-+    "MODE_MODE",
-+    "MODE_PORT",
-+    "MODE_NO_BROWSER",
-+    "MODE_HOME",
-+    "MODE_AUTH_TOKEN",
-+    "MODE_TAILSCALE_SERVE",
-+    "MODE_TAILSCALE_SERVE_PORT",
-+    "MODE_DESKTOP_WS_URL",
-+    "MODE_TRACE_MIN_LEVEL",
-+    "MODE_TRACE_TIMING_ENABLED",
-+    "MODE_TRACE_FILE",
-+    "MODE_TRACE_MAX_BYTES",
-+    "MODE_TRACE_MAX_FILES",
-+    "MODE_TRACE_BATCH_WINDOW_MS",
-+    "MODE_OTLP_TRACES_URL",
-+    "MODE_OTLP_METRICS_URL",
-+    "MODE_OTLP_EXPORT_INTERVAL_MS",
-+    "MODE_OTLP_SERVICE_NAME",
-     "APP_VERSION",
-     "VITE_HOSTED_APP_URL",
-     "VITE_HOSTED_APP_CHANNEL"
 -- 
-2.34.1
+2.50.1 (Apple Git-155)
 

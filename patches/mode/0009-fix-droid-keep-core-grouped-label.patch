@@ -1,7 +1,7 @@
-From 14fe5da164f310ecc238a2e8257bbb99222c28a9 Mon Sep 17 00:00:00 2001
+From be38908d70c0f6fd116ed64a0e11cabfbfeb4bbd Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 01:07:51 +0000
-Subject: [PATCH 09/10] fix(droid): keep core grouped label
+Subject: [PATCH 09/13] fix(droid): keep core grouped label
 
 ---
  apps/server/src/provider/Layers/DroidProvider.test.ts | 1 +
@@ -37,5 +37,5 @@ index 55c6596b..ae6f2eca 100644
    return {
      source: model,
 -- 
-2.34.1
+2.50.1 (Apple Git-155)
 

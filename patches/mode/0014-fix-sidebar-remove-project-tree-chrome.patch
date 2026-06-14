@@ -1,4 +1,4 @@
-From ec3e5b07cb6fa7a4a3f20bc50c58d6e4a76b3a0f Mon Sep 17 00:00:00 2001
+From 1b49aa60f989487b3aef44c27109bb9023bf2541 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
@@ -8,8 +8,8 @@ Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
  apps/web/src/components/ProjectFavicon.tsx    |  8 ++-
  apps/web/src/components/Sidebar.logic.test.ts | 42 +++++++++++++
  apps/web/src/components/Sidebar.logic.ts      | 39 ++++++++++++
- apps/web/src/components/Sidebar.tsx           | 61 +++++++++++--------
- 5 files changed, 147 insertions(+), 29 deletions(-)
+ apps/web/src/components/Sidebar.tsx           | 63 +++++++++++--------
+ 5 files changed, 148 insertions(+), 30 deletions(-)
  create mode 100644 apps/web/src/components/ProjectFavicon.test.tsx
 
 diff --git a/apps/web/src/components/ProjectFavicon.test.tsx b/apps/web/src/components/ProjectFavicon.test.tsx
@@ -208,7 +208,7 @@ index b9dd27df..c966f8dd 100644
    thread: ThreadStatusInput;
  }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..d27c946c 100644
+index dc5acaaa..79a64e49 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -303,7 +303,14 @@ index dc5acaaa..d27c946c 100644
              {isConfirmingArchive ? (
                <button
                  ref={handleConfirmArchiveRef}
-@@ -720,9 +728,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -714,15 +722,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+                   </Tooltip>
+                 ) : (
+                   <span
+-                    className={`text-[10px] tabular-nums ${
++                    className={`text-xs tabular-nums ${
+                       isHighlighted
+                         ? "text-foreground/72 dark:text-foreground/82"
                          : "text-muted-foreground/40"
                      }`}
                    >

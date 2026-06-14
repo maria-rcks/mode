@@ -1,4 +1,4 @@
-From 7d451615a2b391f57bcbe71eb79cbd340f2f72ee Mon Sep 17 00:00:00 2001
+From 086e4122bde5b82bdaa8623f7031b7c8f72b7e73 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
@@ -212,7 +212,7 @@ index b9dd27df..bf58f5c8 100644
    thread: ThreadStatusInput;
  }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..28f5451a 100644
+index dc5acaaa..f11a5344 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -246,9 +246,9 @@ index dc5acaaa..28f5451a 100644
    "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 +const SIDEBAR_THREAD_TITLE_MASK_STYLE = {
 +  WebkitMaskImage:
-+    "linear-gradient(to right, black 0, black calc(100% - 4.25rem), transparent calc(100% - 2.25rem), transparent 100%)",
++    "linear-gradient(to right, black 0, black calc(100% - 2.25rem - 2.5ch), transparent calc(100% - 2.25rem), transparent 100%)",
 +  maskImage:
-+    "linear-gradient(to right, black 0, black calc(100% - 4.25rem), transparent calc(100% - 2.25rem), transparent 100%)",
++    "linear-gradient(to right, black 0, black calc(100% - 2.25rem - 2.5ch), transparent calc(100% - 2.25rem), transparent 100%)",
 +} satisfies React.CSSProperties;
  
  function clampSidebarThreadPreviewCount(value: number): SidebarThreadPreviewCount {

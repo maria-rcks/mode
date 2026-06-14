@@ -222,6 +222,7 @@ function listPatchFiles() {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.endsWith(".patch"))
+    .filter((line, index, lines) => lines.indexOf(line) === index)
     .sort()
     .map((line) => relative(patchesDir, resolve(root, line)));
 }

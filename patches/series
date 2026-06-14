@@ -15,3 +15,4 @@ mode/0011-style-mode-format-rebase-resolutions.patch
 mode/0012-fix-mode-satisfy-lint-after-rebase.patch
 mode/0013-fix-tests-align-rebased-tests-with-workspace-runners.patch
 mode/0014-fix-sidebar-remove-project-tree-chrome.patch
+mode/0015-fix-chat-open-latest-project-draft-by-default.patch

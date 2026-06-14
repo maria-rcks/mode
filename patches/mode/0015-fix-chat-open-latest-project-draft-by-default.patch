@@ -1,0 +1,489 @@
+From 65a3306d3d8af1dab265a32e0d64f126c8daaad1 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Sun, 14 Jun 2026 01:49:24 -0400
+Subject: [PATCH 15/15] fix(chat): open latest project draft by default
+
+---
+ apps/web/src/components/ChatView.tsx          |  3 +-
+ .../src/components/NoActiveThreadState.tsx    | 45 --------------
+ apps/web/src/hooks/useHandleNewThread.ts      | 28 ++++++++-
+ apps/web/src/lib/chatThreadActions.test.ts    | 39 ++++++++++++
+ apps/web/src/lib/chatThreadActions.ts         | 18 ++++--
+ apps/web/src/lib/threadSort.test.ts           | 60 ++++++++++++++++++-
+ apps/web/src/lib/threadSort.ts                | 23 +++++++
+ apps/web/src/routes/_chat.index.tsx           | 54 ++++++++++++++++-
+ apps/web/src/routes/_chat.tsx                 | 13 +++-
+ 9 files changed, 223 insertions(+), 60 deletions(-)
+ delete mode 100644 apps/web/src/components/NoActiveThreadState.tsx
+
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 342a9632..0f941482 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -152,7 +152,6 @@ import { MessagesTimeline } from "./chat/MessagesTimeline";
+ import { ChatHeader } from "./chat/ChatHeader";
+ import { normalizeRuntimeModeForProvider } from "./chat/runtimeModePresentation";
+ import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
+-import { NoActiveThreadState } from "./NoActiveThreadState";
+ import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
+ import { ProviderStatusBanner } from "./chat/ProviderStatusBanner";
+ import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
+@@ -3840,7 +3839,7 @@ export default function ChatView(props: ChatViewProps) {
+ 
+   // Empty state: no active thread
+   if (!activeThread) {
+-    return <NoActiveThreadState />;
++    return null;
+   }
+ 
+   return (
+diff --git a/apps/web/src/components/NoActiveThreadState.tsx b/apps/web/src/components/NoActiveThreadState.tsx
+deleted file mode 100644
+index a2a801a3..00000000
+--- a/apps/web/src/components/NoActiveThreadState.tsx
++++ /dev/null
+@@ -1,45 +0,0 @@
+-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
+-import { SidebarInset, SidebarTrigger } from "./ui/sidebar";
+-import { isElectron } from "../env";
+-import { cn } from "~/lib/utils";
+-
+-export function NoActiveThreadState() {
+-  return (
+-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
+-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
+-        <header
+-          className={cn(
+-            "border-b border-border px-3 sm:px-5",
+-            isElectron
+-              ? "drag-region flex h-[52px] items-center wco:h-[env(titlebar-area-height)]"
+-              : "py-2 sm:py-3",
+-          )}
+-        >
+-          {isElectron ? (
+-            <span className="text-xs text-muted-foreground/50 wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]">
+-              No active thread
+-            </span>
+-          ) : (
+-            <div className="flex items-center gap-2">
+-              <SidebarTrigger className="size-7 shrink-0 md:hidden" />
+-              <span className="text-sm font-medium text-foreground md:text-muted-foreground/60">
+-                No active thread
+-              </span>
+-            </div>
+-          )}
+-        </header>
+-
+-        <Empty className="flex-1">
+-          <div className="w-full max-w-lg px-8 py-12">
+-            <EmptyHeader className="max-w-none">
+-              <EmptyTitle className="text-foreground text-xl">Pick a thread to continue</EmptyTitle>
+-              <EmptyDescription className="mt-2 text-sm text-muted-foreground/78">
+-                Select an existing thread or create a new one to get started.
+-              </EmptyDescription>
+-            </EmptyHeader>
+-          </div>
+-        </Empty>
+-      </div>
+-    </SidebarInset>
+-  );
+-}
+diff --git a/apps/web/src/hooks/useHandleNewThread.ts b/apps/web/src/hooks/useHandleNewThread.ts
+index e440497b..8dab93eb 100644
+--- a/apps/web/src/hooks/useHandleNewThread.ts
++++ b/apps/web/src/hooks/useHandleNewThread.ts
+@@ -1,4 +1,9 @@
+-import { scopedProjectKey, scopeProjectRef } from "@t3tools/client-runtime";
++import {
++  scopedProjectKey,
++  scopedThreadKey,
++  scopeProjectRef,
++  scopeThreadRef,
++} from "@t3tools/client-runtime";
+ import { DEFAULT_RUNTIME_MODE, type ScopedProjectRef } from "@t3tools/contracts";
+ import { useParams, useRouter } from "@tanstack/react-router";
+ import { useCallback, useMemo } from "react";
+@@ -15,10 +20,15 @@ import {
+   getProjectOrderKey,
+   selectProjectGroupingSettings,
+ } from "../logicalProject";
+-import { selectProjectsAcrossEnvironments, useStore } from "../store";
++import {
++  selectProjectsAcrossEnvironments,
++  selectSidebarThreadsAcrossEnvironments,
++  useStore,
++} from "../store";
+ import { createThreadSelectorByRef } from "../storeSelectors";
+ import { resolveThreadRouteTarget } from "../threadRoutes";
+ import { useUiStateStore } from "../uiStateStore";
++import { getLatestThreadByActivity } from "../lib/threadSort";
+ import { useSettings } from "./useSettings";
+ 
+ function useNewThreadState() {
+@@ -166,6 +176,9 @@ export function useHandleNewThread() {
+       : null,
+   );
+   const projects = useStore(useShallow((store) => selectProjectsAcrossEnvironments(store)));
++  const threads = useStore(useShallow((store) => selectSidebarThreadsAcrossEnvironments(store)));
++  const threadLastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
++  const sidebarThreadSortOrder = useSettings((store) => store.sidebarThreadSortOrder);
+   const orderedProjects = useMemo(() => {
+     return orderItemsByPreferredIds({
+       items: projects,
+@@ -173,11 +186,22 @@ export function useHandleNewThread() {
+       getId: getProjectOrderKey,
+     });
+   }, [projectOrder, projects]);
++  const latestActivityThread = useMemo(
++    () =>
++      getLatestThreadByActivity(
++        threads,
++        sidebarThreadSortOrder,
++        (thread) =>
++          threadLastVisitedAtById[scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))],
++      ),
++    [sidebarThreadSortOrder, threadLastVisitedAtById, threads],
++  );
+   const handleNewThread = useNewThreadState();
+ 
+   return {
+     activeDraftThread,
+     activeThread,
++    latestActivityThread,
+     defaultProjectRef: orderedProjects[0]
+       ? scopeProjectRef(orderedProjects[0].environmentId, orderedProjects[0].id)
+       : null,
+diff --git a/apps/web/src/lib/chatThreadActions.test.ts b/apps/web/src/lib/chatThreadActions.test.ts
+index 56c7508f..1c387e8f 100644
+--- a/apps/web/src/lib/chatThreadActions.test.ts
++++ b/apps/web/src/lib/chatThreadActions.test.ts
+@@ -50,6 +50,22 @@ describe("chatThreadActions", () => {
+     expect(projectRef).toEqual(scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID));
+   });
+ 
++  it("uses the latest activity thread project before the default project ref", () => {
++    const projectRef = resolveThreadActionProjectRef(
++      createContext({
++        latestActivityThread: {
++          environmentId: ENVIRONMENT_ID,
++          projectId: PROJECT_ID,
++          branch: "feature/recent",
++          worktreePath: "/tmp/recent",
++        },
++        defaultProjectRef: scopeProjectRef(ENVIRONMENT_ID, FALLBACK_PROJECT_ID),
++      }),
++    );
++
++    expect(projectRef).toEqual(scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID));
++  });
++
+   it("starts a contextual new thread from the active draft thread", async () => {
+     const handleNewThread = vi.fn<ChatThreadActionContext["handleNewThread"]>(async () => {});
+ 
+@@ -74,6 +90,29 @@ describe("chatThreadActions", () => {
+     });
+   });
+ 
++  it("starts a contextual new thread from the latest activity thread when no thread is active", async () => {
++    const handleNewThread = vi.fn<ChatThreadActionContext["handleNewThread"]>(async () => {});
++
++    const didStart = await startNewThreadFromContext(
++      createContext({
++        latestActivityThread: {
++          environmentId: ENVIRONMENT_ID,
++          projectId: PROJECT_ID,
++          branch: "feature/recent",
++          worktreePath: "/tmp/recent",
++        },
++        handleNewThread,
++      }),
++    );
++
++    expect(didStart).toBe(true);
++    expect(handleNewThread).toHaveBeenCalledWith(scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID), {
++      branch: "feature/recent",
++      worktreePath: "/tmp/recent",
++      envMode: "worktree",
++    });
++  });
++
+   it("starts a local thread with the configured default env mode", async () => {
+     const handleNewThread = vi.fn<ChatThreadActionContext["handleNewThread"]>(async () => {});
+ 
+diff --git a/apps/web/src/lib/chatThreadActions.ts b/apps/web/src/lib/chatThreadActions.ts
+index 39826e8a..4199be86 100644
+--- a/apps/web/src/lib/chatThreadActions.ts
++++ b/apps/web/src/lib/chatThreadActions.ts
+@@ -29,6 +29,7 @@ type NewThreadOptions = NonNullable<Parameters<NewThreadHandler>[1]>;
+ export interface ChatThreadActionContext {
+   readonly activeDraftThread: DraftThreadContextLike | null;
+   readonly activeThread: ThreadContextLike | undefined;
++  readonly latestActivityThread?: ThreadContextLike | null;
+   readonly defaultProjectRef: ScopedProjectRef | null;
+   readonly defaultThreadEnvMode: DraftThreadEnvMode;
+   readonly handleNewThread: NewThreadHandler;
+@@ -46,17 +47,24 @@ export function resolveThreadActionProjectRef(
+       context.activeDraftThread.projectId,
+     );
+   }
++  if (context.latestActivityThread) {
++    return scopeProjectRef(
++      context.latestActivityThread.environmentId,
++      context.latestActivityThread.projectId,
++    );
++  }
+   return context.defaultProjectRef;
+ }
+ 
+ function buildContextualThreadOptions(context: ChatThreadActionContext): NewThreadOptions {
++  const threadContext =
++    context.activeThread ??
++    (context.activeDraftThread ? null : (context.latestActivityThread ?? null));
+   return {
+-    branch: context.activeThread?.branch ?? context.activeDraftThread?.branch ?? null,
+-    worktreePath:
+-      context.activeThread?.worktreePath ?? context.activeDraftThread?.worktreePath ?? null,
++    branch: threadContext?.branch ?? context.activeDraftThread?.branch ?? null,
++    worktreePath: threadContext?.worktreePath ?? context.activeDraftThread?.worktreePath ?? null,
+     envMode:
+-      context.activeDraftThread?.envMode ??
+-      (context.activeThread?.worktreePath ? "worktree" : "local"),
++      context.activeDraftThread?.envMode ?? (threadContext?.worktreePath ? "worktree" : "local"),
+   };
+ }
+ 
+diff --git a/apps/web/src/lib/threadSort.test.ts b/apps/web/src/lib/threadSort.test.ts
+index ad4126e4..1bca605f 100644
+--- a/apps/web/src/lib/threadSort.test.ts
++++ b/apps/web/src/lib/threadSort.test.ts
+@@ -7,7 +7,7 @@ import {
+   ThreadId,
+ } from "@t3tools/contracts";
+ import type { Thread } from "../types";
+-import { getLatestThreadForProject, sortThreads } from "./threadSort";
++import { getLatestThreadByActivity, getLatestThreadForProject, sortThreads } from "./threadSort";
+ 
+ const LOCAL_ENVIRONMENT_ID = EnvironmentId.make("environment-local");
+ const PROJECT_ID = ProjectId.make("project-1");
+@@ -239,3 +239,61 @@ describe("sortThreads", () => {
+     expect(latestThread?.id).toBe(ThreadId.make("thread-3"));
+   });
+ });
++
++describe("getLatestThreadByActivity", () => {
++  it("prefers the most recently visited active thread", () => {
++    const latestThread = getLatestThreadByActivity(
++      [
++        makeThread({
++          id: ThreadId.make("thread-1"),
++          updatedAt: "2026-03-09T10:20:00.000Z",
++        }),
++        makeThread({
++          id: ThreadId.make("thread-2"),
++          updatedAt: "2026-03-09T10:10:00.000Z",
++        }),
++      ],
++      "updated_at",
++      (thread) => (thread.id === ThreadId.make("thread-2") ? "2026-03-09T10:30:00.000Z" : null),
++    );
++
++    expect(latestThread?.id).toBe(ThreadId.make("thread-2"));
++  });
++
++  it("falls back to thread recency when there is no visit timestamp", () => {
++    const latestThread = getLatestThreadByActivity(
++      [
++        makeThread({
++          id: ThreadId.make("thread-1"),
++          updatedAt: "2026-03-09T10:20:00.000Z",
++        }),
++        makeThread({
++          id: ThreadId.make("thread-2"),
++          updatedAt: "2026-03-09T10:10:00.000Z",
++        }),
++      ],
++      "updated_at",
++    );
++
++    expect(latestThread?.id).toBe(ThreadId.make("thread-1"));
++  });
++
++  it("ignores archived threads", () => {
++    const latestThread = getLatestThreadByActivity(
++      [
++        makeThread({
++          id: ThreadId.make("thread-1"),
++          updatedAt: "2026-03-09T10:20:00.000Z",
++          archivedAt: "2026-03-10T00:00:00.000Z",
++        }),
++        makeThread({
++          id: ThreadId.make("thread-2"),
++          updatedAt: "2026-03-09T10:10:00.000Z",
++        }),
++      ],
++      "updated_at",
++    );
++
++    expect(latestThread?.id).toBe(ThreadId.make("thread-2"));
++  });
++});
+diff --git a/apps/web/src/lib/threadSort.ts b/apps/web/src/lib/threadSort.ts
+index de8b22e9..7847f3e6 100644
+--- a/apps/web/src/lib/threadSort.ts
++++ b/apps/web/src/lib/threadSort.ts
+@@ -84,3 +84,26 @@ export function getLatestThreadForProject<
+     )[0] ?? null
+   );
+ }
++
++export function getLatestThreadByActivity<
++  T extends Pick<Thread, "id" | "archivedAt"> & ThreadSortInput,
++>(
++  threads: readonly T[],
++  sortOrder: SidebarThreadSortOrder,
++  getLastVisitedAt?: (thread: T) => string | null | undefined,
++): T | null {
++  return (
++    threads
++      .filter((thread) => thread.archivedAt === null)
++      .toSorted((left, right) => {
++        const rightLastVisitedAt = toSortableTimestamp(getLastVisitedAt?.(right) ?? undefined);
++        const leftLastVisitedAt = toSortableTimestamp(getLastVisitedAt?.(left) ?? undefined);
++        const rightTimestamp = rightLastVisitedAt ?? getThreadSortTimestamp(right, sortOrder);
++        const leftTimestamp = leftLastVisitedAt ?? getThreadSortTimestamp(left, sortOrder);
++        const byTimestamp =
++          rightTimestamp === leftTimestamp ? 0 : rightTimestamp > leftTimestamp ? 1 : -1;
++        if (byTimestamp !== 0) return byTimestamp;
++        return right.id.localeCompare(left.id);
++      })[0] ?? null
++  );
++}
+diff --git a/apps/web/src/routes/_chat.index.tsx b/apps/web/src/routes/_chat.index.tsx
+index 896f66b3..3e1ab0be 100644
+--- a/apps/web/src/routes/_chat.index.tsx
++++ b/apps/web/src/routes/_chat.index.tsx
+@@ -1,25 +1,73 @@
+ import { createFileRoute, Link } from "@tanstack/react-router";
+ import { LinkIcon, PlusIcon } from "lucide-react";
++import { useEffect, useRef } from "react";
+ 
+-import { NoActiveThreadState } from "../components/NoActiveThreadState";
+ import { Button } from "../components/ui/button";
+ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../components/ui/empty";
+ import { SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
+ import { useSavedEnvironmentRegistryStore } from "../environments/runtime";
++import { useHandleNewThread } from "../hooks/useHandleNewThread";
++import { startNewThreadFromContext } from "../lib/chatThreadActions";
+ import { APP_DISPLAY_NAME } from "~/branding";
+ import { hasCloudPublicConfig } from "~/cloud/publicConfig";
++import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
++import { useSettings } from "~/hooks/useSettings";
+ 
+ function ChatIndexRouteView() {
+   const { authGateState } = Route.useRouteContext();
+   const savedEnvironmentCount = useSavedEnvironmentRegistryStore(
+     (state) => Object.keys(state.byId).length,
+   );
++  const {
++    activeDraftThread,
++    activeThread,
++    latestActivityThread,
++    defaultProjectRef,
++    handleNewThread,
++  } = useHandleNewThread();
++  const appSettings = useSettings();
++  const startInFlightRef = useRef(false);
++  const shouldShowHostedStaticOnboarding =
++    authGateState.status === "hosted-static" && savedEnvironmentCount === 0;
+ 
+-  if (authGateState.status === "hosted-static" && savedEnvironmentCount === 0) {
++  useEffect(() => {
++    if (shouldShowHostedStaticOnboarding || startInFlightRef.current) {
++      return;
++    }
++    if (!activeDraftThread && !activeThread && !latestActivityThread && !defaultProjectRef) {
++      return;
++    }
++
++    startInFlightRef.current = true;
++    void startNewThreadFromContext({
++      activeDraftThread,
++      activeThread,
++      latestActivityThread,
++      defaultProjectRef,
++      defaultThreadEnvMode: resolveSidebarNewThreadEnvMode({
++        defaultEnvMode: appSettings.defaultThreadEnvMode,
++      }),
++      handleNewThread,
++    }).then((didStart) => {
++      if (!didStart) {
++        startInFlightRef.current = false;
++      }
++    });
++  }, [
++    activeDraftThread,
++    activeThread,
++    appSettings.defaultThreadEnvMode,
++    defaultProjectRef,
++    handleNewThread,
++    latestActivityThread,
++    shouldShowHostedStaticOnboarding,
++  ]);
++
++  if (shouldShowHostedStaticOnboarding) {
+     return <HostedStaticOnboardingState />;
+   }
+ 
+-  return <NoActiveThreadState />;
++  return null;
+ }
+ 
+ export const Route = createFileRoute("/_chat/")({
+diff --git a/apps/web/src/routes/_chat.tsx b/apps/web/src/routes/_chat.tsx
+index 3ccb2e7f..019b49bb 100644
+--- a/apps/web/src/routes/_chat.tsx
++++ b/apps/web/src/routes/_chat.tsx
+@@ -18,8 +18,14 @@ import { useServerKeybindings } from "~/rpc/serverState";
+ function ChatRouteGlobalShortcuts() {
+   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
+   const selectedThreadKeysSize = useThreadSelectionStore((state) => state.selectedThreadKeys.size);
+-  const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread, routeThreadRef } =
+-    useHandleNewThread();
++  const {
++    activeDraftThread,
++    activeThread,
++    latestActivityThread,
++    defaultProjectRef,
++    handleNewThread,
++    routeThreadRef,
++  } = useHandleNewThread();
+   const keybindings = useServerKeybindings();
+   const terminalOpen = useTerminalUiStateStore((state) =>
+     routeThreadRef
+@@ -54,6 +60,7 @@ function ChatRouteGlobalShortcuts() {
+         void startNewLocalThreadFromContext({
+           activeDraftThread,
+           activeThread,
++          latestActivityThread,
+           defaultProjectRef,
+           defaultThreadEnvMode: resolveSidebarNewThreadEnvMode({
+             defaultEnvMode: appSettings.defaultThreadEnvMode,
+@@ -69,6 +76,7 @@ function ChatRouteGlobalShortcuts() {
+         void startNewThreadFromContext({
+           activeDraftThread,
+           activeThread,
++          latestActivityThread,
+           defaultProjectRef,
+           defaultThreadEnvMode: resolveSidebarNewThreadEnvMode({
+             defaultEnvMode: appSettings.defaultThreadEnvMode,
+@@ -85,6 +93,7 @@ function ChatRouteGlobalShortcuts() {
+   }, [
+     activeDraftThread,
+     activeThread,
++    latestActivityThread,
+     clearSelection,
+     handleNewThread,
+     keybindings,
+-- 
+2.50.1 (Apple Git-155)
+

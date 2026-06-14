@@ -1,15 +1,15 @@
-From 14075b7cb4808f8baaa58317450f7af6bb7a8dba Mon Sep 17 00:00:00 2001
+From ec3e5b07cb6fa7a4a3f20bc50c58d6e4a76b3a0f Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
 
 ---
- .../src/components/ProjectFavicon.test.tsx    | 26 ++++++++++++++
- apps/web/src/components/ProjectFavicon.tsx    |  8 +++--
- apps/web/src/components/Sidebar.logic.test.ts | 20 +++++++++++
- apps/web/src/components/Sidebar.logic.ts      |  5 +++
- apps/web/src/components/Sidebar.tsx           | 36 ++++++++++---------
- 5 files changed, 75 insertions(+), 20 deletions(-)
+ .../src/components/ProjectFavicon.test.tsx    | 26 ++++++++
+ apps/web/src/components/ProjectFavicon.tsx    |  8 ++-
+ apps/web/src/components/Sidebar.logic.test.ts | 42 +++++++++++++
+ apps/web/src/components/Sidebar.logic.ts      | 39 ++++++++++++
+ apps/web/src/components/Sidebar.tsx           | 61 +++++++++++--------
+ 5 files changed, 147 insertions(+), 29 deletions(-)
  create mode 100644 apps/web/src/components/ProjectFavicon.test.tsx
 
 diff --git a/apps/web/src/components/ProjectFavicon.test.tsx b/apps/web/src/components/ProjectFavicon.test.tsx
@@ -84,7 +84,7 @@ index ad47e01b..7ddef2f2 100644
          />
        ) : null}
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index 3d6e45b9..f2323729 100644
+index 3d6e45b9..d93d13ff 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
 @@ -3,6 +3,7 @@ import { ProviderDriverKind } from "@t3tools/contracts";
@@ -95,10 +95,39 @@ index 3d6e45b9..f2323729 100644
    getSidebarThreadIdsToPrewarm,
    getVisibleSidebarThreadIds,
    resolveAdjacentThreadId,
-@@ -596,6 +597,25 @@ describe("resolveThreadRowClassName", () => {
+@@ -15,6 +16,7 @@ import {
+   resolveProjectStatusIndicator,
+   resolveSidebarNewThreadSeedContext,
+   resolveSidebarNewThreadEnvMode,
++  resolveThreadMetaBackdropClassName,
+   resolveThreadRowClassName,
+   resolveThreadStatusPill,
+   shouldClearThreadSelectionOnMouseDown,
+@@ -596,6 +598,46 @@ describe("resolveThreadRowClassName", () => {
    });
  });
  
++describe("resolveThreadMetaBackdropClassName", () => {
++  it("uses the sidebar background for idle thread rows", () => {
++    const className = resolveThreadMetaBackdropClassName({ isActive: false, isSelected: false });
++    expect(className).toContain("from-transparent");
++    expect(className).toContain("to-sidebar");
++    expect(className).toContain("group-hover/menu-sub-item:to-accent");
++  });
++
++  it("matches selected thread row backgrounds", () => {
++    const className = resolveThreadMetaBackdropClassName({ isActive: false, isSelected: true });
++    expect(className).toContain("to-primary/15");
++    expect(className).toContain("group-hover/menu-sub-item:to-primary/19");
++  });
++
++  it("matches active thread row backgrounds", () => {
++    const className = resolveThreadMetaBackdropClassName({ isActive: true, isSelected: false });
++    expect(className).toContain("to-accent/85");
++    expect(className).toContain("dark:to-accent/55");
++  });
++});
++
 +describe("formatSidebarThreadTimeLabel", () => {
 +  beforeEach(() => {
 +    vi.useFakeTimers();
@@ -122,7 +151,7 @@ index 3d6e45b9..f2323729 100644
    it("returns null when no threads have a notable status", () => {
      expect(resolveProjectStatusIndicator([null, null])).toBeNull();
 diff --git a/apps/web/src/components/Sidebar.logic.ts b/apps/web/src/components/Sidebar.logic.ts
-index b9dd27df..caacb79e 100644
+index b9dd27df..c966f8dd 100644
 --- a/apps/web/src/components/Sidebar.logic.ts
 +++ b/apps/web/src/components/Sidebar.logic.ts
 @@ -9,6 +9,7 @@ import {
@@ -133,10 +162,44 @@ index b9dd27df..caacb79e 100644
  
  export const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-selection-safe]";
  export const THREAD_JUMP_HINT_SHOW_DELAY_MS = 100;
-@@ -326,6 +327,10 @@ export function resolveThreadRowClassName(input: {
+@@ -326,6 +327,44 @@ export function resolveThreadRowClassName(input: {
    return cn(baseClassName, "text-muted-foreground hover:bg-accent hover:text-foreground");
  }
  
++export function resolveThreadMetaBackdropClassName(input: {
++  isActive: boolean;
++  isSelected: boolean;
++}): string {
++  const baseClassName =
++    "pointer-events-none absolute inset-y-px right-2 z-10 flex items-center justify-end gap-1.5 bg-gradient-to-r from-transparent pl-14";
++
++  if (input.isSelected && input.isActive) {
++    return cn(
++      baseClassName,
++      "via-primary/22 to-primary/22 group-hover/menu-sub-item:via-primary/26 group-hover/menu-sub-item:to-primary/26 group-focus-within/menu-sub-item:via-primary/26 group-focus-within/menu-sub-item:to-primary/26 dark:via-primary/30 dark:to-primary/30 dark:group-hover/menu-sub-item:via-primary/36 dark:group-hover/menu-sub-item:to-primary/36 dark:group-focus-within/menu-sub-item:via-primary/36 dark:group-focus-within/menu-sub-item:to-primary/36",
++    );
++  }
++
++  if (input.isSelected) {
++    return cn(
++      baseClassName,
++      "via-primary/15 to-primary/15 group-hover/menu-sub-item:via-primary/19 group-hover/menu-sub-item:to-primary/19 group-focus-within/menu-sub-item:via-primary/19 group-focus-within/menu-sub-item:to-primary/19 dark:via-primary/22 dark:to-primary/22 dark:group-hover/menu-sub-item:via-primary/28 dark:group-hover/menu-sub-item:to-primary/28 dark:group-focus-within/menu-sub-item:via-primary/28 dark:group-focus-within/menu-sub-item:to-primary/28",
++    );
++  }
++
++  if (input.isActive) {
++    return cn(
++      baseClassName,
++      "via-accent/85 to-accent/85 group-hover/menu-sub-item:via-accent group-hover/menu-sub-item:to-accent group-focus-within/menu-sub-item:via-accent group-focus-within/menu-sub-item:to-accent dark:via-accent/55 dark:to-accent/55 dark:group-hover/menu-sub-item:via-accent/70 dark:group-hover/menu-sub-item:to-accent/70 dark:group-focus-within/menu-sub-item:via-accent/70 dark:group-focus-within/menu-sub-item:to-accent/70",
++    );
++  }
++
++  return cn(
++    baseClassName,
++    "via-sidebar to-sidebar group-hover/menu-sub-item:via-accent group-hover/menu-sub-item:to-accent group-focus-within/menu-sub-item:via-accent group-focus-within/menu-sub-item:to-accent",
++  );
++}
++
 +export function formatSidebarThreadTimeLabel(isoDate: string): string {
 +  return formatRelativeTime(isoDate).value;
 +}
@@ -145,7 +208,7 @@ index b9dd27df..caacb79e 100644
    thread: ThreadStatusInput;
  }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..58b3a00c 100644
+index dc5acaaa..d27c946c 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -164,15 +227,41 @@ index dc5acaaa..58b3a00c 100644
  import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
  import { Kbd } from "./ui/kbd";
  import {
-@@ -172,6 +170,7 @@ import {
+@@ -172,6 +170,8 @@ import {
    sortProjectsForSidebar,
    useThreadJumpHintVisibility,
    ThreadStatusPill,
 +  formatSidebarThreadTimeLabel,
++  resolveThreadMetaBackdropClassName,
  } from "./Sidebar.logic";
  import { sortThreads } from "../lib/threadSort";
  import { SidebarUpdatePill } from "./sidebar/SidebarUpdatePill";
-@@ -561,7 +560,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -219,6 +219,10 @@ const PROJECT_GROUPING_MODE_LABELS: Record<SidebarProjectGroupingMode, string> =
+ };
+ const SIDEBAR_ICON_ACTION_BUTTON_CLASS =
+   "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
++const SIDEBAR_THREAD_TITLE_MASK_STYLE = {
++  WebkitMaskImage: "linear-gradient(to right, black calc(100% - 4.25rem), transparent)",
++  maskImage: "linear-gradient(to right, black calc(100% - 4.25rem), transparent)",
++} satisfies React.CSSProperties;
+ 
+ function clampSidebarThreadPreviewCount(value: number): SidebarThreadPreviewCount {
+   return Math.min(
+@@ -395,6 +399,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+     : !isThreadRunning
+       ? "pointer-events-none transition-opacity duration-150 max-sm:pr-6 group-hover/menu-sub-item:opacity-0 group-focus-within/menu-sub-item:opacity-0"
+       : "pointer-events-none";
++  const threadTimeLabel = formatSidebarThreadTimeLabel(
++    thread.latestUserMessageAt ?? thread.updatedAt ?? thread.createdAt,
++  );
++  const threadMetaBackdropClassName = resolveThreadMetaBackdropClassName({
++    isActive,
++    isSelected,
++  });
+   const clearConfirmingArchive = useCallback(() => {
+     setConfirmingArchiveThreadKey((current) => (current === threadKey ? null : current));
+   }, [setConfirmingArchiveThreadKey, threadKey]);
+@@ -561,7 +572,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
          onKeyDown={handleRowKeyDown}
          onContextMenu={handleRowContextMenu}
        >
@@ -181,16 +270,51 @@ index dc5acaaa..58b3a00c 100644
            {prStatus && (
              <Tooltip>
                <TooltipTrigger
-@@ -720,7 +719,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -595,8 +606,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+               <TooltipTrigger
+                 render={
+                   <span
+-                    className="min-w-0 flex-1 truncate text-xs"
++                    className="min-w-0 flex-1 overflow-visible whitespace-nowrap text-xs"
+                     data-testid={`thread-title-${thread.id}`}
++                    style={SIDEBAR_THREAD_TITLE_MASK_STYLE}
+                   >
+                     {thread.title}
+                   </span>
+@@ -608,7 +620,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+             </Tooltip>
+           )}
+         </div>
+-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
++        <div className={threadMetaBackdropClassName}>
+           {terminalStatus && (
+             <Tooltip>
+               <TooltipTrigger
+@@ -625,11 +637,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+               <TooltipPopup side="top">{terminalStatus.label}</TooltipPopup>
+             </Tooltip>
+           )}
+-          <div
+-            className={`flex min-w-12 justify-end ${
+-              isRemoteThread ? "max-sm:min-w-24" : "max-sm:min-w-20"
+-            }`}
+-          >
++          <div className="flex min-w-6 justify-end">
+             {isConfirmingArchive ? (
+               <button
+                 ref={handleConfirmArchiveRef}
+@@ -720,9 +728,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                          : "text-muted-foreground/40"
                      }`}
                    >
 -                    {formatRelativeTimeLabel(
-+                    {formatSidebarThreadTimeLabel(
-                       thread.latestUserMessageAt ?? thread.updatedAt ?? thread.createdAt,
-                     )}
+-                      thread.latestUserMessageAt ?? thread.updatedAt ?? thread.createdAt,
+-                    )}
++                    {threadTimeLabel}
                    </span>
-@@ -825,13 +824,13 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+                 )}
+               </span>
+@@ -825,13 +831,13 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
    return (
      <SidebarMenuSub
        ref={attachThreadListAutoAnimateRef}
@@ -206,7 +330,7 @@ index dc5acaaa..58b3a00c 100644
            >
              <span>No threads yet</span>
            </div>
-@@ -881,7 +880,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+@@ -881,7 +887,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
                expandThreadListForProject(projectKey);
              }}
            >
@@ -215,7 +339,7 @@ index dc5acaaa..58b3a00c 100644
                {hiddenThreadStatus && <ThreadStatusLabel status={hiddenThreadStatus} compact />}
                <span>Show more</span>
              </span>
-@@ -899,7 +898,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+@@ -899,7 +905,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
                collapseThreadListForProject(projectKey);
              }}
            >
@@ -224,7 +348,7 @@ index dc5acaaa..58b3a00c 100644
            </SidebarMenuSubButton>
          </SidebarMenuSubItem>
        )}
-@@ -2016,29 +2015,32 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+@@ -2016,29 +2022,32 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                  render={
                    <span
                      aria-label={projectStatus.label}

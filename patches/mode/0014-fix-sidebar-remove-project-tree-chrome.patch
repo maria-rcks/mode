@@ -1,4 +1,4 @@
-From b14eb4b9c7cf452a966397a1c346f070470ce7ad Mon Sep 17 00:00:00 2001
+From 7d451615a2b391f57bcbe71eb79cbd340f2f72ee Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
@@ -84,7 +84,7 @@ index ad47e01b..7ddef2f2 100644
          />
        ) : null}
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index 3d6e45b9..c788eb86 100644
+index 3d6e45b9..776d8c3c 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
 @@ -3,6 +3,7 @@ import { ProviderDriverKind } from "@t3tools/contracts";
@@ -113,7 +113,7 @@ index 3d6e45b9..c788eb86 100644
 +    expect(className).toContain("from-transparent");
 +    expect(className).toContain("inset-y-0");
 +    expect(className).toContain("right-0");
-+    expect(className).toContain("pl-28");
++    expect(className).toContain("pl-20");
 +    expect(className).toContain("rounded-r-lg");
 +    expect(className).toContain("to-sidebar");
 +    expect(className).toContain("group-hover/menu-sub-item:to-accent");
@@ -155,7 +155,7 @@ index 3d6e45b9..c788eb86 100644
    it("returns null when no threads have a notable status", () => {
      expect(resolveProjectStatusIndicator([null, null])).toBeNull();
 diff --git a/apps/web/src/components/Sidebar.logic.ts b/apps/web/src/components/Sidebar.logic.ts
-index b9dd27df..8ccff563 100644
+index b9dd27df..bf58f5c8 100644
 --- a/apps/web/src/components/Sidebar.logic.ts
 +++ b/apps/web/src/components/Sidebar.logic.ts
 @@ -9,6 +9,7 @@ import {
@@ -175,7 +175,7 @@ index b9dd27df..8ccff563 100644
 +  isSelected: boolean;
 +}): string {
 +  const baseClassName =
-+    "pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center justify-end gap-1.5 rounded-r-lg bg-gradient-to-r from-transparent pl-28 pr-2";
++    "pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center justify-end gap-1.5 rounded-r-lg bg-gradient-to-r from-transparent pl-20 pr-2";
 +
 +  if (input.isSelected && input.isActive) {
 +    return cn(
@@ -212,7 +212,7 @@ index b9dd27df..8ccff563 100644
    thread: ThreadStatusInput;
  }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..c117c2e3 100644
+index dc5acaaa..28f5451a 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -246,9 +246,9 @@ index dc5acaaa..c117c2e3 100644
    "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 +const SIDEBAR_THREAD_TITLE_MASK_STYLE = {
 +  WebkitMaskImage:
-+    "linear-gradient(to right, black 0, black calc(100% - 8.5rem), transparent calc(100% - 4.75rem), transparent 100%)",
++    "linear-gradient(to right, black 0, black calc(100% - 4.25rem), transparent calc(100% - 2.25rem), transparent 100%)",
 +  maskImage:
-+    "linear-gradient(to right, black 0, black calc(100% - 8.5rem), transparent calc(100% - 4.75rem), transparent 100%)",
++    "linear-gradient(to right, black 0, black calc(100% - 4.25rem), transparent calc(100% - 2.25rem), transparent 100%)",
 +} satisfies React.CSSProperties;
  
  function clampSidebarThreadPreviewCount(value: number): SidebarThreadPreviewCount {

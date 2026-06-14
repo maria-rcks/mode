@@ -14,3 +14,4 @@ mode/0010-fix-model-picker-hide-subprovider-in-selected-model.patch
 mode/0011-style-mode-format-rebase-resolutions.patch
 mode/0012-fix-mode-satisfy-lint-after-rebase.patch
 mode/0013-fix-tests-align-rebased-tests-with-workspace-runners.patch
+mode/0014-fix-sidebar-remove-project-tree-chrome.patch

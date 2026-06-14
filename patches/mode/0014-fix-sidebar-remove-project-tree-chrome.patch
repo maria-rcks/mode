@@ -1,0 +1,52 @@
+From 8bb5d4e66f5d833a198b493981e578f8c2ec6973 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Sat, 13 Jun 2026 21:48:50 -0400
+Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
+
+---
+ apps/web/src/components/Sidebar.tsx | 12 ++----------
+ 1 file changed, 2 insertions(+), 10 deletions(-)
+
+diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
+index dc5acaaa..9abcd9f9 100644
+--- a/apps/web/src/components/Sidebar.tsx
++++ b/apps/web/src/components/Sidebar.tsx
+@@ -1,7 +1,6 @@
+ import {
+   ArchiveIcon,
+   ArrowUpDownIcon,
+-  ChevronRightIcon,
+   CloudIcon,
+   FolderPlusIcon,
+   SearchIcon,
+@@ -825,7 +824,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+   return (
+     <SidebarMenuSub
+       ref={attachThreadListAutoAnimateRef}
+-      className="mx-0.5 my-0 w-full translate-x-0 gap-0.5 overflow-hidden px-1 py-0 sm:mx-1 sm:px-1.5"
++      className="mx-0.5 my-0 w-full translate-x-0 gap-0.5 overflow-hidden border-l-0 px-1 py-0 sm:mx-1 sm:px-1.5"
+     >
+       {shouldShowThreadPanel && showEmptyThreadState ? (
+         <SidebarMenuSubItem className="w-full" data-thread-selection-safe>
+@@ -2027,17 +2026,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+                     }`}
+                   />
+                 </span>
+-                <ChevronRightIcon className="absolute inset-0 m-auto size-3.5 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-hover/project-header:opacity-100" />
+               </TooltipTrigger>
+               <TooltipPopup side="top">{projectStatus.label}</TooltipPopup>
+             </Tooltip>
+-          ) : (
+-            <ChevronRightIcon
+-              className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
+-                projectExpanded ? "rotate-90" : ""
+-              }`}
+-            />
+-          )}
++          ) : null}
+           <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
+           <span className="flex min-w-0 flex-1 items-center gap-2">
+             <span className="truncate text-xs font-medium text-foreground/90">
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,7 +1,7 @@
-From 32ccb5c6ae66ddd3f0be0d916d18e016d45615b8 Mon Sep 17 00:00:00 2001
+From f22b27f4d4f7ece9799a48052b6f6d6a04c2e936 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 02/16] mode: apply
+Subject: [PATCH 02/17] mode: apply
  mode/0002-feat-provider-add-Droid-SDK-provider.patch
 
 ---

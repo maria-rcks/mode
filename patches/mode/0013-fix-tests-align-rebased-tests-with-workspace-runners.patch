@@ -1,7 +1,7 @@
-From b2b2e9b78439f0be7ba05846ecaf6b8f638ab264 Mon Sep 17 00:00:00 2001
+From ce5d160d33add7090a6a724a8793ee55c1e195db Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sat, 13 Jun 2026 18:46:19 -0400
-Subject: [PATCH 13/16] fix(tests): align rebased tests with workspace runners
+Subject: [PATCH 13/17] fix(tests): align rebased tests with workspace runners
 
 ---
  apps/server/src/provider/Layers/DroidProvider.test.ts        | 3 +--

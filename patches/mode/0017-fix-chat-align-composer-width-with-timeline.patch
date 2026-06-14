@@ -1,0 +1,75 @@
+From 376a70f1c8ccb7c030afa14c594b377a87e96db5 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Sun, 14 Jun 2026 02:41:09 -0400
+Subject: [PATCH 17/17] fix(chat): align composer width with timeline
+
+---
+ apps/web/src/components/BranchToolbar.tsx            | 2 +-
+ apps/web/src/components/ChatView.tsx                 | 2 +-
+ apps/web/src/components/chat/ChatComposer.tsx        | 3 ++-
+ apps/web/src/components/chat/ComposerBannerStack.tsx | 2 +-
+ 4 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/apps/web/src/components/BranchToolbar.tsx b/apps/web/src/components/BranchToolbar.tsx
+index 27c5c311..0191f3ee 100644
+--- a/apps/web/src/components/BranchToolbar.tsx
++++ b/apps/web/src/components/BranchToolbar.tsx
+@@ -241,7 +241,7 @@ export const BranchToolbar = memo(function BranchToolbar({
+   if (!hasActiveThread || !activeProject) return null;
+ 
+   return (
+-    <div className="mx-auto flex w-full max-w-208 items-center gap-2 px-2.5 pb-3 pt-1 sm:px-3">
++    <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-2.5 pb-3 pt-1 sm:px-3">
+       {isMobile ? (
+         <MobileRunContextSelector
+           envLocked={envLocked}
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 5e3ec0b7..aa6c761a 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -4128,7 +4128,7 @@ export default function ChatView(props: ChatViewProps) {
+         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+           {shouldUseStartupDraftLayout ? (
+             <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
+-              <div className="w-full max-w-208">
++              <div className="w-full max-w-3xl">
+                 {activeProject ? (
+                   <StartupDraftProjectSelector
+                     activeProject={activeProject}
+diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
+index b6a7c7fd..29163e09 100644
+--- a/apps/web/src/components/chat/ChatComposer.tsx
++++ b/apps/web/src/components/chat/ChatComposer.tsx
+@@ -1989,7 +1989,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+     <form
+       ref={composerFormRef}
+       onSubmit={submitComposer}
+-      className="mx-auto w-full min-w-0 max-w-208"
++      className="mx-auto w-full min-w-0 max-w-3xl"
+       data-chat-composer-form="true"
+     >
+       <div
+@@ -2374,6 +2374,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+                   modelOptionsByInstance={modelOptionsByInstance}
+                   terminalOpen={terminalOpen}
+                   open={isComposerModelPickerOpen}
++                  triggerClassName="-ml-2"
+                   {...(composerProviderState.modelPickerIconClassName
+                     ? {
+                         activeProviderIconClassName: composerProviderState.modelPickerIconClassName,
+diff --git a/apps/web/src/components/chat/ComposerBannerStack.tsx b/apps/web/src/components/chat/ComposerBannerStack.tsx
+index 9901237f..6291116b 100644
+--- a/apps/web/src/components/chat/ComposerBannerStack.tsx
++++ b/apps/web/src/components/chat/ComposerBannerStack.tsx
+@@ -84,7 +84,7 @@ export function ComposerBannerStack({ className, items }: ComposerBannerStackPro
+   };
+ 
+   return (
+-    <div className={cn("group/banner-stack mx-auto mb-2 max-w-208", className)}>
++    <div className={cn("group/banner-stack mx-auto mb-2 max-w-3xl", className)}>
+       <div
+         className={cn(
+           "relative",
+-- 
+2.50.1 (Apple Git-155)
+

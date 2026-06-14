@@ -1,14 +1,151 @@
-From 8bb5d4e66f5d833a198b493981e578f8c2ec6973 Mon Sep 17 00:00:00 2001
+From 14075b7cb4808f8baaa58317450f7af6bb7a8dba Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
 
 ---
- apps/web/src/components/Sidebar.tsx | 12 ++----------
- 1 file changed, 2 insertions(+), 10 deletions(-)
+ .../src/components/ProjectFavicon.test.tsx    | 26 ++++++++++++++
+ apps/web/src/components/ProjectFavicon.tsx    |  8 +++--
+ apps/web/src/components/Sidebar.logic.test.ts | 20 +++++++++++
+ apps/web/src/components/Sidebar.logic.ts      |  5 +++
+ apps/web/src/components/Sidebar.tsx           | 36 ++++++++++---------
+ 5 files changed, 75 insertions(+), 20 deletions(-)
+ create mode 100644 apps/web/src/components/ProjectFavicon.test.tsx
 
+diff --git a/apps/web/src/components/ProjectFavicon.test.tsx b/apps/web/src/components/ProjectFavicon.test.tsx
+new file mode 100644
+index 00000000..2dd7125d
+--- /dev/null
++++ b/apps/web/src/components/ProjectFavicon.test.tsx
+@@ -0,0 +1,26 @@
++import { EnvironmentId } from "@t3tools/contracts";
++import { renderToStaticMarkup } from "react-dom/server";
++import { describe, expect, it } from "vite-plus/test";
++
++import { ProjectFavicon } from "./ProjectFavicon";
++
++const environmentId = EnvironmentId.make("missing-environment");
++
++describe("ProjectFavicon", () => {
++  it("uses the closed folder fallback by default", () => {
++    const markup = renderToStaticMarkup(
++      <ProjectFavicon environmentId={environmentId} cwd="/missing" />,
++    );
++
++    expect(markup).toContain("lucide-folder");
++    expect(markup).not.toContain("lucide-folder-open");
++  });
++
++  it("uses the open folder fallback for expanded projects", () => {
++    const markup = renderToStaticMarkup(
++      <ProjectFavicon environmentId={environmentId} cwd="/missing" open />,
++    );
++
++    expect(markup).toContain("lucide-folder-open");
++  });
++});
+diff --git a/apps/web/src/components/ProjectFavicon.tsx b/apps/web/src/components/ProjectFavicon.tsx
+index ad47e01b..7ddef2f2 100644
+--- a/apps/web/src/components/ProjectFavicon.tsx
++++ b/apps/web/src/components/ProjectFavicon.tsx
+@@ -1,5 +1,5 @@
+ import type { EnvironmentId } from "@t3tools/contracts";
+-import { FolderIcon } from "lucide-react";
++import { FolderIcon, FolderOpenIcon } from "lucide-react";
+ import { useState } from "react";
+ import { resolveEnvironmentHttpUrl } from "../environments/runtime";
+ 
+@@ -9,7 +9,9 @@ export function ProjectFavicon(input: {
+   environmentId: EnvironmentId;
+   cwd: string;
+   className?: string;
++  open?: boolean;
+ }) {
++  const FallbackIcon = input.open ? FolderOpenIcon : FolderIcon;
+   const src = (() => {
+     try {
+       return resolveEnvironmentHttpUrl({
+@@ -27,7 +29,7 @@ export function ProjectFavicon(input: {
+ 
+   if (!src) {
+     return (
+-      <FolderIcon
++      <FallbackIcon
+         className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
+       />
+     );
+@@ -36,7 +38,7 @@ export function ProjectFavicon(input: {
+   return (
+     <>
+       {status !== "loaded" ? (
+-        <FolderIcon
++        <FallbackIcon
+           className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
+         />
+       ) : null}
+diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
+index 3d6e45b9..f2323729 100644
+--- a/apps/web/src/components/Sidebar.logic.test.ts
++++ b/apps/web/src/components/Sidebar.logic.test.ts
+@@ -3,6 +3,7 @@ import { ProviderDriverKind } from "@t3tools/contracts";
+ 
+ import {
+   createThreadJumpHintVisibilityController,
++  formatSidebarThreadTimeLabel,
+   getSidebarThreadIdsToPrewarm,
+   getVisibleSidebarThreadIds,
+   resolveAdjacentThreadId,
+@@ -596,6 +597,25 @@ describe("resolveThreadRowClassName", () => {
+   });
+ });
+ 
++describe("formatSidebarThreadTimeLabel", () => {
++  beforeEach(() => {
++    vi.useFakeTimers();
++    vi.setSystemTime(new Date("2026-03-09T10:30:00.000Z"));
++  });
++
++  afterEach(() => {
++    vi.useRealTimers();
++  });
++
++  it("omits the relative time suffix for sidebar thread listings", () => {
++    expect(formatSidebarThreadTimeLabel("2026-03-09T10:06:00.000Z")).toBe("24m");
++  });
++
++  it("keeps just now labels unchanged", () => {
++    expect(formatSidebarThreadTimeLabel("2026-03-09T10:29:45.000Z")).toBe("just now");
++  });
++});
++
+ describe("resolveProjectStatusIndicator", () => {
+   it("returns null when no threads have a notable status", () => {
+     expect(resolveProjectStatusIndicator([null, null])).toBeNull();
+diff --git a/apps/web/src/components/Sidebar.logic.ts b/apps/web/src/components/Sidebar.logic.ts
+index b9dd27df..caacb79e 100644
+--- a/apps/web/src/components/Sidebar.logic.ts
++++ b/apps/web/src/components/Sidebar.logic.ts
+@@ -9,6 +9,7 @@ import {
+ import type { SidebarThreadSummary, Thread } from "../types";
+ import { cn } from "../lib/utils";
+ import { isLatestTurnSettled } from "../session-logic";
++import { formatRelativeTime } from "../timestampFormat";
+ 
+ export const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-selection-safe]";
+ export const THREAD_JUMP_HINT_SHOW_DELAY_MS = 100;
+@@ -326,6 +327,10 @@ export function resolveThreadRowClassName(input: {
+   return cn(baseClassName, "text-muted-foreground hover:bg-accent hover:text-foreground");
+ }
+ 
++export function formatSidebarThreadTimeLabel(isoDate: string): string {
++  return formatRelativeTime(isoDate).value;
++}
++
+ export function resolveThreadStatusPill(input: {
+   thread: ThreadStatusInput;
+ }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..9abcd9f9 100644
+index dc5acaaa..58b3a00c 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -19,16 +156,94 @@ index dc5acaaa..9abcd9f9 100644
    CloudIcon,
    FolderPlusIcon,
    SearchIcon,
-@@ -825,7 +824,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+@@ -99,7 +98,6 @@ import {
+   resolveThreadRouteTarget,
+ } from "../threadRoutes";
+ import { stackedThreadToast, toastManager } from "./ui/toast";
+-import { formatRelativeTimeLabel } from "../timestampFormat";
+ import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+ import { Kbd } from "./ui/kbd";
+ import {
+@@ -172,6 +170,7 @@ import {
+   sortProjectsForSidebar,
+   useThreadJumpHintVisibility,
+   ThreadStatusPill,
++  formatSidebarThreadTimeLabel,
+ } from "./Sidebar.logic";
+ import { sortThreads } from "../lib/threadSort";
+ import { SidebarUpdatePill } from "./sidebar/SidebarUpdatePill";
+@@ -561,7 +560,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+         onKeyDown={handleRowKeyDown}
+         onContextMenu={handleRowContextMenu}
+       >
+-        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
++        <div className="flex min-w-0 flex-1 items-center gap-1.5 pl-[22px] text-left">
+           {prStatus && (
+             <Tooltip>
+               <TooltipTrigger
+@@ -720,7 +719,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+                         : "text-muted-foreground/40"
+                     }`}
+                   >
+-                    {formatRelativeTimeLabel(
++                    {formatSidebarThreadTimeLabel(
+                       thread.latestUserMessageAt ?? thread.updatedAt ?? thread.createdAt,
+                     )}
+                   </span>
+@@ -825,13 +824,13 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
    return (
      <SidebarMenuSub
        ref={attachThreadListAutoAnimateRef}
 -      className="mx-0.5 my-0 w-full translate-x-0 gap-0.5 overflow-hidden px-1 py-0 sm:mx-1 sm:px-1.5"
-+      className="mx-0.5 my-0 w-full translate-x-0 gap-0.5 overflow-hidden border-l-0 px-1 py-0 sm:mx-1 sm:px-1.5"
++      className="mx-0 my-0 w-full translate-x-0 gap-0.5 overflow-hidden border-l-0 px-0 py-0"
      >
        {shouldShowThreadPanel && showEmptyThreadState ? (
          <SidebarMenuSubItem className="w-full" data-thread-selection-safe>
-@@ -2027,17 +2026,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+           <div
+             data-thread-selection-safe
+-            className="flex h-6 w-full translate-x-0 items-center px-2 text-left text-[10px] text-muted-foreground/60"
++            className="flex h-6 w-full translate-x-0 items-center pr-2 pl-[30px] text-left text-[10px] text-muted-foreground/60"
+           >
+             <span>No threads yet</span>
+           </div>
+@@ -881,7 +880,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+               expandThreadListForProject(projectKey);
+             }}
+           >
+-            <span className="flex min-w-0 flex-1 items-center gap-2">
++            <span className="flex min-w-0 flex-1 items-center gap-2 pl-[22px]">
+               {hiddenThreadStatus && <ThreadStatusLabel status={hiddenThreadStatus} compact />}
+               <span>Show more</span>
+             </span>
+@@ -899,7 +898,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+               collapseThreadListForProject(projectKey);
+             }}
+           >
+-            <span>Show less</span>
++            <span className="pl-[22px]">Show less</span>
+           </SidebarMenuSubButton>
+         </SidebarMenuSubItem>
+       )}
+@@ -2016,29 +2015,32 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+                 render={
+                   <span
+                     aria-label={projectStatus.label}
+-                    className={`-ml-0.5 relative inline-flex size-3.5 shrink-0 items-center justify-center ${projectStatus.colorClass}`}
++                    className="relative inline-flex size-3.5 shrink-0 items-center justify-center"
+                   />
+                 }
+               >
+-                <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-150 group-hover/project-header:opacity-0">
++                <ProjectFavicon
++                  environmentId={project.environmentId}
++                  cwd={project.cwd}
++                  open={projectExpanded}
++                />
++                <span className="absolute -right-0.5 -bottom-0.5 flex items-center justify-center">
+                   <span
+-                    className={`size-[9px] rounded-full ${projectStatus.dotClass} ${
++                    className={`size-1.5 rounded-full ring-2 ring-sidebar ${projectStatus.dotClass} ${
+                       projectStatus.pulse ? "animate-pulse" : ""
                      }`}
                    />
                  </span>
@@ -36,17 +251,21 @@ index dc5acaaa..9abcd9f9 100644
                </TooltipTrigger>
                <TooltipPopup side="top">{projectStatus.label}</TooltipPopup>
              </Tooltip>
--          ) : (
+           ) : (
 -            <ChevronRightIcon
 -              className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
 -                projectExpanded ? "rotate-90" : ""
 -              }`}
--            />
--          )}
-+          ) : null}
-           <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
++            <ProjectFavicon
++              environmentId={project.environmentId}
++              cwd={project.cwd}
++              open={projectExpanded}
+             />
+           )}
+-          <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
            <span className="flex min-w-0 flex-1 items-center gap-2">
              <span className="truncate text-xs font-medium text-foreground/90">
+               {project.displayName}
 -- 
 2.50.1 (Apple Git-155)
 

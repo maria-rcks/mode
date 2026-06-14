@@ -1,7 +1,7 @@
-From 71b86ae02a57931e793e4e5d4442f8d26c147a33 Mon Sep 17 00:00:00 2001
+From 53ed8281271513c2024e652d5ca3bbe5f051c591 Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 00:33:33 +0000
-Subject: [PATCH 06/13] fix(droid): fold fast mode model variants
+Subject: [PATCH 06/16] fix(droid): fold fast mode model variants
 
 ---
  .../src/provider/Layers/DroidProvider.test.ts | 59 +++++++++++++++++++

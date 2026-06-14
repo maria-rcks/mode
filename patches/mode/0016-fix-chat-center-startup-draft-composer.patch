@@ -1,0 +1,759 @@
+From 4c5916bec135b9136306d96b1e18452d833582a7 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Sun, 14 Jun 2026 02:33:24 -0400
+Subject: [PATCH 16/16] fix(chat): center startup draft composer
+
+---
+ apps/web/src/components/ChatView.tsx         | 446 +++++++++++++------
+ apps/web/src/composerDraftStore.test.ts      |  17 +
+ apps/web/src/composerDraftStore.ts           |  10 +
+ apps/web/src/hooks/useHandleNewThread.ts     |  10 +
+ apps/web/src/lib/chatThreadActions.test.ts   |  25 ++
+ apps/web/src/lib/chatThreadActions.ts        |   3 +
+ apps/web/src/routes/_chat.draft.$draftId.tsx |  11 +
+ apps/web/src/routes/_chat.index.tsx          |   1 +
+ 8 files changed, 375 insertions(+), 148 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 0f941482..5e3ec0b7 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -23,6 +23,7 @@ import {
+ } from "@t3tools/contracts";
+ import {
+   parseScopedThreadKey,
++  scopedProjectKey,
+   scopedThreadKey,
+   scopeProjectRef,
+   scopeThreadRef,
+@@ -88,6 +89,7 @@ import {
+   DEFAULT_THREAD_TERMINAL_ID,
+   MAX_TERMINALS_PER_GROUP,
+   type ChatMessage,
++  type Project,
+   type SessionPhase,
+   type Thread,
+   type TurnDiffSummary,
+@@ -123,6 +125,7 @@ import { resolveAppModelSelectionForInstance } from "../modelSelection";
+ import { isTerminalFocused } from "../lib/terminalFocus";
+ import {
+   deriveLogicalProjectKeyFromSettings,
++  getProjectOrderKey,
+   selectProjectGroupingSettings,
+ } from "../logicalProject";
+ import {
+@@ -153,9 +156,20 @@ import { ChatHeader } from "./chat/ChatHeader";
+ import { normalizeRuntimeModeForProvider } from "./chat/runtimeModePresentation";
+ import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
+ import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
++import { orderItemsByPreferredIds } from "./Sidebar.logic";
+ import { ProviderStatusBanner } from "./chat/ProviderStatusBanner";
+ import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
+ import { ComposerBannerStack, type ComposerBannerStackItem } from "./chat/ComposerBannerStack";
++import { ProjectFavicon } from "./ProjectFavicon";
++import {
++  Select,
++  SelectGroup,
++  SelectGroupLabel,
++  SelectItem,
++  SelectPopup,
++  SelectTrigger,
++  SelectValue,
++} from "./ui/select";
+ import {
+   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
+   buildExpiredTerminalContextToastCopy,
+@@ -397,6 +411,7 @@ type ChatViewProps =
+       reserveTitleBarControlInset?: boolean;
+       routeKind: "server";
+       draftId?: never;
++      startupDraft?: never;
+     }
+   | {
+       environmentId: EnvironmentId;
+@@ -405,8 +420,80 @@ type ChatViewProps =
+       reserveTitleBarControlInset?: boolean;
+       routeKind: "draft";
+       draftId: DraftId;
++      startupDraft?: boolean;
+     };
+ 
++function projectSelectValue(project: Project): string {
++  return scopedProjectKey(scopeProjectRef(project.environmentId, project.id));
++}
++
++function StartupDraftProjectSelector(props: {
++  activeProject: Project;
++  projects: readonly Project[];
++  onProjectChange: (project: Project) => void;
++}) {
++  const { activeProject, projects, onProjectChange } = props;
++  const value = projectSelectValue(activeProject);
++  const items = useMemo(
++    () =>
++      projects.map((project) => ({
++        value: projectSelectValue(project),
++        label: project.name,
++      })),
++    [projects],
++  );
++
++  return (
++    <div className="mb-2 flex max-w-full justify-start pl-2">
++      <Select
++        modal={false}
++        value={value}
++        onValueChange={(nextValue) => {
++          const nextProject = projects.find((project) => projectSelectValue(project) === nextValue);
++          if (nextProject) {
++            onProjectChange(nextProject);
++          }
++        }}
++        items={items}
++      >
++        <SelectTrigger
++          variant="ghost"
++          size="xs"
++          className="max-w-full font-medium text-muted-foreground/78 hover:text-foreground"
++          aria-label="New thread project"
++        >
++          <ProjectFavicon
++            environmentId={activeProject.environmentId}
++            cwd={activeProject.cwd}
++            folderStateIcon
++            open
++            className="size-3.5"
++          />
++          <SelectValue className="max-w-64" />
++        </SelectTrigger>
++        <SelectPopup matchTriggerWidth={false} popupClassName="w-72">
++          <SelectGroup>
++            <SelectGroupLabel>Project</SelectGroupLabel>
++            {projects.map((project) => (
++              <SelectItem key={projectSelectValue(project)} value={projectSelectValue(project)}>
++                <span className="inline-flex min-w-0 items-center gap-1.5">
++                  <ProjectFavicon
++                    environmentId={project.environmentId}
++                    cwd={project.cwd}
++                    folderStateIcon
++                    className="size-3.5"
++                  />
++                  <span className="truncate">{project.name}</span>
++                </span>
++              </SelectItem>
++            ))}
++          </SelectGroup>
++        </SelectPopup>
++      </Select>
++    </div>
++  );
++}
++
+ interface TerminalLaunchContext {
+   threadId: ThreadId;
+   cwd: string;
+@@ -825,6 +912,7 @@ export default function ChatView(props: ChatViewProps) {
+     onDiffPanelOpen,
+     reserveTitleBarControlInset = true,
+   } = props;
++  const startupDraft = routeKind === "draft" ? (props.startupDraft ?? false) : false;
+   const draftId = routeKind === "draft" ? props.draftId : null;
+   const routeThreadRef = useMemo(
+     () => scopeThreadRef(environmentId, threadId),
+@@ -1127,6 +1215,16 @@ export default function ChatView(props: ChatViewProps) {
+   // Compute the list of environments this logical project spans, used to
+   // drive the environment picker in BranchToolbar.
+   const allProjects = useStore(useShallow(selectProjectsAcrossEnvironments));
++  const projectOrder = useUiStateStore((store) => store.projectOrder);
++  const orderedProjects = useMemo(
++    () =>
++      orderItemsByPreferredIds({
++        items: allProjects,
++        preferredIds: projectOrder,
++        getId: getProjectOrderKey,
++      }),
++    [allProjects, projectOrder],
++  );
+   const primaryEnvironmentId = usePrimaryEnvironmentId();
+   const savedEnvironmentRegistry = useSavedEnvironmentRegistryStore((s) => s.byId);
+   const savedEnvironmentRuntimeById = useSavedEnvironmentRuntimeStore((s) => s.byId);
+@@ -2061,6 +2159,34 @@ export default function ChatView(props: ChatViewProps) {
+       focusComposer();
+     });
+   }, [focusComposer]);
++  const onStartupDraftProjectChange = useCallback(
++    (nextProject: Project) => {
++      if (!draftId || !draftThread || !isLocalDraftThread) return;
++      const nextProjectRef = scopeProjectRef(nextProject.environmentId, nextProject.id);
++      const nextLogicalProjectKey = deriveLogicalProjectKeyFromSettings(
++        nextProject,
++        projectGroupingSettings,
++      );
++      setLogicalProjectDraftThreadId(nextLogicalProjectKey, nextProjectRef, draftId, {
++        threadId: draftThread.threadId,
++        createdAt: draftThread.createdAt,
++        runtimeMode: draftThread.runtimeMode,
++        interactionMode: draftThread.interactionMode,
++        branch: null,
++        worktreePath: null,
++        envMode: "local",
++      });
++      scheduleComposerFocus();
++    },
++    [
++      draftId,
++      draftThread,
++      isLocalDraftThread,
++      projectGroupingSettings,
++      scheduleComposerFocus,
++      setLogicalProjectDraftThreadId,
++    ],
++  );
+   const addTerminalContextToDraft = useCallback(
+     (selection: TerminalContextSelection) => {
+       composerRef.current?.addTerminalContext(selection);
+@@ -3842,6 +3968,110 @@ export default function ChatView(props: ChatViewProps) {
+     return null;
+   }
+ 
++  const shouldUseStartupDraftLayout =
++    startupDraft &&
++    isLocalDraftThread &&
++    timelineEntries.length === 0 &&
++    optimisticUserMessages.length === 0;
++  const composerStack = (
++    <div className="relative isolate">
++      <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
++      <div className="relative z-10">
++        <ChatComposer
++          composerRef={composerRef}
++          composerDraftTarget={composerDraftTarget}
++          environmentId={environmentId}
++          routeKind={routeKind}
++          routeThreadRef={routeThreadRef}
++          draftId={draftId}
++          activeThreadId={activeThreadId}
++          activeThreadEnvironmentId={activeThread.environmentId}
++          activeThread={activeThread}
++          isServerThread={isServerThread}
++          isLocalDraftThread={isLocalDraftThread}
++          phase={phase}
++          isConnecting={isConnecting}
++          isSendBusy={isSendBusy}
++          isPreparingWorktree={isPreparingWorktree}
++          environmentUnavailable={activeEnvironmentUnavailableState}
++          activePendingApproval={activePendingApproval}
++          pendingApprovals={pendingApprovals}
++          pendingUserInputs={pendingUserInputs}
++          activePendingProgress={activePendingProgress}
++          activePendingResolvedAnswers={activePendingResolvedAnswers}
++          activePendingIsResponding={activePendingIsResponding}
++          activePendingDraftAnswers={activePendingDraftAnswers}
++          activePendingQuestionIndex={activePendingQuestionIndex}
++          respondingRequestIds={respondingRequestIds}
++          showPlanFollowUpPrompt={showPlanFollowUpPrompt}
++          activeProposedPlan={activeProposedPlan}
++          activePlan={activePlan as { turnId?: TurnId } | null}
++          sidebarProposedPlan={sidebarProposedPlan as { turnId?: TurnId } | null}
++          planSidebarLabel={planSidebarLabel}
++          planSidebarOpen={planSidebarOpen}
++          runtimeMode={runtimeMode}
++          runtimeModeProvider={runtimeModeProvider}
++          interactionMode={interactionMode}
++          lockedProvider={lockedProvider}
++          providerStatuses={providerStatuses as ServerProvider[]}
++          activeProjectDefaultModelSelection={activeProject?.defaultModelSelection}
++          activeThreadModelSelection={activeThread.modelSelection}
++          activeThreadActivities={activeThread.activities}
++          resolvedTheme={resolvedTheme}
++          settings={settings}
++          keybindings={keybindings}
++          terminalOpen={Boolean(terminalUiState.terminalOpen)}
++          gitCwd={gitCwd}
++          promptRef={promptRef}
++          composerImagesRef={composerImagesRef}
++          composerTerminalContextsRef={composerTerminalContextsRef}
++          shouldAutoScrollRef={isAtEndRef}
++          scheduleStickToBottom={scrollToEnd}
++          onSend={onSend}
++          onInterrupt={onInterrupt}
++          onImplementPlanInNewThread={onImplementPlanInNewThread}
++          onRespondToApproval={onRespondToApproval}
++          onSelectActivePendingUserInputOption={onSelectActivePendingUserInputOption}
++          onAdvanceActivePendingUserInput={onAdvanceActivePendingUserInput}
++          onPreviousActivePendingUserInputQuestion={onPreviousActivePendingUserInputQuestion}
++          onChangeActivePendingUserInputCustomAnswer={onChangeActivePendingUserInputCustomAnswer}
++          onProviderModelSelect={onProviderModelSelect}
++          getModelDisabledReason={getModelDisabledReason}
++          toggleInteractionMode={toggleInteractionMode}
++          handleRuntimeModeChange={handleRuntimeModeChange}
++          handleInteractionModeChange={handleInteractionModeChange}
++          togglePlanSidebar={togglePlanSidebar}
++          focusComposer={focusComposer}
++          scheduleComposerFocus={scheduleComposerFocus}
++          setThreadError={setThreadError}
++          onExpandImage={onExpandTimelineImage}
++        />
++      </div>
++    </div>
++  );
++  const branchToolbar = isGitRepo ? (
++    <BranchToolbar
++      environmentId={activeThread.environmentId}
++      threadId={activeThread.id}
++      {...(routeKind === "draft" && draftId ? { draftId } : {})}
++      onEnvModeChange={onEnvModeChange}
++      {...(canOverrideServerThreadEnvMode ? { effectiveEnvModeOverride: envMode } : {})}
++      {...(canOverrideServerThreadEnvMode
++        ? {
++            activeThreadBranchOverride: activeThreadBranch,
++            onActiveThreadBranchOverrideChange: setPendingServerThreadBranch,
++          }
++        : {})}
++      envLocked={envLocked}
++      onComposerFocusRequest={scheduleComposerFocus}
++      {...(canCheckoutPullRequestIntoThread
++        ? { onCheckoutPullRequestRequest: openPullRequestDialog }
++        : {})}
++      {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
++      availableEnvironments={logicalProjectEnvironments}
++    />
++  ) : null;
++
+   return (
+     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
+       {/* Top bar */}
+@@ -3896,158 +4126,78 @@ export default function ChatView(props: ChatViewProps) {
+       <div className="flex min-h-0 min-w-0 flex-1">
+         {/* Chat column */}
+         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+-          {/* Messages Wrapper */}
+-          <div className="relative flex min-h-0 flex-1 flex-col">
+-            {/* Messages — LegendList handles virtualization and scrolling internally */}
+-            <MessagesTimeline
+-              key={activeThread.id}
+-              isWorking={isWorking}
+-              activeTurnInProgress={isWorking || !latestTurnSettled}
+-              activeTurnStartedAt={activeWorkStartedAt}
+-              listRef={legendListRef}
+-              timelineEntries={timelineEntries}
+-              latestTurn={activeLatestTurn}
+-              turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+-              activeThreadEnvironmentId={activeThread.environmentId}
+-              routeThreadKey={routeThreadKey}
+-              onOpenTurnDiff={onOpenTurnDiff}
+-              revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+-              onRevertUserMessage={onRevertUserMessage}
+-              isRevertingCheckpoint={isRevertingCheckpoint}
+-              onImageExpand={onExpandTimelineImage}
+-              markdownCwd={gitCwd ?? undefined}
+-              resolvedTheme={resolvedTheme}
+-              timestampFormat={timestampFormat}
+-              workspaceRoot={activeWorkspaceRoot}
+-              skills={activeProviderStatus?.skills ?? EMPTY_PROVIDER_SKILLS}
+-              onIsAtEndChange={onIsAtEndChange}
+-            />
+-
+-            {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}
+-            {showScrollToBottom && (
+-              <div className="pointer-events-none absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 justify-center py-1.5">
+-                <button
+-                  type="button"
+-                  onClick={() => scrollToEnd(true)}
+-                  className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-muted-foreground text-xs shadow-sm transition-colors hover:border-border hover:text-foreground hover:cursor-pointer"
+-                >
+-                  <ChevronDownIcon className="size-3.5" />
+-                  Scroll to bottom
+-                </button>
++          {shouldUseStartupDraftLayout ? (
++            <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
++              <div className="w-full max-w-208">
++                {activeProject ? (
++                  <StartupDraftProjectSelector
++                    activeProject={activeProject}
++                    projects={orderedProjects}
++                    onProjectChange={onStartupDraftProjectChange}
++                  />
++                ) : null}
++                {composerStack}
++                {branchToolbar}
+               </div>
+-            )}
+-          </div>
+-
+-          {/* Input bar */}
+-          <div
+-            className={cn(
+-              "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-1.5 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-2",
+-              isGitRepo
+-                ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
+-                : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+-            )}
+-          >
+-            <div className="relative isolate">
+-              <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
+-              <div className="relative z-10">
+-                <ChatComposer
+-                  composerRef={composerRef}
+-                  composerDraftTarget={composerDraftTarget}
+-                  environmentId={environmentId}
+-                  routeKind={routeKind}
+-                  routeThreadRef={routeThreadRef}
+-                  draftId={draftId}
+-                  activeThreadId={activeThreadId}
+-                  activeThreadEnvironmentId={activeThread?.environmentId}
+-                  activeThread={activeThread}
+-                  isServerThread={isServerThread}
+-                  isLocalDraftThread={isLocalDraftThread}
+-                  phase={phase}
+-                  isConnecting={isConnecting}
+-                  isSendBusy={isSendBusy}
+-                  isPreparingWorktree={isPreparingWorktree}
+-                  environmentUnavailable={activeEnvironmentUnavailableState}
+-                  activePendingApproval={activePendingApproval}
+-                  pendingApprovals={pendingApprovals}
+-                  pendingUserInputs={pendingUserInputs}
+-                  activePendingProgress={activePendingProgress}
+-                  activePendingResolvedAnswers={activePendingResolvedAnswers}
+-                  activePendingIsResponding={activePendingIsResponding}
+-                  activePendingDraftAnswers={activePendingDraftAnswers}
+-                  activePendingQuestionIndex={activePendingQuestionIndex}
+-                  respondingRequestIds={respondingRequestIds}
+-                  showPlanFollowUpPrompt={showPlanFollowUpPrompt}
+-                  activeProposedPlan={activeProposedPlan}
+-                  activePlan={activePlan as { turnId?: TurnId } | null}
+-                  sidebarProposedPlan={sidebarProposedPlan as { turnId?: TurnId } | null}
+-                  planSidebarLabel={planSidebarLabel}
+-                  planSidebarOpen={planSidebarOpen}
+-                  runtimeMode={runtimeMode}
+-                  runtimeModeProvider={runtimeModeProvider}
+-                  interactionMode={interactionMode}
+-                  lockedProvider={lockedProvider}
+-                  providerStatuses={providerStatuses as ServerProvider[]}
+-                  activeProjectDefaultModelSelection={activeProject?.defaultModelSelection}
+-                  activeThreadModelSelection={activeThread?.modelSelection}
+-                  activeThreadActivities={activeThread?.activities}
++            </div>
++          ) : (
++            <>
++              {/* Messages Wrapper */}
++              <div className="relative flex min-h-0 flex-1 flex-col">
++                {/* Messages — LegendList handles virtualization and scrolling internally */}
++                <MessagesTimeline
++                  key={activeThread.id}
++                  isWorking={isWorking}
++                  activeTurnInProgress={isWorking || !latestTurnSettled}
++                  activeTurnStartedAt={activeWorkStartedAt}
++                  listRef={legendListRef}
++                  timelineEntries={timelineEntries}
++                  latestTurn={activeLatestTurn}
++                  turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
++                  activeThreadEnvironmentId={activeThread.environmentId}
++                  routeThreadKey={routeThreadKey}
++                  onOpenTurnDiff={onOpenTurnDiff}
++                  revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
++                  onRevertUserMessage={onRevertUserMessage}
++                  isRevertingCheckpoint={isRevertingCheckpoint}
++                  onImageExpand={onExpandTimelineImage}
++                  markdownCwd={gitCwd ?? undefined}
+                   resolvedTheme={resolvedTheme}
+-                  settings={settings}
+-                  keybindings={keybindings}
+-                  terminalOpen={Boolean(terminalUiState.terminalOpen)}
+-                  gitCwd={gitCwd}
+-                  promptRef={promptRef}
+-                  composerImagesRef={composerImagesRef}
+-                  composerTerminalContextsRef={composerTerminalContextsRef}
+-                  shouldAutoScrollRef={isAtEndRef}
+-                  scheduleStickToBottom={scrollToEnd}
+-                  onSend={onSend}
+-                  onInterrupt={onInterrupt}
+-                  onImplementPlanInNewThread={onImplementPlanInNewThread}
+-                  onRespondToApproval={onRespondToApproval}
+-                  onSelectActivePendingUserInputOption={onSelectActivePendingUserInputOption}
+-                  onAdvanceActivePendingUserInput={onAdvanceActivePendingUserInput}
+-                  onPreviousActivePendingUserInputQuestion={
+-                    onPreviousActivePendingUserInputQuestion
+-                  }
+-                  onChangeActivePendingUserInputCustomAnswer={
+-                    onChangeActivePendingUserInputCustomAnswer
+-                  }
+-                  onProviderModelSelect={onProviderModelSelect}
+-                  getModelDisabledReason={getModelDisabledReason}
+-                  toggleInteractionMode={toggleInteractionMode}
+-                  handleRuntimeModeChange={handleRuntimeModeChange}
+-                  handleInteractionModeChange={handleInteractionModeChange}
+-                  togglePlanSidebar={togglePlanSidebar}
+-                  focusComposer={focusComposer}
+-                  scheduleComposerFocus={scheduleComposerFocus}
+-                  setThreadError={setThreadError}
+-                  onExpandImage={onExpandTimelineImage}
++                  timestampFormat={timestampFormat}
++                  workspaceRoot={activeWorkspaceRoot}
++                  skills={activeProviderStatus?.skills ?? EMPTY_PROVIDER_SKILLS}
++                  onIsAtEndChange={onIsAtEndChange}
+                 />
++
++                {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}
++                {showScrollToBottom && (
++                  <div className="pointer-events-none absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 justify-center py-1.5">
++                    <button
++                      type="button"
++                      onClick={() => scrollToEnd(true)}
++                      className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-muted-foreground text-xs shadow-sm transition-colors hover:border-border hover:text-foreground hover:cursor-pointer"
++                    >
++                      <ChevronDownIcon className="size-3.5" />
++                      Scroll to bottom
++                    </button>
++                  </div>
++                )}
+               </div>
+-            </div>
+-            {isGitRepo && (
+-              <BranchToolbar
+-                environmentId={activeThread.environmentId}
+-                threadId={activeThread.id}
+-                {...(routeKind === "draft" && draftId ? { draftId } : {})}
+-                onEnvModeChange={onEnvModeChange}
+-                {...(canOverrideServerThreadEnvMode ? { effectiveEnvModeOverride: envMode } : {})}
+-                {...(canOverrideServerThreadEnvMode
+-                  ? {
+-                      activeThreadBranchOverride: activeThreadBranch,
+-                      onActiveThreadBranchOverrideChange: setPendingServerThreadBranch,
+-                    }
+-                  : {})}
+-                envLocked={envLocked}
+-                onComposerFocusRequest={scheduleComposerFocus}
+-                {...(canCheckoutPullRequestIntoThread
+-                  ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+-                  : {})}
+-                {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
+-                availableEnvironments={logicalProjectEnvironments}
+-              />
+-            )}
+-          </div>
++
++              {/* Input bar */}
++              <div
++                className={cn(
++                  "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-1.5 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-2",
++                  isGitRepo
++                    ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
++                    : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
++                )}
++              >
++                {composerStack}
++                {branchToolbar}
++              </div>
++            </>
++          )}
+ 
+           {pullRequestDialogState ? (
+             <PullRequestThreadDialog
+diff --git a/apps/web/src/composerDraftStore.test.ts b/apps/web/src/composerDraftStore.test.ts
+index 3f4c613d..4ba8dc8a 100644
+--- a/apps/web/src/composerDraftStore.test.ts
++++ b/apps/web/src/composerDraftStore.test.ts
+@@ -907,6 +907,23 @@ describe("composerDraftStore project draft thread mapping", () => {
+     });
+   });
+ 
++  it("removes the old logical project mapping when moving a draft to another logical project", () => {
++    const store = useComposerDraftStore.getState();
++    store.setProjectDraftThreadId(projectRef, draftId, { threadId });
++
++    store.setLogicalProjectDraftThreadId("logical-b", otherProjectRef, draftId, {
++      threadId,
++    });
++
++    expect(store.getDraftSessionByLogicalProjectKey(scopedProjectKey(projectRef))).toBeNull();
++    expect(store.getDraftSessionByLogicalProjectKey("logical-b")).toMatchObject({
++      environmentId: TEST_ENVIRONMENT_ID,
++      projectId: otherProjectId,
++      logicalProjectKey: "logical-b",
++      threadId,
++    });
++  });
++
+   it("clears branch and worktree context when changing a draft thread project ref", () => {
+     const store = useComposerDraftStore.getState();
+     store.setProjectDraftThreadId(projectRef, draftId, {
+diff --git a/apps/web/src/composerDraftStore.ts b/apps/web/src/composerDraftStore.ts
+index 3415235e..78ba22b8 100644
+--- a/apps/web/src/composerDraftStore.ts
++++ b/apps/web/src/composerDraftStore.ts
+@@ -2048,6 +2048,16 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
+               ...state.logicalProjectDraftThreadKeyByLogicalProjectKey,
+               [normalizedLogicalProjectKey]: draftId,
+             };
++            for (const [logicalProjectDraftKey, mappedDraftId] of Object.entries(
++              nextLogicalProjectDraftThreadKeyByLogicalProjectKey,
++            )) {
++              if (
++                logicalProjectDraftKey !== normalizedLogicalProjectKey &&
++                mappedDraftId === draftId
++              ) {
++                delete nextLogicalProjectDraftThreadKeyByLogicalProjectKey[logicalProjectDraftKey];
++              }
++            }
+             const nextDraftThreadsByThreadKey: Record<string, DraftThreadState> = {
+               ...state.draftThreadsByThreadKey,
+               [draftId]: nextDraftThread,
+diff --git a/apps/web/src/hooks/useHandleNewThread.ts b/apps/web/src/hooks/useHandleNewThread.ts
+index 8dab93eb..fe6c01c2 100644
+--- a/apps/web/src/hooks/useHandleNewThread.ts
++++ b/apps/web/src/hooks/useHandleNewThread.ts
+@@ -47,6 +47,7 @@ function useNewThreadState() {
+         branch?: string | null;
+         worktreePath?: string | null;
+         envMode?: DraftThreadEnvMode;
++        startupDraft?: boolean;
+       },
+     ): Promise<void> => {
+       const {
+@@ -96,6 +97,7 @@ function useNewThreadState() {
+           await router.navigate({
+             to: "/draft/$draftId",
+             params: { draftId: storedDraftThread.draftId },
++            ...(options?.startupDraft ? { search: { startupDraft: "1" } } : {}),
+           });
+         })();
+       }
+@@ -122,6 +124,13 @@ function useNewThreadState() {
+           ...(hasWorktreePathOption ? { worktreePath: options?.worktreePath ?? null } : {}),
+           ...(hasEnvModeOption ? { envMode: options?.envMode } : {}),
+         });
++        if (options?.startupDraft) {
++          return router.navigate({
++            to: "/draft/$draftId",
++            params: { draftId: currentRouteTarget.draftId },
++            search: { startupDraft: "1" },
++          });
++        }
+         return Promise.resolve();
+       }
+ 
+@@ -142,6 +151,7 @@ function useNewThreadState() {
+         await router.navigate({
+           to: "/draft/$draftId",
+           params: { draftId },
++          ...(options?.startupDraft ? { search: { startupDraft: "1" } } : {}),
+         });
+       })();
+     },
+diff --git a/apps/web/src/lib/chatThreadActions.test.ts b/apps/web/src/lib/chatThreadActions.test.ts
+index 1c387e8f..2455c6b6 100644
+--- a/apps/web/src/lib/chatThreadActions.test.ts
++++ b/apps/web/src/lib/chatThreadActions.test.ts
+@@ -113,6 +113,31 @@ describe("chatThreadActions", () => {
+     });
+   });
+ 
++  it("marks startup new threads for startup draft presentation", async () => {
++    const handleNewThread = vi.fn<ChatThreadActionContext["handleNewThread"]>(async () => {});
++
++    const didStart = await startNewThreadFromContext(
++      createContext({
++        latestActivityThread: {
++          environmentId: ENVIRONMENT_ID,
++          projectId: PROJECT_ID,
++          branch: "feature/recent",
++          worktreePath: null,
++        },
++        handleNewThread,
++        startupDraft: true,
++      }),
++    );
++
++    expect(didStart).toBe(true);
++    expect(handleNewThread).toHaveBeenCalledWith(scopeProjectRef(ENVIRONMENT_ID, PROJECT_ID), {
++      branch: "feature/recent",
++      worktreePath: null,
++      envMode: "local",
++      startupDraft: true,
++    });
++  });
++
+   it("starts a local thread with the configured default env mode", async () => {
+     const handleNewThread = vi.fn<ChatThreadActionContext["handleNewThread"]>(async () => {});
+ 
+diff --git a/apps/web/src/lib/chatThreadActions.ts b/apps/web/src/lib/chatThreadActions.ts
+index 4199be86..613acd7b 100644
+--- a/apps/web/src/lib/chatThreadActions.ts
++++ b/apps/web/src/lib/chatThreadActions.ts
+@@ -20,6 +20,7 @@ interface NewThreadHandler {
+       branch?: string | null;
+       worktreePath?: string | null;
+       envMode?: DraftThreadEnvMode;
++      startupDraft?: boolean;
+     },
+   ): Promise<void>;
+ }
+@@ -33,6 +34,7 @@ export interface ChatThreadActionContext {
+   readonly defaultProjectRef: ScopedProjectRef | null;
+   readonly defaultThreadEnvMode: DraftThreadEnvMode;
+   readonly handleNewThread: NewThreadHandler;
++  readonly startupDraft?: boolean;
+ }
+ 
+ export function resolveThreadActionProjectRef(
+@@ -65,6 +67,7 @@ function buildContextualThreadOptions(context: ChatThreadActionContext): NewThre
+     worktreePath: threadContext?.worktreePath ?? context.activeDraftThread?.worktreePath ?? null,
+     envMode:
+       context.activeDraftThread?.envMode ?? (threadContext?.worktreePath ? "worktree" : "local"),
++    ...(context.startupDraft ? { startupDraft: true } : {}),
+   };
+ }
+ 
+diff --git a/apps/web/src/routes/_chat.draft.$draftId.tsx b/apps/web/src/routes/_chat.draft.$draftId.tsx
+index 77b9f18f..b82b4901 100644
+--- a/apps/web/src/routes/_chat.draft.$draftId.tsx
++++ b/apps/web/src/routes/_chat.draft.$draftId.tsx
+@@ -8,9 +8,18 @@ import { createThreadSelectorAcrossEnvironments } from "../storeSelectors";
+ import { useStore } from "../store";
+ import { buildThreadRouteParams } from "../threadRoutes";
+ 
++export interface DraftThreadRouteSearch {
++  startupDraft?: "1" | undefined;
++}
++
++function parseDraftThreadRouteSearch(search: Record<string, unknown>): DraftThreadRouteSearch {
++  return search.startupDraft === "1" ? { startupDraft: "1" } : {};
++}
++
+ function DraftChatThreadRouteView() {
+   const navigate = useNavigate();
+   const { draftId: rawDraftId } = Route.useParams();
++  const routeSearch = Route.useSearch();
+   const draftId = DraftId.make(rawDraftId);
+   const draftSession = useComposerDraftStore((store) => store.getDraftSession(draftId));
+   const serverThread = useStore(
+@@ -76,11 +85,13 @@ function DraftChatThreadRouteView() {
+         environmentId={draftSession.environmentId}
+         threadId={draftSession.threadId}
+         routeKind="draft"
++        startupDraft={routeSearch.startupDraft === "1"}
+       />
+     </SidebarInset>
+   );
+ }
+ 
+ export const Route = createFileRoute("/_chat/draft/$draftId")({
++  validateSearch: (search) => parseDraftThreadRouteSearch(search),
+   component: DraftChatThreadRouteView,
+ });
+diff --git a/apps/web/src/routes/_chat.index.tsx b/apps/web/src/routes/_chat.index.tsx
+index 3e1ab0be..65a5bab9 100644
+--- a/apps/web/src/routes/_chat.index.tsx
++++ b/apps/web/src/routes/_chat.index.tsx
+@@ -48,6 +48,7 @@ function ChatIndexRouteView() {
+         defaultEnvMode: appSettings.defaultThreadEnvMode,
+       }),
+       handleNewThread,
++      startupDraft: true,
+     }).then((didStart) => {
+       if (!didStart) {
+         startInFlightRef.current = false;
+-- 
+2.50.1 (Apple Git-155)
+

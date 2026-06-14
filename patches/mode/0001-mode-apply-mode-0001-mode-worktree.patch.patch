@@ -1,7 +1,7 @@
-From c2e2433c9474cca942e98159c93d9cff2c5cf76e Mon Sep 17 00:00:00 2001
+From 97320eb1c49c764f7fab0549eb63931f93f19c1a Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 01/13] mode: apply mode/0001-mode-worktree.patch
+Subject: [PATCH 01/16] mode: apply mode/0001-mode-worktree.patch
 
 ---
  docs/getting-started/quick-start.md | 9 ++++++---

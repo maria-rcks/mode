@@ -1,23 +1,23 @@
-From fdd75371b1abc73609c97953ec7cb117fc70a3f1 Mon Sep 17 00:00:00 2001
+From c84cc855f3184ab2388010e2ccb1229ff58336d1 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
 
 ---
- .../src/components/ProjectFavicon.test.tsx    | 26 ++++++++++
- apps/web/src/components/ProjectFavicon.tsx    |  8 +--
- apps/web/src/components/Sidebar.logic.test.ts | 20 ++++++++
+ .../src/components/ProjectFavicon.test.tsx    | 35 +++++++++
+ apps/web/src/components/ProjectFavicon.tsx    | 26 ++++---
+ apps/web/src/components/Sidebar.logic.test.ts | 20 +++++
  apps/web/src/components/Sidebar.logic.ts      |  5 ++
- apps/web/src/components/Sidebar.tsx           | 49 +++++++++----------
- 5 files changed, 80 insertions(+), 28 deletions(-)
+ apps/web/src/components/Sidebar.tsx           | 75 ++++++++-----------
+ 5 files changed, 105 insertions(+), 56 deletions(-)
  create mode 100644 apps/web/src/components/ProjectFavicon.test.tsx
 
 diff --git a/apps/web/src/components/ProjectFavicon.test.tsx b/apps/web/src/components/ProjectFavicon.test.tsx
 new file mode 100644
-index 00000000..2dd7125d
+index 00000000..cb3d70e1
 --- /dev/null
 +++ b/apps/web/src/components/ProjectFavicon.test.tsx
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,35 @@
 +import { EnvironmentId } from "@t3tools/contracts";
 +import { renderToStaticMarkup } from "react-dom/server";
 +import { describe, expect, it } from "vite-plus/test";
@@ -43,9 +43,18 @@ index 00000000..2dd7125d
 +
 +    expect(markup).toContain("lucide-folder-open");
 +  });
++
++  it("can render folder state icons directly for sidebar project rows", () => {
++    const markup = renderToStaticMarkup(
++      <ProjectFavicon environmentId={environmentId} cwd="/repo" folderStateIcon open />,
++    );
++
++    expect(markup).toContain("lucide-folder-open");
++    expect(markup).not.toContain("<img");
++  });
 +});
 diff --git a/apps/web/src/components/ProjectFavicon.tsx b/apps/web/src/components/ProjectFavicon.tsx
-index ad47e01b..7ddef2f2 100644
+index ad47e01b..3fda0b67 100644
 --- a/apps/web/src/components/ProjectFavicon.tsx
 +++ b/apps/web/src/components/ProjectFavicon.tsx
 @@ -1,5 +1,5 @@
@@ -55,34 +64,49 @@ index ad47e01b..7ddef2f2 100644
  import { useState } from "react";
  import { resolveEnvironmentHttpUrl } from "../environments/runtime";
  
-@@ -9,7 +9,9 @@ export function ProjectFavicon(input: {
+@@ -9,7 +9,19 @@ export function ProjectFavicon(input: {
    environmentId: EnvironmentId;
    cwd: string;
    className?: string;
++  folderStateIcon?: boolean;
 +  open?: boolean;
  }) {
 +  const FallbackIcon = input.open ? FolderOpenIcon : FolderIcon;
++  const fallbackIcon = (
++    <FallbackIcon
++      className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
++    />
++  );
++  if (input.folderStateIcon) {
++    return fallbackIcon;
++  }
++
    const src = (() => {
      try {
        return resolveEnvironmentHttpUrl({
-@@ -27,7 +29,7 @@ export function ProjectFavicon(input: {
+@@ -26,20 +38,12 @@ export function ProjectFavicon(input: {
+   );
  
    if (!src) {
-     return (
+-    return (
 -      <FolderIcon
-+      <FallbackIcon
-         className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
-       />
-     );
-@@ -36,7 +38,7 @@ export function ProjectFavicon(input: {
+-        className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
+-      />
+-    );
++    return fallbackIcon;
+   }
+ 
    return (
      <>
-       {status !== "loaded" ? (
+-      {status !== "loaded" ? (
 -        <FolderIcon
-+        <FallbackIcon
-           className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
-         />
-       ) : null}
+-          className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
+-        />
+-      ) : null}
++      {status !== "loaded" ? fallbackIcon : null}
+       <img
+         src={src}
+         alt=""
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
 index 3d6e45b9..f2323729 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
@@ -145,7 +169,7 @@ index b9dd27df..caacb79e 100644
    thread: ThreadStatusInput;
  }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..199aedba 100644
+index dc5acaaa..31e4a952 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -156,7 +180,15 @@ index dc5acaaa..199aedba 100644
    CloudIcon,
    FolderPlusIcon,
    SearchIcon,
-@@ -99,7 +98,6 @@ import {
+@@ -18,7 +17,6 @@ import {
+   ThreadStatusLabel,
+ } from "./ThreadStatusIndicators";
+ import { ProjectFavicon } from "./ProjectFavicon";
+-import { autoAnimate } from "@formkit/auto-animate";
+ import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from "react";
+ import { useShallow } from "zustand/react/shallow";
+ import {
+@@ -99,7 +97,6 @@ import {
    resolveThreadRouteTarget,
  } from "../threadRoutes";
  import { stackedThreadToast, toastManager } from "./ui/toast";
@@ -164,7 +196,7 @@ index dc5acaaa..199aedba 100644
  import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
  import { Kbd } from "./ui/kbd";
  import {
-@@ -172,6 +170,7 @@ import {
+@@ -172,6 +169,7 @@ import {
    sortProjectsForSidebar,
    useThreadJumpHintVisibility,
    ThreadStatusPill,
@@ -172,7 +204,18 @@ index dc5acaaa..199aedba 100644
  } from "./Sidebar.logic";
  import { sortThreads } from "../lib/threadSort";
  import { SidebarUpdatePill } from "./sidebar/SidebarUpdatePill";
-@@ -395,6 +394,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -207,10 +205,6 @@ const SIDEBAR_THREAD_SORT_LABELS: Record<SidebarThreadSortOrder, string> = {
+   updated_at: "Last user message",
+   created_at: "Created at",
+ };
+-const SIDEBAR_LIST_ANIMATION_OPTIONS = {
+-  duration: 180,
+-  easing: "ease-out",
+-} as const;
+ const EMPTY_THREAD_JUMP_LABELS = new Map<string, string>();
+ const PROJECT_GROUPING_MODE_LABELS: Record<SidebarProjectGroupingMode, string> = {
+   repository: "Group by repository",
+@@ -395,6 +389,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
      : !isThreadRunning
        ? "pointer-events-none transition-opacity duration-150 max-sm:pr-6 group-hover/menu-sub-item:opacity-0 group-focus-within/menu-sub-item:opacity-0"
        : "pointer-events-none";
@@ -182,7 +225,7 @@ index dc5acaaa..199aedba 100644
    const clearConfirmingArchive = useCallback(() => {
      setConfirmingArchiveThreadKey((current) => (current === threadKey ? null : current));
    }, [setConfirmingArchiveThreadKey, threadKey]);
-@@ -561,7 +563,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -561,7 +558,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
          onKeyDown={handleRowKeyDown}
          onContextMenu={handleRowContextMenu}
        >
@@ -191,7 +234,7 @@ index dc5acaaa..199aedba 100644
            {prStatus && (
              <Tooltip>
                <TooltipTrigger
-@@ -625,11 +627,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -625,11 +622,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                <TooltipPopup side="top">{terminalStatus.label}</TooltipPopup>
              </Tooltip>
            )}
@@ -204,7 +247,7 @@ index dc5acaaa..199aedba 100644
              {isConfirmingArchive ? (
                <button
                  ref={handleConfirmArchiveRef}
-@@ -714,15 +712,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+@@ -714,15 +707,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                    </Tooltip>
                  ) : (
                    <span
@@ -222,7 +265,7 @@ index dc5acaaa..199aedba 100644
                    </span>
                  )}
                </span>
-@@ -825,13 +821,13 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+@@ -825,13 +816,13 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
    return (
      <SidebarMenuSub
        ref={attachThreadListAutoAnimateRef}
@@ -238,7 +281,7 @@ index dc5acaaa..199aedba 100644
            >
              <span>No threads yet</span>
            </div>
-@@ -881,7 +877,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+@@ -881,7 +872,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
                expandThreadListForProject(projectKey);
              }}
            >
@@ -247,7 +290,7 @@ index dc5acaaa..199aedba 100644
                {hiddenThreadStatus && <ThreadStatusLabel status={hiddenThreadStatus} compact />}
                <span>Show more</span>
              </span>
-@@ -899,7 +895,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+@@ -899,7 +890,7 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
                collapseThreadListForProject(projectKey);
              }}
            >
@@ -256,7 +299,7 @@ index dc5acaaa..199aedba 100644
            </SidebarMenuSubButton>
          </SidebarMenuSubItem>
        )}
-@@ -2016,29 +2012,32 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+@@ -2016,29 +2007,34 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                  render={
                    <span
                      aria-label={projectStatus.label}
@@ -269,6 +312,7 @@ index dc5acaaa..199aedba 100644
 +                <ProjectFavicon
 +                  environmentId={project.environmentId}
 +                  cwd={project.cwd}
++                  folderStateIcon
 +                  open={projectExpanded}
 +                />
 +                <span className="absolute -right-0.5 -bottom-0.5 flex items-center justify-center">
@@ -291,6 +335,7 @@ index dc5acaaa..199aedba 100644
 +            <ProjectFavicon
 +              environmentId={project.environmentId}
 +              cwd={project.cwd}
++              folderStateIcon
 +              open={projectExpanded}
              />
            )}
@@ -298,6 +343,33 @@ index dc5acaaa..199aedba 100644
            <span className="flex min-w-0 flex-1 items-center gap-2">
              <span className="truncate text-xs font-medium text-foreground/90">
                {project.displayName}
+@@ -3040,22 +3036,11 @@ export default function Sidebar() {
+     dragInProgressRef.current = false;
+   }, []);
+ 
+-  const animatedProjectListsRef = useRef(new WeakSet<HTMLElement>());
+-  const attachProjectListAutoAnimateRef = useCallback((node: HTMLElement | null) => {
+-    if (!node || animatedProjectListsRef.current.has(node)) {
+-      return;
+-    }
+-    autoAnimate(node, SIDEBAR_LIST_ANIMATION_OPTIONS);
+-    animatedProjectListsRef.current.add(node);
++  const attachProjectListAutoAnimateRef = useCallback((_node: HTMLElement | null) => {
++    void _node;
+   }, []);
+-
+-  const animatedThreadListsRef = useRef(new WeakSet<HTMLElement>());
+-  const attachThreadListAutoAnimateRef = useCallback((node: HTMLElement | null) => {
+-    if (!node || animatedThreadListsRef.current.has(node)) {
+-      return;
+-    }
+-    autoAnimate(node, SIDEBAR_LIST_ANIMATION_OPTIONS);
+-    animatedThreadListsRef.current.add(node);
++  const attachThreadListAutoAnimateRef = useCallback((_node: HTMLElement | null) => {
++    void _node;
+   }, []);
+ 
+   const visibleThreads = useMemo(
 -- 
 2.50.1 (Apple Git-155)
 

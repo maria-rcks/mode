@@ -1,7 +1,7 @@
 From 376a70f1c8ccb7c030afa14c594b377a87e96db5 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 02:41:09 -0400
-Subject: [PATCH 17/17] fix(chat): align composer width with timeline
+Subject: [PATCH 17/18] fix(chat): align composer width with timeline
 
 ---
  apps/web/src/components/BranchToolbar.tsx            | 2 +-

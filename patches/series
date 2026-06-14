@@ -18,3 +18,4 @@ mode/0014-fix-sidebar-remove-project-tree-chrome.patch
 mode/0015-fix-chat-open-latest-project-draft-by-default.patch
 mode/0016-fix-chat-center-startup-draft-composer.patch
 mode/0017-fix-chat-align-composer-width-with-timeline.patch
+mode/0018-fix-chat-align-checkout-toolbar-icon.patch

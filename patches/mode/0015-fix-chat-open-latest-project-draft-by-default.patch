@@ -1,7 +1,7 @@
 From 89a1d5750b82f41f4c68fd2aa78163a3b6bd3191 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 01:49:24 -0400
-Subject: [PATCH 15/17] fix(chat): open latest project draft by default
+Subject: [PATCH 15/18] fix(chat): open latest project draft by default
 
 ---
  apps/web/src/components/ChatView.tsx          |  3 +-

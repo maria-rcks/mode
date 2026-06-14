@@ -1,0 +1,47 @@
+From 5bc770b93fe29267e9556a3969a640e904bb42d0 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Sun, 14 Jun 2026 02:51:47 -0400
+Subject: [PATCH 18/18] fix(chat): align checkout toolbar icon
+
+---
+ apps/web/src/components/BranchToolbar.tsx | 2 +-
+ apps/web/src/components/ChatView.tsx      | 3 +--
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/apps/web/src/components/BranchToolbar.tsx b/apps/web/src/components/BranchToolbar.tsx
+index 0191f3ee..51bbc415 100644
+--- a/apps/web/src/components/BranchToolbar.tsx
++++ b/apps/web/src/components/BranchToolbar.tsx
+@@ -241,7 +241,7 @@ export const BranchToolbar = memo(function BranchToolbar({
+   if (!hasActiveThread || !activeProject) return null;
+ 
+   return (
+-    <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-2.5 pb-3 pt-1 sm:px-3">
++    <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-1 pb-3 pt-1">
+       {isMobile ? (
+         <MobileRunContextSelector
+           envLocked={envLocked}
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index aa6c761a..f6f0875f 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -444,7 +444,7 @@ function StartupDraftProjectSelector(props: {
+   );
+ 
+   return (
+-    <div className="mb-2 flex max-w-full justify-start pl-2">
++    <div className="mb-2 flex max-w-full justify-start">
+       <Select
+         modal={false}
+         value={value}
+@@ -466,7 +466,6 @@ function StartupDraftProjectSelector(props: {
+             environmentId={activeProject.environmentId}
+             cwd={activeProject.cwd}
+             folderStateIcon
+-            open
+             className="size-3.5"
+           />
+           <SelectValue className="max-w-64" />
+-- 
+2.50.1 (Apple Git-155)
+

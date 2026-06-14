@@ -1,7 +1,7 @@
 From 1a3387de7ce4d5c85584aaa17685758d18d7a6df Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sat, 13 Jun 2026 18:39:26 -0400
-Subject: [PATCH 11/17] style(mode): format rebase resolutions
+Subject: [PATCH 11/18] style(mode): format rebase resolutions
 
 ---
  apps/desktop/src/app/DesktopCloudAuth.test.ts          |  5 +----

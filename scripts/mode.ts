@@ -99,10 +99,14 @@ function setup() {
     git(["fetch", "origin"], { cwd: checkout });
   }
 
-  git(["fetch", "origin", config.upstream.ref], { cwd: checkout });
+  fetchUpstreamRef();
   ensureLockedCommitAvailable();
   git(["switch", "-C", config.upstream.branch, lock.commit], { cwd: checkout });
   console.log(`Prepared ${relative(root, checkout)} at ${lock.commit}.`);
+}
+
+function fetchUpstreamRef() {
+  git(["fetch", "origin", config.upstream.ref], { cwd: checkout });
 }
 
 function ensureLockedCommitAvailable() {
@@ -110,19 +114,32 @@ function ensureLockedCommitAvailable() {
     git(["rev-parse", "--verify", `${lock.commit}^{commit}`], { cwd: checkout, quiet: true });
     return;
   } catch {
-    if (!config.upstream.localSeed || !existsSync(config.upstream.localSeed)) {
-      throw new Error(`Upstream commit is not available in the generated checkout: ${lock.commit}`);
+    try {
+      fetchUpstreamRef();
+    } catch {
+      // Fall back to the local seed below when network fetch is unavailable.
     }
   }
 
-  git(["fetch", config.upstream.localSeed, "HEAD"], { cwd: checkout });
-  git(["rev-parse", "--verify", `${lock.commit}^{commit}`], { cwd: checkout, quiet: true });
+  try {
+    git(["rev-parse", "--verify", `${lock.commit}^{commit}`], { cwd: checkout, quiet: true });
+    return;
+  } catch {
+    if (config.upstream.localSeed && existsSync(config.upstream.localSeed)) {
+      git(["fetch", config.upstream.localSeed, "HEAD"], { cwd: checkout });
+      git(["rev-parse", "--verify", `${lock.commit}^{commit}`], { cwd: checkout, quiet: true });
+      return;
+    }
+  }
+
+  throw new Error(`Upstream commit is not available in the generated checkout: ${lock.commit}`);
 }
 
 function applyPatchStack() {
   if (!checkoutExists()) setup();
 
   assertCleanCheckout();
+  ensureLockedCommitAvailable();
   git(["switch", "-C", config.upstream.branch, lock.commit], { cwd: checkout });
 
   const entries = seriesEntries();

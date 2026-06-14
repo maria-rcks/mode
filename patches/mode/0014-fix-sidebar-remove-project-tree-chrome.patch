@@ -1,4 +1,4 @@
-From 1b49aa60f989487b3aef44c27109bb9023bf2541 Mon Sep 17 00:00:00 2001
+From 13b65cc06af328a4d8e8a2a1d6a9e56f6ca42164 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
 Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
@@ -6,10 +6,10 @@ Subject: [PATCH 14/14] fix(sidebar): remove project tree chrome
 ---
  .../src/components/ProjectFavicon.test.tsx    | 26 ++++++++
  apps/web/src/components/ProjectFavicon.tsx    |  8 ++-
- apps/web/src/components/Sidebar.logic.test.ts | 42 +++++++++++++
+ apps/web/src/components/Sidebar.logic.test.ts | 43 +++++++++++++
  apps/web/src/components/Sidebar.logic.ts      | 39 ++++++++++++
  apps/web/src/components/Sidebar.tsx           | 63 +++++++++++--------
- 5 files changed, 148 insertions(+), 30 deletions(-)
+ 5 files changed, 149 insertions(+), 30 deletions(-)
  create mode 100644 apps/web/src/components/ProjectFavicon.test.tsx
 
 diff --git a/apps/web/src/components/ProjectFavicon.test.tsx b/apps/web/src/components/ProjectFavicon.test.tsx
@@ -84,7 +84,7 @@ index ad47e01b..7ddef2f2 100644
          />
        ) : null}
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index 3d6e45b9..d93d13ff 100644
+index 3d6e45b9..b9771251 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
 @@ -3,6 +3,7 @@ import { ProviderDriverKind } from "@t3tools/contracts";
@@ -103,7 +103,7 @@ index 3d6e45b9..d93d13ff 100644
    resolveThreadRowClassName,
    resolveThreadStatusPill,
    shouldClearThreadSelectionOnMouseDown,
-@@ -596,6 +598,46 @@ describe("resolveThreadRowClassName", () => {
+@@ -596,6 +598,47 @@ describe("resolveThreadRowClassName", () => {
    });
  });
  
@@ -111,6 +111,7 @@ index 3d6e45b9..d93d13ff 100644
 +  it("uses the sidebar background for idle thread rows", () => {
 +    const className = resolveThreadMetaBackdropClassName({ isActive: false, isSelected: false });
 +    expect(className).toContain("from-transparent");
++    expect(className).toContain("pl-24");
 +    expect(className).toContain("to-sidebar");
 +    expect(className).toContain("group-hover/menu-sub-item:to-accent");
 +  });
@@ -151,7 +152,7 @@ index 3d6e45b9..d93d13ff 100644
    it("returns null when no threads have a notable status", () => {
      expect(resolveProjectStatusIndicator([null, null])).toBeNull();
 diff --git a/apps/web/src/components/Sidebar.logic.ts b/apps/web/src/components/Sidebar.logic.ts
-index b9dd27df..c966f8dd 100644
+index b9dd27df..8bd43f8e 100644
 --- a/apps/web/src/components/Sidebar.logic.ts
 +++ b/apps/web/src/components/Sidebar.logic.ts
 @@ -9,6 +9,7 @@ import {
@@ -171,7 +172,7 @@ index b9dd27df..c966f8dd 100644
 +  isSelected: boolean;
 +}): string {
 +  const baseClassName =
-+    "pointer-events-none absolute inset-y-px right-2 z-10 flex items-center justify-end gap-1.5 bg-gradient-to-r from-transparent pl-14";
++    "pointer-events-none absolute inset-y-px right-2 z-10 flex items-center justify-end gap-1.5 bg-gradient-to-r from-transparent pl-24";
 +
 +  if (input.isSelected && input.isActive) {
 +    return cn(
@@ -208,7 +209,7 @@ index b9dd27df..c966f8dd 100644
    thread: ThreadStatusInput;
  }): ThreadStatusPill | null {
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index dc5acaaa..79a64e49 100644
+index dc5acaaa..e3dcc875 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -1,7 +1,6 @@
@@ -241,8 +242,8 @@ index dc5acaaa..79a64e49 100644
  const SIDEBAR_ICON_ACTION_BUTTON_CLASS =
    "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 +const SIDEBAR_THREAD_TITLE_MASK_STYLE = {
-+  WebkitMaskImage: "linear-gradient(to right, black calc(100% - 4.25rem), transparent)",
-+  maskImage: "linear-gradient(to right, black calc(100% - 4.25rem), transparent)",
++  WebkitMaskImage: "linear-gradient(to right, black calc(100% - 6.25rem), transparent)",
++  maskImage: "linear-gradient(to right, black calc(100% - 6.25rem), transparent)",
 +} satisfies React.CSSProperties;
  
  function clampSidebarThreadPreviewCount(value: number): SidebarThreadPreviewCount {

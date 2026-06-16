@@ -1,7 +1,7 @@
 From d999a0216778e028fc7232cd84df7773e140c1e5 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:37:41 -0400
-Subject: [PATCH 27/32] feat(diff): show live diff stats in chat header
+Subject: [PATCH 27/33] feat(diff): show live diff stats in chat header
 
 ---
  apps/web/src/components/ChatView.tsx          |  13 +++

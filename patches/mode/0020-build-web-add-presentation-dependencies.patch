@@ -1,0 +1,121 @@
+From bca37c4bb9143cac6cc6d7502706f7ca5b218d23 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:33:32 -0400
+Subject: [PATCH 20/32] build(web): add presentation dependencies
+
+---
+ apps/web/package.json |  2 ++
+ pnpm-lock.yaml        | 35 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 37 insertions(+)
+
+diff --git a/apps/web/package.json b/apps/web/package.json
+index cbf554a6..b89a648f 100644
+--- a/apps/web/package.json
++++ b/apps/web/package.json
+@@ -23,6 +23,7 @@
+     "@effect/atom-react": "catalog:",
+     "@fontsource-variable/dm-sans": "^5.2.8",
+     "@fontsource/jetbrains-mono": "^5.2.8",
++    "@fontsource/tiny5": "^5.2.7",
+     "@formkit/auto-animate": "^0.9.0",
+     "@legendapp/list": "3.0.0-beta.44",
+     "@lexical/react": "^0.41.0",
+@@ -47,6 +48,7 @@
+     "rehype-sanitize": "^6.0.0",
+     "remark-breaks": "^4.0.0",
+     "remark-gfm": "^4.0.1",
++    "slot-text": "^0.3.1",
+     "tailwind-merge": "^3.4.0",
+     "zustand": "^5.0.11"
+   },
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index f089194e..3cade11f 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -465,6 +465,9 @@ importers:
+       '@fontsource/jetbrains-mono':
+         specifier: ^5.2.8
+         version: 5.2.8
++      '@fontsource/tiny5':
++        specifier: ^5.2.7
++        version: 5.2.7
+       '@formkit/auto-animate':
+         specifier: ^0.9.0
+         version: 0.9.0
+@@ -537,6 +540,9 @@ importers:
+       remark-gfm:
+         specifier: ^4.0.1
+         version: 4.0.1
++      slot-text:
++        specifier: ^0.3.1
++        version: 0.3.1(react@19.2.6)
+       tailwind-merge:
+         specifier: ^3.4.0
+         version: 3.6.0
+@@ -2393,6 +2399,9 @@ packages:
+   '@fontsource/jetbrains-mono@5.2.8':
+     resolution: {integrity: sha512-6w8/SG4kqvIMu7xd7wt6x3idn1Qux3p9N62s6G3rfldOUYHpWcc2FKrqf+Vo44jRvqWj2oAtTHrZXEP23oSKwQ==}
+ 
++  '@fontsource/tiny5@5.2.7':
++    resolution: {integrity: sha512-UiZrzQz/bPXB4QKEtDhizpWTXQ/hZSBnNMvqgrGJsPK327Ixl3JHmK2N0NLVQdg82H83x2f+l5aFoRj/awXPNQ==}
++
+   '@formkit/auto-animate@0.9.0':
+     resolution: {integrity: sha512-VhP4zEAacXS3dfTpJpJ88QdLqMTcabMg0jwpOSxZ/VzfQVfl3GkZSCZThhGC5uhq/TxPHPzW0dzr4H9Bb1OgKA==}
+ 
+@@ -8684,6 +8693,23 @@ packages:
+     resolution: {integrity: sha512-stxByr12oeeOyY2BlviTNQlYV5xOj47GirPr4yA1hE9JCtxfQN0+tVbkxwCtYDQWhEKWFHsEK48ORg5jrouCAg==}
+     engines: {node: '>=20'}
+ 
++  slot-text@0.3.1:
++    resolution: {integrity: sha512-gDHfMnFrz4CxqD7H8F3CqWVGYwTbgjpJiIH1bQg1Tj60TzgnLe47vuQDHNeyg4zbhsEAPFvUp05nG7lKsboCVw==}
++    peerDependencies:
++      react: '>=18 <20'
++      solid-js: '>=1.8 <2'
++      svelte: '>=4 <6'
++      vue: '>=3.4 <4'
++    peerDependenciesMeta:
++      react:
++        optional: true
++      solid-js:
++        optional: true
++      svelte:
++        optional: true
++      vue:
++        optional: true
++
+   slugify@1.6.9:
+     resolution: {integrity: sha512-vZ7rfeehZui7wQs438JXBckYLkIIdfHOXsaVEUMyS5fHo1483l1bMdo0EDSWYclY0yZKFOipDy4KHuKs6ssvdg==}
+     engines: {node: '>=8.0.0'}
+@@ -11602,6 +11628,9 @@ snapshots:
+       '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
+       uuid: 11.1.0
+       zod: 3.25.76
++    transitivePeerDependencies:
++      - '@cfworker/json-schema'
++      - supports-color
+ 
+   '@floating-ui/core@1.7.5':
+     dependencies:
+@@ -11632,6 +11661,8 @@ snapshots:
+ 
+   '@fontsource/jetbrains-mono@5.2.8': {}
+ 
++  '@fontsource/tiny5@5.2.7': {}
++
+   '@formkit/auto-animate@0.9.0': {}
+ 
+   '@hono/node-server@1.19.14(hono@4.12.25)':
+@@ -18546,6 +18577,10 @@ snapshots:
+       ansi-styles: 6.2.3
+       is-fullwidth-code-point: 5.1.0
+ 
++  slot-text@0.3.1(react@19.2.6):
++    optionalDependencies:
++      react: 19.2.6
++
+   slugify@1.6.9: {}
+ 
+   smart-buffer@4.2.0:
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,1321 @@
+From 832e683df0afb295f7af5c788ec3dc6a14a5adce Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:40:16 -0400
+Subject: [PATCH 32/32] style(web): consolidate top chrome actions
+
+---
+ apps/web/src/components/ChatView.tsx          |  23 +-
+ apps/web/src/components/FadingTopBar.tsx      |  51 ++
+ apps/web/src/components/GitActionsControl.tsx | 133 ++----
+ apps/web/src/components/ProjectFavicon.tsx    |   9 +-
+ .../src/components/ProjectScriptsControl.tsx  |  10 +-
+ apps/web/src/components/Sidebar.tsx           | 441 ++++++++++--------
+ apps/web/src/components/chat/ChatHeader.tsx   |  24 +-
+ apps/web/src/components/chat/OpenInPicker.tsx |  54 +--
+ .../components/settings/settingsLayout.tsx    |  33 +-
+ apps/web/src/components/ui/sidebar.tsx        |   5 +-
+ .../routes/_chat.$environmentId.$threadId.tsx |   2 +-
+ apps/web/src/routes/settings.tsx              |  28 +-
+ 12 files changed, 405 insertions(+), 408 deletions(-)
+ create mode 100644 apps/web/src/components/FadingTopBar.tsx
+
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index daef0336..15c7bf44 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -101,6 +101,7 @@ import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
+ import { useMediaQuery } from "../hooks/useMediaQuery";
+ import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
+ import { BranchToolbar } from "./BranchToolbar";
++import { FadingTopBar } from "./FadingTopBar";
+ import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
+ import PlanSidebar from "./PlanSidebar";
+ import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
+@@ -405,6 +406,7 @@ type ChatViewProps =
+       threadId: ThreadId;
+       onDiffPanelOpen?: () => void;
+       reserveTitleBarControlInset?: boolean;
++      topBarViewportFixed?: boolean;
+       routeKind: "server";
+       draftId?: never;
+       startupDraft?: never;
+@@ -414,6 +416,7 @@ type ChatViewProps =
+       threadId: ThreadId;
+       onDiffPanelOpen?: () => void;
+       reserveTitleBarControlInset?: boolean;
++      topBarViewportFixed?: boolean;
+       routeKind: "draft";
+       draftId: DraftId;
+       startupDraft?: boolean;
+@@ -849,6 +852,7 @@ export default function ChatView(props: ChatViewProps) {
+     routeKind,
+     onDiffPanelOpen,
+     reserveTitleBarControlInset = true,
++    topBarViewportFixed = false,
+   } = props;
+   const draftId = routeKind === "draft" ? props.draftId : null;
+   const routeThreadRef = useMemo(
+@@ -4123,25 +4127,16 @@ export default function ChatView(props: ChatViewProps) {
+   );
+ 
+   return (
+-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
++    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
+       {/* Top bar */}
+-      <header
+-        className={cn(
+-          "border-b border-border",
+-          isElectron
+-            ? cn(
+-                "drag-region flex h-[52px] items-center px-3 sm:px-5 wco:h-[env(titlebar-area-height)]",
+-                reserveTitleBarControlInset &&
+-                  "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
+-              )
+-            : "pb-2 pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-2 sm:pb-3 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-3",
+-        )}
++      <FadingTopBar
++        reserveTitleBarControlInset={reserveTitleBarControlInset}
++        viewportFixed={topBarViewportFixed}
+       >
+         <ChatHeader
+           activeThreadEnvironmentId={activeThread.environmentId}
+           activeThreadId={activeThread.id}
+           {...(routeKind === "draft" && draftId ? { draftId } : {})}
+-          activeThreadTitle={activeThread.title}
+           activeProjectName={activeProject?.name}
+           isGitRepo={isGitRepo}
+           openInCwd={gitCwd}
+@@ -4165,7 +4160,7 @@ export default function ChatView(props: ChatViewProps) {
+           onToggleTerminal={toggleTerminalVisibility}
+           onToggleDiff={onToggleDiff}
+         />
+-      </header>
++      </FadingTopBar>
+ 
+       {/* Error banner */}
+       <ProviderStatusBanner status={activeProviderStatus} />
+diff --git a/apps/web/src/components/FadingTopBar.tsx b/apps/web/src/components/FadingTopBar.tsx
+new file mode 100644
+index 00000000..0d330692
+--- /dev/null
++++ b/apps/web/src/components/FadingTopBar.tsx
+@@ -0,0 +1,51 @@
++import { type ComponentPropsWithoutRef } from "react";
++
++import { isElectron } from "../env";
++import { cn } from "../lib/utils";
++
++export function FadingTopBar({
++  children,
++  reserveTitleBarControlInset = true,
++  surface = "fade",
++  viewportFixed = false,
++  className,
++  contentClassName,
++  style,
++  ...headerProps
++}: ComponentPropsWithoutRef<"header"> & {
++  reserveTitleBarControlInset?: boolean;
++  surface?: "fade" | "transparent";
++  viewportFixed?: boolean;
++  contentClassName?: string;
++}) {
++  const fadeBackgroundImage =
++    "linear-gradient(to bottom, #191919 0%, #191919 var(--fading-topbar-solid-end), rgb(25 25 25 / 0) calc(var(--fading-topbar-solid-end) + 2rem))";
++
++  return (
++    <header
++      {...headerProps}
++      style={style}
++      className={cn(
++        "pointer-events-none right-0 top-0 z-20 [--fading-topbar-scrollbar-gutter:12px] [--fading-topbar-solid-end:43.75px]",
++        viewportFixed ? "fixed left-(--sidebar-width)" : "absolute left-0",
++        isElectron
++          ? cn(
++              "drag-region flex h-[52px] items-start px-3 pt-3 sm:px-5 [--fading-topbar-solid-end:40.5px] wco:h-[env(titlebar-area-height)]",
++              reserveTitleBarControlInset &&
++                "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
++            )
++          : "h-14 pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-2 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-3",
++        className,
++      )}
++    >
++      {surface === "fade" ? (
++        <div
++          aria-hidden="true"
++          className="pointer-events-none absolute left-0 right-[var(--fading-topbar-scrollbar-gutter)] top-0 h-[calc(var(--fading-topbar-solid-end)+2rem)]"
++          style={{ backgroundImage: fadeBackgroundImage }}
++        />
++      ) : null}
++      <div className={cn("pointer-events-auto relative w-full", contentClassName)}>{children}</div>
++    </header>
++  );
++}
+diff --git a/apps/web/src/components/GitActionsControl.tsx b/apps/web/src/components/GitActionsControl.tsx
+index 6a8dc53f..67cb1f37 100644
+--- a/apps/web/src/components/GitActionsControl.tsx
++++ b/apps/web/src/components/GitActionsControl.tsx
+@@ -55,7 +55,6 @@ import {
+   DialogPopup,
+   DialogTitle,
+ } from "~/components/ui/dialog";
+-import { Group, GroupSeparator } from "~/components/ui/group";
+ import { Input } from "~/components/ui/input";
+ import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
+ import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+@@ -1126,9 +1125,6 @@ export default function GitActionsControl({
+       resolveQuickAction(gitStatusForActions, isGitActionRunning, isDefaultRef, hasPrimaryRemote),
+     [gitStatusForActions, hasPrimaryRemote, isDefaultRef, isGitActionRunning],
+   );
+-  const quickActionDisabledReason = quickAction.disabled
+-    ? (quickAction.hint ?? "This action is currently unavailable.")
+-    : null;
+   const pendingDefaultBranchActionCopy = pendingDefaultBranchAction
+     ? resolveDefaultBranchActionDialogCopy({
+         action: pendingDefaultBranchAction.action,
+@@ -1491,51 +1487,28 @@ export default function GitActionsControl({
+     });
+   };
+ 
+-  const runQuickAction = () => {
+-    if (quickAction.kind === "open_pr") {
+-      void openExistingPr();
+-      return;
+-    }
+-    if (quickAction.kind === "open_publish") {
+-      setIsPublishDialogOpen(true);
+-      return;
+-    }
+-    if (quickAction.kind === "run_pull") {
+-      const promise = pullAction.run();
+-      void toastManager.promise<Awaited<ReturnType<typeof pullAction.run>>, ThreadToastData>(
+-        promise,
+-        {
+-          loading: { title: "Pulling...", data: threadToastData },
+-          success: (result) => ({
+-            title: result.status === "pulled" ? "Pulled" : "Already up to date",
+-            description:
+-              result.status === "pulled"
+-                ? `Updated ${result.refName} from ${result.upstreamRef ?? "upstream"}`
+-                : `${result.refName} is already synchronized.`,
+-            data: threadToastData,
+-          }),
+-          error: (err) => ({
+-            title: "Pull failed",
+-            description: err instanceof Error ? err.message : "An error occurred.",
+-            data: threadToastData,
+-          }),
+-        },
+-      );
+-      void promise.catch(() => undefined);
+-      return;
+-    }
+-    if (quickAction.kind === "show_hint") {
+-      toastManager.add({
+-        type: "info",
+-        title: quickAction.label,
+-        description: quickAction.hint,
+-        data: threadToastData,
+-      });
+-      return;
+-    }
+-    if (quickAction.action) {
+-      void runGitActionWithToast({ action: quickAction.action });
+-    }
++  const runPullAction = () => {
++    const promise = pullAction.run();
++    void toastManager.promise<Awaited<ReturnType<typeof pullAction.run>>, ThreadToastData>(
++      promise,
++      {
++        loading: { title: "Pulling...", data: threadToastData },
++        success: (result) => ({
++          title: result.status === "pulled" ? "Pulled" : "Already up to date",
++          description:
++            result.status === "pulled"
++              ? `Updated ${result.refName} from ${result.upstreamRef ?? "upstream"}`
++              : `${result.refName} is already synchronized.`,
++          data: threadToastData,
++        }),
++        error: (err) => ({
++          title: "Pull failed",
++          description: err instanceof Error ? err.message : "An error occurred.",
++          data: threadToastData,
++        }),
++      },
++    );
++    void promise.catch(() => undefined);
+   };
+ 
+   const openDialogForMenuItem = (item: GitActionMenuItem) => {
+@@ -1606,58 +1579,19 @@ export default function GitActionsControl({
+       {!isRepo ? (
+         <Button
+           variant="outline"
+-          size="xs"
++          size="icon-xs"
+           disabled={initAction.isPending}
+           onClick={() => {
+             void initAction.run();
+           }}
+         >
+           <GitBranchPlusIcon className="size-3.5" aria-hidden />
+-          <span className="ml-0.5">
++          <span className="sr-only">
+             {initAction.isPending ? "Initializing..." : "Initialize Git"}
+           </span>
+         </Button>
+       ) : (
+-        <Group aria-label="Git actions" className="shrink-0">
+-          {quickActionDisabledReason ? (
+-            <Popover>
+-              <PopoverTrigger
+-                openOnHover
+-                render={
+-                  <Button
+-                    aria-disabled="true"
+-                    className="cursor-not-allowed rounded-e-none border-e-0 opacity-64 before:rounded-e-none"
+-                    size="xs"
+-                    variant="outline"
+-                  />
+-                }
+-              >
+-                <GitQuickActionIcon
+-                  quickAction={quickAction}
+-                  SourceControlIcon={SourceControlIcon}
+-                />
+-                <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-                  {quickAction.label}
+-                </span>
+-              </PopoverTrigger>
+-              <PopoverPopup tooltipStyle side="bottom" align="start">
+-                {quickActionDisabledReason}
+-              </PopoverPopup>
+-            </Popover>
+-          ) : (
+-            <Button
+-              variant="outline"
+-              size="xs"
+-              disabled={isGitActionRunning || quickAction.disabled}
+-              onClick={runQuickAction}
+-            >
+-              <GitQuickActionIcon quickAction={quickAction} SourceControlIcon={SourceControlIcon} />
+-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-                {quickAction.label}
+-              </span>
+-            </Button>
+-          )}
+-          <GroupSeparator className="hidden @3xl/header-actions:block" />
++        <div className="inline-flex shrink-0 items-center">
+           <Menu
+             onOpenChange={(open) => {
+               if (open) {
+@@ -1669,12 +1603,23 @@ export default function GitActionsControl({
+             }}
+           >
+             <MenuTrigger
+-              render={<Button aria-label="Git action options" size="icon-xs" variant="outline" />}
++              render={<Button aria-label="Git actions" size="icon-xs" variant="outline" />}
+               disabled={isGitActionRunning}
+             >
+-              <ChevronDownIcon aria-hidden="true" className="size-4" />
++              <GitQuickActionIcon quickAction={quickAction} SourceControlIcon={SourceControlIcon} />
+             </MenuTrigger>
+             <MenuPopup align="end" className="w-full">
++              {quickAction.kind === "run_pull" && (
++                <MenuItem
++                  disabled={quickAction.disabled}
++                  onClick={() => {
++                    runPullAction();
++                  }}
++                >
++                  <InfoIcon />
++                  Pull
++                </MenuItem>
++              )}
+               {gitActionMenuItems.map((item) => {
+                 const disabledReason = getMenuActionDisabledReason({
+                   item,
+@@ -1749,7 +1694,7 @@ export default function GitActionsControl({
+               )}
+             </MenuPopup>
+           </Menu>
+-        </Group>
++        </div>
+       )}
+ 
+       <Dialog
+diff --git a/apps/web/src/components/ProjectFavicon.tsx b/apps/web/src/components/ProjectFavicon.tsx
+index 3fda0b67..d826b841 100644
+--- a/apps/web/src/components/ProjectFavicon.tsx
++++ b/apps/web/src/components/ProjectFavicon.tsx
+@@ -13,11 +13,10 @@ export function ProjectFavicon(input: {
+   open?: boolean;
+ }) {
+   const FallbackIcon = input.open ? FolderOpenIcon : FolderIcon;
+-  const fallbackIcon = (
+-    <FallbackIcon
+-      className={`size-3.5 shrink-0 text-muted-foreground/50 ${input.className ?? ""}`}
+-    />
+-  );
++  const fallbackClassName = input.className
++    ? `size-3.5 shrink-0 ${input.className}`
++    : "size-3.5 shrink-0 text-muted-foreground/50";
++  const fallbackIcon = <FallbackIcon className={fallbackClassName} />;
+   if (input.folderStateIcon) {
+     return fallbackIcon;
+   }
+diff --git a/apps/web/src/components/ProjectScriptsControl.tsx b/apps/web/src/components/ProjectScriptsControl.tsx
+index 4588ac51..5cb7126d 100644
+--- a/apps/web/src/components/ProjectScriptsControl.tsx
++++ b/apps/web/src/components/ProjectScriptsControl.tsx
+@@ -232,13 +232,11 @@ export default function ProjectScriptsControl({
+               }
+             >
+               <ScriptIcon icon={primaryScript.icon} />
+-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-                {primaryScript.name}
+-              </span>
++              <span className="sr-only">{primaryScript.name}</span>
+             </TooltipTrigger>
+             <TooltipPopup side="top">Run {primaryScript.name}</TooltipPopup>
+           </Tooltip>
+-          <GroupSeparator className="hidden @3xl/header-actions:block" />
++          <GroupSeparator />
+           <Menu highlightItemOnHover={false}>
+             <MenuTrigger
+               render={<Button size="icon-xs" variant="outline" aria-label="Script actions" />}
+@@ -304,9 +302,7 @@ export default function ProjectScriptsControl({
+             }
+           >
+             <PlusIcon className="size-3.5" />
+-            <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-              Add action
+-            </span>
++            <span className="sr-only">Add action</span>
+           </TooltipTrigger>
+           <TooltipPopup side="top">Add action</TooltipPopup>
+         </Tooltip>
+diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
+index 31e4a952..df0ef7c3 100644
+--- a/apps/web/src/components/Sidebar.tsx
++++ b/apps/web/src/components/Sidebar.tsx
+@@ -34,6 +34,7 @@ import {
+ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+ import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+ import { CSS } from "@dnd-kit/utilities";
++import { createPortal } from "react-dom";
+ import {
+   type ContextMenuItem,
+   type DesktopUpdateState,
+@@ -50,7 +51,7 @@ import {
+   scopeProjectRef,
+   scopeThreadRef,
+ } from "@t3tools/client-runtime";
+-import { Link, useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
++import { useLocation, useNavigate, useParams, useRouter } from "@tanstack/react-router";
+ import {
+   MAX_SIDEBAR_THREAD_PREVIEW_COUNT,
+   MIN_SIDEBAR_THREAD_PREVIEW_COUNT,
+@@ -60,9 +61,8 @@ import {
+ } from "@t3tools/contracts/settings";
+ import { usePrimaryEnvironmentId } from "../environments/primary";
+ import { isElectron } from "../env";
+-import { APP_STAGE_LABEL, APP_VERSION } from "../branding";
+ import { isTerminalFocused } from "../lib/terminalFocus";
+-import { isMacPlatform, newCommandId } from "../lib/utils";
++import { cn, isMacPlatform, newCommandId } from "../lib/utils";
+ import {
+   selectProjectByRef,
+   selectProjectsAcrossEnvironments,
+@@ -98,7 +98,6 @@ import {
+ } from "../threadRoutes";
+ import { stackedThreadToast, toastManager } from "./ui/toast";
+ import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+-import { Kbd } from "./ui/kbd";
+ import {
+   getArm64IntelBuildWarningDescription,
+   getDesktopUpdateActionError,
+@@ -174,7 +173,6 @@ import {
+ import { sortThreads } from "../lib/threadSort";
+ import { SidebarUpdatePill } from "./sidebar/SidebarUpdatePill";
+ import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+-import { CommandDialogTrigger } from "./ui/command";
+ import { readEnvironmentApi } from "../environmentApi";
+ import { useSettings, useUpdateSettings } from "~/hooks/useSettings";
+ import { useServerKeybindings } from "../rpc/serverState";
+@@ -212,7 +210,8 @@ const PROJECT_GROUPING_MODE_LABELS: Record<SidebarProjectGroupingMode, string> =
+   separate: "Keep separate",
+ };
+ const SIDEBAR_ICON_ACTION_BUTTON_CLASS =
+-  "inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
++  "inline-flex h-6 min-w-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
++const SIDEBAR_THREAD_STATUS_RAIL_CLASS = "flex size-3.5 shrink-0 items-center justify-center";
+ 
+ function clampSidebarThreadPreviewCount(value: number): SidebarThreadPreviewCount {
+   return Math.min(
+@@ -558,25 +557,45 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+         onKeyDown={handleRowKeyDown}
+         onContextMenu={handleRowContextMenu}
+       >
+-        <div className="flex min-w-0 flex-1 items-center gap-1.5 pl-[22px] text-left">
+-          {prStatus && (
+-            <Tooltip>
+-              <TooltipTrigger
+-                render={
+-                  <button
+-                    type="button"
+-                    aria-label={prStatus.tooltip}
+-                    className={`inline-flex items-center justify-center ${prStatus.colorClass} cursor-pointer rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
+-                    onClick={handlePrClick}
+-                  >
+-                    <ChangeRequestStatusIcon className="size-3" />
+-                  </button>
+-                }
+-              />
+-              <TooltipPopup side="top">{prStatus.tooltip}</TooltipPopup>
+-            </Tooltip>
+-          )}
+-          {threadStatus && <ThreadStatusLabel status={threadStatus} />}
++        <div className="flex min-w-0 flex-1 items-center gap-2 text-left">
++          <span className={SIDEBAR_THREAD_STATUS_RAIL_CLASS}>
++            {terminalStatus ? (
++              <Tooltip>
++                <TooltipTrigger
++                  render={
++                    <span
++                      role="img"
++                      aria-label={terminalStatus.label}
++                      className={`inline-flex items-center justify-center ${terminalStatus.colorClass}`}
++                    />
++                  }
++                >
++                  <TerminalIcon
++                    className={`size-3 ${terminalStatus.pulse ? "animate-pulse" : ""}`}
++                  />
++                </TooltipTrigger>
++                <TooltipPopup side="top">{terminalStatus.label}</TooltipPopup>
++              </Tooltip>
++            ) : prStatus ? (
++              <Tooltip>
++                <TooltipTrigger
++                  render={
++                    <button
++                      type="button"
++                      aria-label={prStatus.tooltip}
++                      className={`inline-flex items-center justify-center ${prStatus.colorClass} cursor-pointer rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
++                      onClick={handlePrClick}
++                    >
++                      <ChangeRequestStatusIcon className="size-3" />
++                    </button>
++                  }
++                />
++                <TooltipPopup side="top">{prStatus.tooltip}</TooltipPopup>
++              </Tooltip>
++            ) : threadStatus ? (
++              <ThreadStatusLabel status={threadStatus} compact />
++            ) : null}
++          </span>
+           {renamingThreadKey === threadKey ? (
+             <input
+               ref={handleRenameInputRef}
+@@ -606,22 +625,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
+           )}
+         </div>
+         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+-          {terminalStatus && (
+-            <Tooltip>
+-              <TooltipTrigger
+-                render={
+-                  <span
+-                    role="img"
+-                    aria-label={terminalStatus.label}
+-                    className={`inline-flex items-center justify-center ${terminalStatus.colorClass}`}
+-                  />
+-                }
+-              >
+-                <TerminalIcon className={`size-3 ${terminalStatus.pulse ? "animate-pulse" : ""}`} />
+-              </TooltipTrigger>
+-              <TooltipPopup side="top">{terminalStatus.label}</TooltipPopup>
+-            </Tooltip>
+-          )}
+           <div className="flex min-w-6 justify-end">
+             {isConfirmingArchive ? (
+               <button
+@@ -872,8 +875,10 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+               expandThreadListForProject(projectKey);
+             }}
+           >
+-            <span className="flex min-w-0 flex-1 items-center gap-2 pl-[22px]">
+-              {hiddenThreadStatus && <ThreadStatusLabel status={hiddenThreadStatus} compact />}
++            <span className="flex min-w-0 flex-1 items-center gap-2">
++              <span className={SIDEBAR_THREAD_STATUS_RAIL_CLASS}>
++                {hiddenThreadStatus && <ThreadStatusLabel status={hiddenThreadStatus} compact />}
++              </span>
+               <span>Show more</span>
+             </span>
+           </SidebarMenuSubButton>
+@@ -890,7 +895,10 @@ const SidebarProjectThreadList = memo(function SidebarProjectThreadList(
+               collapseThreadListForProject(projectKey);
+             }}
+           >
+-            <span className="pl-[22px]">Show less</span>
++            <span className="flex min-w-0 flex-1 items-center gap-2">
++              <span className={SIDEBAR_THREAD_STATUS_RAIL_CLASS} />
++              <span>Show less</span>
++            </span>
+           </SidebarMenuSubButton>
+         </SidebarMenuSubItem>
+       )}
+@@ -2007,23 +2015,19 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+                 render={
+                   <span
+                     aria-label={projectStatus.label}
+-                    className="relative inline-flex size-3.5 shrink-0 items-center justify-center"
++                    className="inline-flex size-3.5 shrink-0 items-center justify-center"
+                   />
+                 }
+               >
+                 <ProjectFavicon
+                   environmentId={project.environmentId}
+                   cwd={project.cwd}
++                  className={`${projectStatus.colorClass} ${
++                    projectStatus.pulse ? "animate-pulse" : ""
++                  }`}
+                   folderStateIcon
+                   open={projectExpanded}
+                 />
+-                <span className="absolute -right-0.5 -bottom-0.5 flex items-center justify-center">
+-                  <span
+-                    className={`size-1.5 rounded-full ring-2 ring-sidebar ${projectStatus.dotClass} ${
+-                      projectStatus.pulse ? "animate-pulse" : ""
+-                    }`}
+-                  />
+-                </span>
+               </TooltipTrigger>
+               <TooltipPopup side="top">{projectStatus.label}</TooltipPopup>
+             </Tooltip>
+@@ -2257,22 +2261,6 @@ const SidebarProjectListRow = memo(function SidebarProjectListRow(props: Sidebar
+   );
+ });
+ 
+-function T3Wordmark() {
+-  return (
+-    <svg
+-      aria-label="T3"
+-      className="h-2.5 w-auto shrink-0 text-foreground"
+-      viewBox="15.5309 37 94.3941 56.96"
+-      xmlns="http://www.w3.org/2000/svg"
+-    >
+-      <path
+-        d="M33.4509 93V47.56H15.5309V37H64.3309V47.56H46.4109V93H33.4509ZM86.7253 93.96C82.832 93.96 78.9653 93.4533 75.1253 92.44C71.2853 91.3733 68.032 89.88 65.3653 87.96L70.4053 78.04C72.5386 79.5867 75.0186 80.8133 77.8453 81.72C80.672 82.6267 83.5253 83.08 86.4053 83.08C89.6586 83.08 92.2186 82.44 94.0853 81.16C95.952 79.88 96.8853 78.12 96.8853 75.88C96.8853 73.7467 96.0586 72.0667 94.4053 70.84C92.752 69.6133 90.0853 69 86.4053 69H80.4853V60.44L96.0853 42.76L97.5253 47.4H68.1653V37H107.365V45.4L91.8453 63.08L85.2853 59.32H89.0453C95.9253 59.32 101.125 60.8667 104.645 63.96C108.165 67.0533 109.925 71.0267 109.925 75.88C109.925 79.0267 109.099 81.9867 107.445 84.76C105.792 87.48 103.259 89.6933 99.8453 91.4C96.432 93.1067 92.0586 93.96 86.7253 93.96Z"
+-        fill="currentColor"
+-      />
+-    </svg>
+-  );
+-}
+-
+ type SortableProjectHandleProps = Pick<
+   ReturnType<typeof useSortable>,
+   "attributes" | "listeners" | "setActivatorNodeRef"
+@@ -2427,6 +2415,103 @@ function ProjectSortMenu({
+   );
+ }
+ 
++function SidebarProjectActions({
++  projectSortOrder,
++  threadSortOrder,
++  projectGroupingMode,
++  threadPreviewCount,
++  updateSettings,
++  commandPaletteShortcutLabel,
++  openCommandPalette,
++}: {
++  projectSortOrder: SidebarProjectSortOrder;
++  threadSortOrder: SidebarThreadSortOrder;
++  projectGroupingMode: SidebarProjectGroupingMode;
++  threadPreviewCount: SidebarThreadPreviewCount;
++  updateSettings: ReturnType<typeof useUpdateSettings>["updateSettings"];
++  commandPaletteShortcutLabel: string | null;
++  openCommandPalette: () => void;
++}) {
++  const handleProjectSortOrderChange = useCallback(
++    (sortOrder: SidebarProjectSortOrder) => {
++      updateSettings({ sidebarProjectSortOrder: sortOrder });
++    },
++    [updateSettings],
++  );
++  const handleThreadSortOrderChange = useCallback(
++    (sortOrder: SidebarThreadSortOrder) => {
++      updateSettings({ sidebarThreadSortOrder: sortOrder });
++    },
++    [updateSettings],
++  );
++  const handleProjectGroupingModeChange = useCallback(
++    (groupingMode: SidebarProjectGroupingMode) => {
++      updateSettings({ sidebarProjectGroupingMode: groupingMode });
++    },
++    [updateSettings],
++  );
++  const handleThreadPreviewCountChange = useCallback(
++    (count: SidebarThreadPreviewCount) => {
++      updateSettings({ sidebarThreadPreviewCount: count });
++    },
++    [updateSettings],
++  );
++
++  return (
++    <div className="flex shrink-0 items-center gap-1">
++      <Tooltip>
++        <TooltipTrigger
++          render={
++            <button
++              type="button"
++              aria-label="Search"
++              className={SIDEBAR_ICON_ACTION_BUTTON_CLASS}
++              data-testid="command-palette-trigger"
++              onClick={openCommandPalette}
++            />
++          }
++        >
++          <SearchIcon className="size-3.5" />
++        </TooltipTrigger>
++        <TooltipPopup side="right">
++          {commandPaletteShortcutLabel ? `Search (${commandPaletteShortcutLabel})` : "Search"}
++        </TooltipPopup>
++      </Tooltip>
++      <ProjectSortMenu
++        projectSortOrder={projectSortOrder}
++        threadSortOrder={threadSortOrder}
++        projectGroupingMode={projectGroupingMode}
++        threadPreviewCount={threadPreviewCount}
++        onProjectSortOrderChange={handleProjectSortOrderChange}
++        onThreadSortOrderChange={handleThreadSortOrderChange}
++        onProjectGroupingModeChange={handleProjectGroupingModeChange}
++        onThreadPreviewCountChange={handleThreadPreviewCountChange}
++      />
++    </div>
++  );
++}
++
++function SidebarAddProjectButton({ openAddProject }: { openAddProject: () => void }) {
++  return (
++    <Tooltip>
++      <TooltipTrigger
++        render={
++          <button
++            type="button"
++            aria-label="Add project"
++            data-testid="sidebar-add-project-trigger"
++            className={SIDEBAR_ICON_ACTION_BUTTON_CLASS}
++            onClick={openAddProject}
++          />
++        }
++      >
++        <FolderPlusIcon className="size-3.5" />
++      </TooltipTrigger>
++      <TooltipPopup side="right">Add project</TooltipPopup>
++    </Tooltip>
++  );
++}
++
+ function SortableProjectItem({
+   projectId,
+   disabled = false,
+@@ -2466,43 +2551,83 @@ function SortableProjectItem({
+ 
+ const SidebarChromeHeader = memo(function SidebarChromeHeader({
+   isElectron,
++  actions,
++  addProjectButton,
+ }: {
+   isElectron: boolean;
++  actions?: React.ReactNode;
++  addProjectButton?: React.ReactNode;
+ }) {
+-  const wordmark = (
+-    <div className="flex items-center gap-2">
++  const headerRef = useRef<HTMLDivElement | null>(null);
++  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
++  const [desktopChromeWidth, setDesktopChromeWidth] = useState<number | null>(null);
++
++  useEffect(() => {
++    setPortalRoot(document.body);
++  }, []);
++
++  useEffect(() => {
++    const header = headerRef.current;
++    const sidebarContainer = header?.closest<HTMLElement>("[data-slot='sidebar-container']");
++    if (!sidebarContainer) return;
++
++    const updateWidth = () => {
++      setDesktopChromeWidth(sidebarContainer.getBoundingClientRect().width);
++    };
++    const resizeObserver = new ResizeObserver(updateWidth);
++    updateWidth();
++    resizeObserver.observe(sidebarContainer);
++
++    return () => {
++      resizeObserver.disconnect();
++    };
++  }, []);
++
++  const mobileContent = (
++    <div
++      className={cn(
++        "flex w-full items-center justify-end md:hidden",
++        isElectron ? "pr-3 pl-[90px] wco:pl-[calc(env(titlebar-area-x)+1em)]" : "px-3",
++      )}
++    >
+       <SidebarTrigger className="shrink-0 md:hidden" />
+-      <Tooltip>
+-        <TooltipTrigger
+-          render={
+-            <Link
+-              aria-label="Go to threads"
+-              className="ml-1 flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md outline-hidden ring-ring transition-colors hover:text-foreground focus-visible:ring-2"
+-              to="/"
+-            >
+-              <T3Wordmark />
+-              <span className="truncate text-sm font-medium tracking-tight text-muted-foreground">
+-                Code
+-              </span>
+-              <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60">
+-                {APP_STAGE_LABEL}
+-              </span>
+-            </Link>
+-          }
+-        />
+-        <TooltipPopup side="bottom" sideOffset={2}>
+-          Version {APP_VERSION}
+-        </TooltipPopup>
+-      </Tooltip>
+     </div>
+   );
++  const desktopContent = (
++    <div
++      className={cn(
++        "pointer-events-none fixed top-0 left-0 z-30 hidden h-[52px] items-center justify-end px-3 py-0 md:flex",
++        isElectron
++          ? "drag-region pl-[90px] wco:h-[env(titlebar-area-height)] wco:pl-[calc(env(titlebar-area-x)+1em)]"
++          : null,
++      )}
++      style={{ width: desktopChromeWidth ?? "var(--sidebar-width)" }}
++    >
++      <div className="pointer-events-auto flex shrink-0 items-center gap-1">
++        {actions}
++        {addProjectButton}
++      </div>
++    </div>
++  );
++  const portaledDesktopContent =
++    portalRoot !== null ? createPortal(desktopContent, portalRoot) : null;
+ 
+   return isElectron ? (
+-    <SidebarHeader className="drag-region h-[52px] flex-row items-center gap-2 px-4 py-0 pl-[90px] wco:h-[env(titlebar-area-height)] wco:pl-[calc(env(titlebar-area-x)+1em)]">
+-      {wordmark}
++    <SidebarHeader
++      className="drag-region h-[52px] flex-row items-center gap-2 overflow-visible p-0 wco:h-[env(titlebar-area-height)]"
++      ref={headerRef}
++    >
++      {mobileContent}
++      {portaledDesktopContent}
+     </SidebarHeader>
+   ) : (
+-    <SidebarHeader className="gap-3 px-3 py-2 sm:gap-2.5 sm:px-4 sm:py-3">{wordmark}</SidebarHeader>
++    <SidebarHeader
++      className="h-[52px] flex-row items-center gap-2 overflow-visible p-0"
++      ref={headerRef}
++    >
++      {mobileContent}
++      {portaledDesktopContent}
++    </SidebarHeader>
+   );
+ });
+ 
+@@ -2542,12 +2667,6 @@ interface SidebarProjectsContentProps {
+   desktopUpdateButtonAction: "download" | "install" | "none";
+   desktopUpdateButtonDisabled: boolean;
+   handleDesktopUpdateButtonClick: () => void;
+-  projectSortOrder: SidebarProjectSortOrder;
+-  threadSortOrder: SidebarThreadSortOrder;
+-  projectGroupingMode: SidebarProjectGroupingMode;
+-  threadPreviewCount: SidebarThreadPreviewCount;
+-  updateSettings: ReturnType<typeof useUpdateSettings>["updateSettings"];
+-  openAddProject: () => void;
+   isManualProjectSorting: boolean;
+   projectDnDSensors: ReturnType<typeof useSensors>;
+   projectCollisionDetection: CollisionDetection;
+@@ -2562,7 +2681,6 @@ interface SidebarProjectsContentProps {
+   activeRouteProjectKey: string | null;
+   routeThreadKey: string | null;
+   newThreadShortcutLabel: string | null;
+-  commandPaletteShortcutLabel: string | null;
+   threadJumpLabelByKey: ReadonlyMap<string, string>;
+   attachThreadListAutoAnimateRef: (node: HTMLElement | null) => void;
+   expandThreadListForProject: (projectKey: string) => void;
+@@ -2583,12 +2701,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+     desktopUpdateButtonAction,
+     desktopUpdateButtonDisabled,
+     handleDesktopUpdateButtonClick,
+-    projectSortOrder,
+-    threadSortOrder,
+-    projectGroupingMode,
+-    threadPreviewCount,
+-    updateSettings,
+-    openAddProject,
+     isManualProjectSorting,
+     projectDnDSensors,
+     projectCollisionDetection,
+@@ -2603,7 +2715,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+     activeRouteProjectKey,
+     routeThreadKey,
+     newThreadShortcutLabel,
+-    commandPaletteShortcutLabel,
+     threadJumpLabelByKey,
+     attachThreadListAutoAnimateRef,
+     expandThreadListForProject,
+@@ -2615,56 +2726,8 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+     projectsLength,
+   } = props;
+ 
+-  const handleProjectSortOrderChange = useCallback(
+-    (sortOrder: SidebarProjectSortOrder) => {
+-      updateSettings({ sidebarProjectSortOrder: sortOrder });
+-    },
+-    [updateSettings],
+-  );
+-  const handleThreadSortOrderChange = useCallback(
+-    (sortOrder: SidebarThreadSortOrder) => {
+-      updateSettings({ sidebarThreadSortOrder: sortOrder });
+-    },
+-    [updateSettings],
+-  );
+-  const handleProjectGroupingModeChange = useCallback(
+-    (groupingMode: SidebarProjectGroupingMode) => {
+-      updateSettings({ sidebarProjectGroupingMode: groupingMode });
+-    },
+-    [updateSettings],
+-  );
+-  const handleThreadPreviewCountChange = useCallback(
+-    (count: SidebarThreadPreviewCount) => {
+-      updateSettings({ sidebarThreadPreviewCount: count });
+-    },
+-    [updateSettings],
+-  );
+-
+   return (
+     <SidebarContent className="gap-0">
+-      <SidebarGroup className="px-2 pt-2 pb-1">
+-        <SidebarMenu>
+-          <SidebarMenuItem>
+-            <CommandDialogTrigger
+-              render={
+-                <SidebarMenuButton
+-                  size="sm"
+-                  className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground focus-visible:ring-0"
+-                  data-testid="command-palette-trigger"
+-                />
+-              }
+-            >
+-              <SearchIcon className="size-3.5 text-muted-foreground/70" />
+-              <span className="flex-1 truncate text-left text-xs">Search</span>
+-              {commandPaletteShortcutLabel ? (
+-                <Kbd className="h-4 min-w-0 rounded-sm px-1.5 text-[10px]">
+-                  {commandPaletteShortcutLabel}
+-                </Kbd>
+-              ) : null}
+-            </CommandDialogTrigger>
+-          </SidebarMenuItem>
+-        </SidebarMenu>
+-      </SidebarGroup>
+       {showArm64IntelBuildWarning && arm64IntelBuildWarningDescription ? (
+         <SidebarGroup className="px-2 pt-2 pb-0">
+           <Alert variant="warning" className="rounded-2xl border-warning/40 bg-warning/8">
+@@ -2689,40 +2752,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+         </SidebarGroup>
+       ) : null}
+       <SidebarGroup className="px-2 py-2">
+-        <div className="mb-1 flex items-center justify-between pl-2 pr-1.5">
+-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+-            Projects
+-          </span>
+-          <div className="flex items-center gap-1">
+-            <ProjectSortMenu
+-              projectSortOrder={projectSortOrder}
+-              threadSortOrder={threadSortOrder}
+-              projectGroupingMode={projectGroupingMode}
+-              threadPreviewCount={threadPreviewCount}
+-              onProjectSortOrderChange={handleProjectSortOrderChange}
+-              onThreadSortOrderChange={handleThreadSortOrderChange}
+-              onProjectGroupingModeChange={handleProjectGroupingModeChange}
+-              onThreadPreviewCountChange={handleThreadPreviewCountChange}
+-            />
+-            <Tooltip>
+-              <TooltipTrigger
+-                render={
+-                  <button
+-                    type="button"
+-                    aria-label="Add project"
+-                    data-testid="sidebar-add-project-trigger"
+-                    className="inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-[calc(--spacing(1)-1px)] text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+-                    onClick={openAddProject}
+-                  />
+-                }
+-              >
+-                <FolderPlusIcon className="size-3.5" />
+-              </TooltipTrigger>
+-              <TooltipPopup side="right">Add project</TooltipPopup>
+-            </Tooltip>
+-          </div>
+-        </div>
+-
+         {isManualProjectSorting ? (
+           <DndContext
+             sensors={projectDnDSensors}
+@@ -2831,6 +2860,7 @@ export default function Sidebar() {
+   const routeThreadKey = routeThreadRef ? scopedThreadKey(routeThreadRef) : null;
+   const keybindings = useServerKeybindings();
+   const openAddProjectCommandPalette = useCommandPaletteStore((store) => store.openAddProject);
++  const openCommandPalette = useCommandPaletteStore((store) => store.setOpen);
+   const [expandedThreadListsByProject, setExpandedThreadListsByProject] = useState<
+     ReadonlySet<string>
+   >(() => new Set());
+@@ -3421,9 +3451,28 @@ export default function Sidebar() {
+     });
+   }, []);
+ 
++  const projectActions = isOnSettings ? null : (
++    <SidebarProjectActions
++      projectSortOrder={sidebarProjectSortOrder}
++      threadSortOrder={sidebarThreadSortOrder}
++      projectGroupingMode={sidebarProjectGroupingMode}
++      threadPreviewCount={sidebarThreadPreviewCount}
++      updateSettings={updateSettings}
++      commandPaletteShortcutLabel={commandPaletteShortcutLabel}
++      openCommandPalette={() => openCommandPalette(true)}
++    />
++  );
++  const addProjectButton = isOnSettings ? null : (
++    <SidebarAddProjectButton openAddProject={openAddProjectCommandPalette} />
++  );
++
+   return (
+     <>
+-      <SidebarChromeHeader isElectron={isElectron} />
++      <SidebarChromeHeader
++        isElectron={isElectron}
++        actions={projectActions}
++        addProjectButton={addProjectButton}
++      />
+ 
+       {isOnSettings ? (
+         <SettingsSidebarNav pathname={pathname} />
+@@ -3435,12 +3484,6 @@ export default function Sidebar() {
+             desktopUpdateButtonAction={desktopUpdateButtonAction}
+             desktopUpdateButtonDisabled={desktopUpdateButtonDisabled}
+             handleDesktopUpdateButtonClick={handleDesktopUpdateButtonClick}
+-            projectSortOrder={sidebarProjectSortOrder}
+-            threadSortOrder={sidebarThreadSortOrder}
+-            projectGroupingMode={sidebarProjectGroupingMode}
+-            threadPreviewCount={sidebarThreadPreviewCount}
+-            updateSettings={updateSettings}
+-            openAddProject={openAddProjectCommandPalette}
+             isManualProjectSorting={isManualProjectSorting}
+             projectDnDSensors={projectDnDSensors}
+             projectCollisionDetection={projectCollisionDetection}
+@@ -3455,7 +3498,6 @@ export default function Sidebar() {
+             activeRouteProjectKey={activeRouteProjectKey}
+             routeThreadKey={routeThreadKey}
+             newThreadShortcutLabel={newThreadShortcutLabel}
+-            commandPaletteShortcutLabel={commandPaletteShortcutLabel}
+             threadJumpLabelByKey={visibleThreadJumpLabelByKey}
+             attachThreadListAutoAnimateRef={attachThreadListAutoAnimateRef}
+             expandThreadListForProject={expandThreadListForProject}
+@@ -3466,7 +3508,6 @@ export default function Sidebar() {
+             attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
+             projectsLength={projects.length}
+           />
+-
+           <SidebarSeparator />
+           <SidebarChromeFooter />
+         </>
+diff --git a/apps/web/src/components/chat/ChatHeader.tsx b/apps/web/src/components/chat/ChatHeader.tsx
+index e70c55af..1742f450 100644
+--- a/apps/web/src/components/chat/ChatHeader.tsx
++++ b/apps/web/src/components/chat/ChatHeader.tsx
+@@ -23,7 +23,6 @@ interface ChatHeaderProps {
+   activeThreadEnvironmentId: EnvironmentId;
+   activeThreadId: ThreadId;
+   draftId?: DraftId;
+-  activeThreadTitle: string;
+   activeProjectName: string | undefined;
+   isGitRepo: boolean;
+   openInCwd: string | null;
+@@ -155,7 +154,6 @@ export const ChatHeader = memo(function ChatHeader({
+   activeThreadEnvironmentId,
+   activeThreadId,
+   draftId,
+-  activeThreadTitle,
+   activeProjectName,
+   isGitRepo,
+   openInCwd,
+@@ -183,26 +181,12 @@ export const ChatHeader = memo(function ChatHeader({
+     activeThreadEnvironmentId,
+     primaryEnvironmentId,
+   });
+-
+   return (
+-    <div className="@container/header-actions flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+-      <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-hidden sm:flex-1 sm:flex-nowrap sm:gap-3">
++    <div className="@container/header-actions flex min-w-0 flex-1 items-start justify-between gap-2">
++      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+         <SidebarTrigger className="size-7 shrink-0 md:hidden" />
+-        <Tooltip>
+-          <TooltipTrigger
+-            render={
+-              <h2
+-                aria-label={activeThreadTitle}
+-                className="min-w-0 flex-1 basis-40 truncate text-sm font-medium text-foreground"
+-              >
+-                {activeThreadTitle}
+-              </h2>
+-            }
+-          />
+-          <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
+-        </Tooltip>
+       </div>
+-      <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:shrink-0 sm:justify-end @3xl/header-actions:gap-3">
++      <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 sm:shrink-0">
+         {activeProjectScripts && (
+           <ProjectScriptsControl
+             scripts={activeProjectScripts}
+@@ -236,7 +220,7 @@ export const ChatHeader = memo(function ChatHeader({
+                 pressed={terminalOpen}
+                 onPressedChange={onToggleTerminal}
+                 aria-label="Toggle terminal drawer"
+-                variant="ghost"
++                variant="outline"
+                 size="xs"
+                 disabled={!terminalAvailable}
+               >
+diff --git a/apps/web/src/components/chat/OpenInPicker.tsx b/apps/web/src/components/chat/OpenInPicker.tsx
+index cc023d34..6d2981e7 100644
+--- a/apps/web/src/components/chat/OpenInPicker.tsx
++++ b/apps/web/src/components/chat/OpenInPicker.tsx
+@@ -2,9 +2,8 @@ import { EditorId, type ResolvedKeybindingsConfig } from "@t3tools/contracts";
+ import { memo, useCallback, useEffect, useMemo } from "react";
+ import { isOpenFavoriteEditorShortcut, shortcutLabelForCommand } from "../../keybindings";
+ import { usePreferredEditor } from "../../editorPreferences";
+-import { ChevronDownIcon, FolderClosedIcon } from "lucide-react";
++import { FolderClosedIcon } from "lucide-react";
+ import { Button } from "../ui/button";
+-import { Group, GroupSeparator } from "../ui/group";
+ import { Menu, MenuItem, MenuPopup, MenuShortcut, MenuTrigger } from "../ui/menu";
+ import {
+   AntigravityIcon,
+@@ -197,37 +196,28 @@ export const OpenInPicker = memo(function OpenInPicker({
+     return () => window.removeEventListener("keydown", handler);
+   }, [preferredEditor, keybindings, openInCwd]);
+ 
++  const PrimaryIcon = primaryOption?.Icon ?? FolderClosedIcon;
++
+   return (
+-    <Group aria-label="Subscription actions">
+-      <Button
+-        size="xs"
+-        variant="outline"
+-        disabled={!preferredEditor || !openInCwd}
+-        onClick={() => openInEditor(preferredEditor)}
++    <Menu>
++      <MenuTrigger
++        render={<Button aria-label="Open in editor or file manager" size="xs" variant="outline" />}
++        disabled={!openInCwd}
+       >
+-        {primaryOption?.Icon && <primaryOption.Icon aria-hidden="true" className="size-3.5" />}
+-        <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-          Open
+-        </span>
+-      </Button>
+-      <GroupSeparator className="hidden @3xl/header-actions:block" />
+-      <Menu>
+-        <MenuTrigger render={<Button aria-label="Copy options" size="icon-xs" variant="outline" />}>
+-          <ChevronDownIcon aria-hidden="true" className="size-4" />
+-        </MenuTrigger>
+-        <MenuPopup align="end">
+-          {options.length === 0 && <MenuItem disabled>No installed editors found</MenuItem>}
+-          {options.map(({ label, Icon, value }) => (
+-            <MenuItem key={value} onClick={() => openInEditor(value)}>
+-              <Icon aria-hidden="true" className="text-muted-foreground" />
+-              {label}
+-              {value === preferredEditor && openFavoriteEditorShortcutLabel && (
+-                <MenuShortcut>{openFavoriteEditorShortcutLabel}</MenuShortcut>
+-              )}
+-            </MenuItem>
+-          ))}
+-        </MenuPopup>
+-      </Menu>
+-    </Group>
++        <PrimaryIcon aria-hidden="true" className="size-3.5" />
++      </MenuTrigger>
++      <MenuPopup align="end">
++        {options.length === 0 && <MenuItem disabled>No installed editors found</MenuItem>}
++        {options.map(({ label, Icon, value }) => (
++          <MenuItem key={value} onClick={() => openInEditor(value)}>
++            <Icon aria-hidden="true" className="text-muted-foreground" />
++            {label}
++            {value === preferredEditor && openFavoriteEditorShortcutLabel && (
++              <MenuShortcut>{openFavoriteEditorShortcutLabel}</MenuShortcut>
++            )}
++          </MenuItem>
++        ))}
++      </MenuPopup>
++    </Menu>
+   );
+ });
+diff --git a/apps/web/src/components/settings/settingsLayout.tsx b/apps/web/src/components/settings/settingsLayout.tsx
+index add6954f..a3451611 100644
+--- a/apps/web/src/components/settings/settingsLayout.tsx
++++ b/apps/web/src/components/settings/settingsLayout.tsx
+@@ -28,17 +28,28 @@ export function SettingsSection({
+   headerAction?: ReactNode;
+   children: ReactNode;
+ }) {
++  const showCardHeader = Boolean(icon || headerAction);
++
+   return (
+-    <section {...sectionProps} className={cn("space-y-2.5", className)}>
+-      <div className="flex items-center justify-between px-1">
+-        <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/50">
+-          <span className="inline-block h-px w-3 bg-border" aria-hidden />
+-          {icon}
+-          {title}
+-        </h2>
+-        <div className="flex h-5 min-w-5 items-center justify-end">{headerAction}</div>
+-      </div>
+-      <div className="relative overflow-visible rounded-2xl border bg-card text-card-foreground shadow-sm/4 not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-2xl)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:shadow-none dark:before:shadow-[0_-1px_--theme(--color-white/6%)]">
++    <section {...sectionProps} aria-label={title} className={cn("space-y-0", className)}>
++      <div className="relative overflow-visible rounded-lg border border-border/70 bg-card/70 text-card-foreground shadow-sm/4 not-dark:bg-clip-padding before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:bg-card/55 dark:shadow-none dark:before:shadow-[0_-1px_--theme(--color-white/5%)]">
++        {showCardHeader ? (
++          <div className="flex min-h-10 items-center justify-between gap-3 border-b border-border/60 px-3 py-2 sm:px-4">
++            {icon ? (
++              <div className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-foreground/80">
++                <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-sm">
++                  {icon}
++                </span>
++                <span className="truncate">{title}</span>
++              </div>
++            ) : (
++              <span aria-hidden className="min-w-0" />
++            )}
++            {headerAction ? (
++              <div className="flex shrink-0 items-center gap-1.5">{headerAction}</div>
++            ) : null}
++          </div>
++        ) : null}
+         {children}
+       </div>
+     </section>
+@@ -127,7 +138,7 @@ export function SettingsPageContainer({
+   className?: string;
+ }) {
+   return (
+-    <div className="scrollbar-gutter-both flex-1 overflow-y-auto p-6 sm:p-8">
++    <div className="scrollbar-gutter-both flex-1 overflow-y-auto px-6 pt-[72px] pb-6 sm:px-8 sm:pt-[80px] sm:pb-8">
+       <div className={cn("mx-auto flex w-full max-w-3xl flex-col gap-8", className)}>
+         {children}
+       </div>
+diff --git a/apps/web/src/components/ui/sidebar.tsx b/apps/web/src/components/ui/sidebar.tsx
+index 718fc22b..7e431f70 100644
+--- a/apps/web/src/components/ui/sidebar.tsx
++++ b/apps/web/src/components/ui/sidebar.tsx
+@@ -310,7 +310,8 @@ function Sidebar({
+ }
+ 
+ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
+-  const { toggleSidebar, openMobile } = useSidebar();
++  const { isMobile, open, openMobile, toggleSidebar } = useSidebar();
++  const visibleOpen = isMobile ? openMobile : open;
+ 
+   return (
+     <Button
+@@ -325,7 +326,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
+       variant="ghost"
+       {...props}
+     >
+-      {openMobile ? <PanelLeftCloseIcon /> : <PanelLeftIcon />}
++      {visibleOpen ? <PanelLeftCloseIcon /> : <PanelLeftIcon />}
+       <span className="sr-only">Toggle Sidebar</span>
+     </Button>
+   );
+diff --git a/apps/web/src/routes/_chat.$environmentId.$threadId.tsx b/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
+index b1a21191..171006e7 100644
+--- a/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
++++ b/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
+@@ -247,8 +247,8 @@ function ChatThreadRouteView() {
+             environmentId={threadRef.environmentId}
+             threadId={threadRef.threadId}
+             onDiffPanelOpen={markDiffOpened}
+-            reserveTitleBarControlInset={!diffOpen}
+             routeKind="server"
++            topBarViewportFixed
+           />
+         </SidebarInset>
+         <DiffPanelInlineSidebar
+diff --git a/apps/web/src/routes/settings.tsx b/apps/web/src/routes/settings.tsx
+index fa5c6a42..572be427 100644
+--- a/apps/web/src/routes/settings.tsx
++++ b/apps/web/src/routes/settings.tsx
+@@ -9,10 +9,10 @@ import {
+ } from "@tanstack/react-router";
+ import { useCallback, useEffect, useState } from "react";
+ 
++import { FadingTopBar } from "../components/FadingTopBar";
+ import { useSettingsRestore } from "../components/settings/SettingsPanels";
+ import { Button } from "../components/ui/button";
+ import { SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
+-import { isElectron } from "../env";
+ 
+ function RestoreDefaultsButton({ onRestored }: { onRestored: () => void }) {
+   const { changedSettingLabels, restoreDefaults } = useSettingsRestore(onRestored);
+@@ -62,33 +62,17 @@ function SettingsContentLayout() {
+ 
+   return (
+     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
+-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
+-        {!isElectron && (
+-          <header className="border-b border-border px-3 py-2 sm:px-5">
+-            <div className="flex min-h-7 items-center gap-2 sm:min-h-6">
+-              <SidebarTrigger className="size-7 shrink-0 md:hidden" />
+-              <span className="text-sm font-medium text-foreground">Settings</span>
+-              {showRestoreDefaults ? (
+-                <div className="ms-auto flex items-center gap-2">
+-                  <RestoreDefaultsButton onRestored={handleRestored} />
+-                </div>
+-              ) : null}
+-            </div>
+-          </header>
+-        )}
+-
+-        {isElectron && (
+-          <div className="drag-region flex h-[52px] shrink-0 items-center border-b border-border px-5 wco:h-[env(titlebar-area-height)] wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]">
+-            <span className="text-xs font-medium tracking-wide text-muted-foreground/70">
+-              Settings
+-            </span>
++      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
++        <FadingTopBar>
++          <div className="flex min-h-7 items-start justify-between gap-2">
++            <SidebarTrigger className="size-7 shrink-0 md:hidden" />
+             {showRestoreDefaults ? (
+               <div className="ms-auto flex items-center gap-2">
+                 <RestoreDefaultsButton onRestored={handleRestored} />
+               </div>
+             ) : null}
+           </div>
+-        )}
++        </FadingTopBar>
+ 
+         <div key={restoreSignal} className="min-h-0 flex flex-1 flex-col">
+           <Outlet />
+-- 
+2.50.1 (Apple Git-155)
+

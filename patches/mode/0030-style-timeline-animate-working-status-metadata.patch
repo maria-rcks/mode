@@ -1,0 +1,102 @@
+From 611a2ed13953090e4f489b0ca1b03ea33fa2c26e Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:38:41 -0400
+Subject: [PATCH 30/32] style(timeline): animate working status metadata
+
+---
+ .../src/components/chat/MessagesTimeline.tsx  | 43 +++++++++++--------
+ 1 file changed, 26 insertions(+), 17 deletions(-)
+
+diff --git a/apps/web/src/components/chat/MessagesTimeline.tsx b/apps/web/src/components/chat/MessagesTimeline.tsx
+index 245939ee..eebd4bad 100644
+--- a/apps/web/src/components/chat/MessagesTimeline.tsx
++++ b/apps/web/src/components/chat/MessagesTimeline.tsx
+@@ -20,6 +20,8 @@ import {
+ } from "react";
+ import { LegendList, type LegendListRef } from "@legendapp/list/react";
+ import { FileDiff } from "@pierre/diffs/react";
++import { slotText } from "slot-text";
++import "slot-text/style.css";
+ import {
+   deriveTimelineEntries,
+   workEntryIndicatesToolFailure,
+@@ -123,7 +125,7 @@ interface TimelineRowActivityState {
+ 
+ const TimelineRowCtx = createContext<TimelineRowSharedState>(null!);
+ const TimelineRowActivityCtx = createContext<TimelineRowActivityState>(null!);
+-const TIMELINE_LIST_HEADER = <div className="h-3 sm:h-4" />;
++const TIMELINE_LIST_HEADER = <div className="h-12 sm:h-14" />;
+ const TIMELINE_LIST_FOOTER = <div className="h-3 sm:h-4" />;
+ const EMPTY_TIMELINE_SKILLS: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">> = [];
+ 
+@@ -592,7 +594,7 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
+           onOpenTurnDiff={ctx.onOpenTurnDiff}
+         />
+         {row.showAssistantMeta ? (
+-          <div className="mt-1.5 flex items-center gap-2 text-xs tabular-nums opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover/assistant:opacity-100">
++          <div className="mt-1.5 flex items-center gap-2 text-xs tabular-nums">
+             <AssistantCopyButton row={row} />
+             {!row.message.streaming && (
+               <Tooltip>
+@@ -656,11 +658,6 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
+   return (
+     <div className="py-0.5 pl-1.5">
+       <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground/70 tabular-nums">
+-        <span className="inline-flex items-center gap-[3px]">
+-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
+-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
+-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+-        </span>
+         <span>
+           {row.createdAt ? (
+             <>
+@@ -683,24 +680,36 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
+ /** Live "Working for Xs" label. */
+ function WorkingTimer({ createdAt }: { createdAt: string }) {
+   const textRef = useRef<HTMLSpanElement>(null);
+-  const initialText = formatWorkingTimerNow(createdAt);
+ 
+-  useEffect(() => {
++  useLayoutEffect(() => {
++    const element = textRef.current;
++    if (!element) return;
++
++    let currentText = formatWorkingTimerNow(createdAt);
++    const label = slotText(element, currentText, {
++      bounce: 0.3,
++      direction: "up",
++      duration: 240,
++      stagger: 18,
++    });
++
+     const updateText = () => {
+-      if (textRef.current) {
+-        textRef.current.textContent = formatWorkingTimerNow(createdAt);
++      const nextText = formatWorkingTimerNow(createdAt);
++      if (nextText !== currentText) {
++        currentText = nextText;
++        label.set(nextText);
+       }
+     };
++
+     updateText();
+     const id = setInterval(updateText, 1000);
+-    return () => clearInterval(id);
++    return () => {
++      clearInterval(id);
++      label.destroy();
++    };
+   }, [createdAt]);
+ 
+-  return (
+-    <span ref={textRef} className="tabular-nums">
+-      {initialText}
+-    </span>
+-  );
++  return <span ref={textRef} className="inline-flex tabular-nums" />;
+ }
+ 
+ // ---------------------------------------------------------------------------
+-- 
+2.50.1 (Apple Git-155)
+

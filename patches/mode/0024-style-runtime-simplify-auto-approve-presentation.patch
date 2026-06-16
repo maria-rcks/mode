@@ -1,0 +1,187 @@
+From 989d2094db0ecbb61e46c35711b383dbbe9df690 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:34:09 -0400
+Subject: [PATCH 24/32] style(runtime): simplify auto-approve presentation
+
+---
+ .../src/features/threads/NewTaskDraftScreen.tsx  |  4 ++--
+ .../src/features/threads/ThreadComposer.tsx      |  4 ++--
+ apps/web/src/components/ChatView.browser.tsx     |  2 +-
+ apps/web/src/components/chat/ChatComposer.tsx    | 16 +++++++++-------
+ .../chat/runtimeModePresentation.test.ts         | 12 +++++++++++-
+ .../components/chat/runtimeModePresentation.ts   | 13 ++++++++++++-
+ 6 files changed, 37 insertions(+), 14 deletions(-)
+
+diff --git a/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx b/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
+index d59275b0..666c1b90 100644
+--- a/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
++++ b/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
+@@ -216,11 +216,11 @@ export function NewTaskDraftScreen(props: {
+           flow.runtimeMode === "approval-required"
+             ? "Approve actions"
+             : flow.runtimeMode === "auto-accept-edits"
+-              ? "Auto-accept edits"
++              ? "Auto approve"
+               : "Full access",
+         subactions: [
+           { id: "options:runtime:approval-required", title: "Approve actions" },
+-          { id: "options:runtime:auto-accept-edits", title: "Auto-accept edits" },
++          { id: "options:runtime:auto-accept-edits", title: "Auto approve" },
+           { id: "options:runtime:full-access", title: "Full access" },
+         ].map((option) => {
+           const value = option.id.replace("options:runtime:", "");
+diff --git a/apps/mobile/src/features/threads/ThreadComposer.tsx b/apps/mobile/src/features/threads/ThreadComposer.tsx
+index aa7d0332..eb28f744 100644
+--- a/apps/mobile/src/features/threads/ThreadComposer.tsx
++++ b/apps/mobile/src/features/threads/ThreadComposer.tsx
+@@ -523,11 +523,11 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
+           currentRuntimeMode === "approval-required"
+             ? "Approve actions"
+             : currentRuntimeMode === "auto-accept-edits"
+-              ? "Auto-accept edits"
++              ? "Auto approve"
+               : "Full access",
+         subactions: [
+           { id: "options:runtime:approval-required", title: "Approve actions" },
+-          { id: "options:runtime:auto-accept-edits", title: "Auto-accept edits" },
++          { id: "options:runtime:auto-accept-edits", title: "Auto approve" },
+           { id: "options:runtime:full-access", title: "Full access" },
+         ].map((option) => {
+           const value = option.id.replace("options:runtime:", "");
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index db5910de..54442aa4 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -3772,7 +3772,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         "Ask before commands and file changes",
+       );
+ 
+-      const autoAcceptItem = await waitForSelectItemContainingText("Auto-accept edits");
++      const autoAcceptItem = await waitForSelectItemContainingText("Auto approve");
+       expect(autoAcceptItem.textContent).toContain("Auto-approve edits");
+       expect((await waitForSelectItemContainingText("Full access")).textContent).toContain(
+         "Allow commands and edits without prompts",
+diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
+index 29163e09..9293d43f 100644
+--- a/apps/web/src/components/chat/ChatComposer.tsx
++++ b/apps/web/src/components/chat/ChatComposer.tsx
+@@ -103,7 +103,11 @@ import {
+ import { formatProviderSkillDisplayName } from "../../providerSkillPresentation";
+ import { searchProviderSkills } from "../../providerSkillSearch";
+ import { useMediaQuery } from "../../hooks/useMediaQuery";
+-import { getRuntimeModeConfig, getRuntimeModeOptions } from "./runtimeModePresentation";
++import {
++  getRuntimeModeConfig,
++  getRuntimeModeOptions,
++  getRuntimeModeTriggerClassName,
++} from "./runtimeModePresentation";
+ 
+ const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES / (1024 * 1024))}MB`;
+ 
+@@ -182,7 +186,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+               className={cn(
+                 "shrink-0 whitespace-nowrap px-2 sm:px-3",
+                 props.interactionMode === "plan"
+-                  ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/15 hover:text-blue-300"
++                  ? "text-blue-400 hover:text-blue-300"
+                   : "text-muted-foreground/70 hover:text-foreground/80",
+               )}
+               size="sm"
+@@ -220,7 +224,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+               <SelectTrigger
+                 variant="ghost"
+                 size="sm"
+-                className="font-medium"
++                className={cn("font-medium", getRuntimeModeTriggerClassName(props.runtimeMode))}
+                 aria-label="Runtime mode"
+               />
+             }
+@@ -264,7 +268,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+                   className={cn(
+                     "shrink-0 whitespace-nowrap px-2 sm:px-3",
+                     props.planSidebarOpen
+-                      ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/15 hover:text-blue-300"
++                      ? "text-blue-400 hover:text-blue-300"
+                       : "text-muted-foreground/70 hover:text-foreground/80",
+                   )}
+                   size="sm"
+@@ -2306,9 +2310,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+                                 ? "connecting"
+                                 : "disconnected"
+                             }`
+-                          : phase === "disconnected"
+-                            ? "Ask for follow-up changes or attach images"
+-                            : "Ask anything, @tag files/folders, $use skills, or / for commands"
++                          : "Ask anything, @tag files/folders, $use skills, or / for commands"
+                 }
+                 disabled={
+                   isConnecting ||
+diff --git a/apps/web/src/components/chat/runtimeModePresentation.test.ts b/apps/web/src/components/chat/runtimeModePresentation.test.ts
+index d972905d..bc08b66d 100644
+--- a/apps/web/src/components/chat/runtimeModePresentation.test.ts
++++ b/apps/web/src/components/chat/runtimeModePresentation.test.ts
+@@ -1,7 +1,11 @@
+ import { ProviderDriverKind } from "@t3tools/contracts";
+ import { describe, expect, it } from "vite-plus/test";
+ 
+-import { getRuntimeModeOptions, normalizeRuntimeModeForProvider } from "./runtimeModePresentation";
++import {
++  getRuntimeModeOptions,
++  getRuntimeModeTriggerClassName,
++  normalizeRuntimeModeForProvider,
++} from "./runtimeModePresentation";
+ 
+ describe("runtimeModePresentation", () => {
+   it("keeps medium access available only for Droid", () => {
+@@ -20,4 +24,10 @@ describe("runtimeModePresentation", () => {
+       "full-access",
+     );
+   });
++
++  it("colors selected runtime mode triggers by access level", () => {
++    expect(getRuntimeModeTriggerClassName("approval-required")).toContain("text-zinc");
++    expect(getRuntimeModeTriggerClassName("auto-accept-edits")).toContain("#83b799");
++    expect(getRuntimeModeTriggerClassName("full-access")).toContain("#d88952");
++  });
+ });
+diff --git a/apps/web/src/components/chat/runtimeModePresentation.ts b/apps/web/src/components/chat/runtimeModePresentation.ts
+index 283e1d08..ddecbf18 100644
+--- a/apps/web/src/components/chat/runtimeModePresentation.ts
++++ b/apps/web/src/components/chat/runtimeModePresentation.ts
+@@ -7,6 +7,13 @@ export interface RuntimeModePresentation {
+   readonly icon: LucideIcon;
+ }
+ 
++const RUNTIME_MODE_TRIGGER_CLASS_NAMES: Record<RuntimeMode, string> = {
++  "approval-required": "text-zinc-400 hover:text-zinc-300 data-pressed:text-zinc-300",
++  "auto-accept-edits": "text-[#83b799] hover:text-[#95c7aa] data-pressed:text-[#95c7aa]",
++  "medium-access": "text-[#c5aa73] hover:text-[#d0b783] data-pressed:text-[#d0b783]",
++  "full-access": "text-[#d88952] hover:text-[#e09a66] data-pressed:text-[#e09a66]",
++};
++
+ const BASE_RUNTIME_MODE_CONFIG: Record<RuntimeMode, RuntimeModePresentation> = {
+   "approval-required": {
+     label: "Supervised",
+@@ -14,7 +21,7 @@ const BASE_RUNTIME_MODE_CONFIG: Record<RuntimeMode, RuntimeModePresentation> = {
+     icon: LockIcon,
+   },
+   "auto-accept-edits": {
+-    label: "Auto-accept edits",
++    label: "Auto approve",
+     description: "Auto-approve edits, ask before other actions.",
+     icon: PenLineIcon,
+   },
+@@ -79,6 +86,10 @@ export function getRuntimeModeOptions(provider: ProviderDriverKind): ReadonlyArr
+     : BASE_RUNTIME_MODE_OPTIONS;
+ }
+ 
++export function getRuntimeModeTriggerClassName(runtimeMode: RuntimeMode): string {
++  return RUNTIME_MODE_TRIGGER_CLASS_NAMES[runtimeMode];
++}
++
+ export function normalizeRuntimeModeForProvider(
+   provider: ProviderDriverKind,
+   runtimeMode: RuntimeMode,
+-- 
+2.50.1 (Apple Git-155)
+

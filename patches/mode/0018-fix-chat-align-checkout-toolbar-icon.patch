@@ -1,47 +1,388 @@
-From 5bc770b93fe29267e9556a3969a640e904bb42d0 Mon Sep 17 00:00:00 2001
+From 2f0253ffd8eee28d5049a3fae55844580b2f5b7a Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 02:51:47 -0400
-Subject: [PATCH 18/18] fix(chat): align checkout toolbar icon
+Subject: [PATCH 18/32] fix(chat): align checkout toolbar icon
 
 ---
- apps/web/src/components/BranchToolbar.tsx | 2 +-
- apps/web/src/components/ChatView.tsx      | 3 +--
- 2 files changed, 2 insertions(+), 3 deletions(-)
+ apps/web/src/components/BranchToolbar.tsx | 160 ++++++++++++++++++++--
+ apps/web/src/components/ChatView.tsx      | 101 +-------------
+ 2 files changed, 154 insertions(+), 107 deletions(-)
 
 diff --git a/apps/web/src/components/BranchToolbar.tsx b/apps/web/src/components/BranchToolbar.tsx
-index 0191f3ee..51bbc415 100644
+index 0191f3ee..3a2166c1 100644
 --- a/apps/web/src/components/BranchToolbar.tsx
 +++ b/apps/web/src/components/BranchToolbar.tsx
-@@ -241,7 +241,7 @@ export const BranchToolbar = memo(function BranchToolbar({
+@@ -1,4 +1,4 @@
+-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime";
++import { scopedProjectKey, scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime";
+ import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+ import {
+   ChevronDownIcon,
+@@ -12,8 +12,10 @@ import { memo, useMemo } from "react";
+ 
+ import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
+ import { useIsMobile } from "../hooks/useMediaQuery";
++import { cn } from "../lib/utils";
+ import { useStore } from "../store";
+ import { createProjectSelectorByRef, createThreadSelectorByRef } from "../storeSelectors";
++import type { Project } from "../types";
+ import {
+   type EnvMode,
+   type EnvironmentOption,
+@@ -25,7 +27,17 @@ import {
+ import { BranchToolbarBranchSelector } from "./BranchToolbarBranchSelector";
+ import { BranchToolbarEnvironmentSelector } from "./BranchToolbarEnvironmentSelector";
+ import { BranchToolbarEnvModeSelector } from "./BranchToolbarEnvModeSelector";
++import { ProjectFavicon } from "./ProjectFavicon";
+ import { Button } from "./ui/button";
++import {
++  Select,
++  SelectGroup,
++  SelectGroupLabel,
++  SelectItem,
++  SelectPopup,
++  SelectTrigger,
++  SelectValue,
++} from "./ui/select";
+ import {
+   Menu,
+   MenuGroup,
+@@ -51,6 +63,8 @@ interface BranchToolbarProps {
+   onComposerFocusRequest?: () => void;
+   availableEnvironments?: readonly EnvironmentOption[];
+   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
++  projects?: readonly Project[];
++  onProjectChange?: (project: Project) => void;
+ }
+ 
+ interface MobileRunContextSelectorProps {
+@@ -189,6 +203,110 @@ const MobileRunContextSelector = memo(function MobileRunContextSelector({
+   );
+ });
+ 
++function projectSelectValue(project: Project): string {
++  return scopedProjectKey(scopeProjectRef(project.environmentId, project.id));
++}
++
++interface BranchToolbarProjectSelectorProps {
++  activeProject: Project;
++  projects: readonly Project[] | undefined;
++  onProjectChange: ((project: Project) => void) | undefined;
++  className?: string;
++}
++
++const BranchToolbarProjectSelector = memo(function BranchToolbarProjectSelector({
++  activeProject,
++  projects,
++  onProjectChange,
++  className,
++}: BranchToolbarProjectSelectorProps) {
++  const projectOptions = projects?.length ? projects : [activeProject];
++  const value = projectSelectValue(activeProject);
++  const items = useMemo(
++    () =>
++      projectOptions.map((project) => ({
++        value: projectSelectValue(project),
++        label: project.name,
++      })),
++    [projectOptions],
++  );
++  const canChangeProject = Boolean(onProjectChange && projectOptions.length > 1);
++
++  const projectContent = (
++    <>
++      <ProjectFavicon
++        environmentId={activeProject.environmentId}
++        cwd={activeProject.cwd}
++        folderStateIcon
++        className="size-3.5"
++      />
++      <span className="min-w-0 truncate">{activeProject.name}</span>
++    </>
++  );
++
++  if (!canChangeProject) {
++    return (
++      <span
++        className={cn(
++          "inline-flex min-w-0 items-center gap-1 border border-transparent px-[calc(--spacing(2)-1px)] text-sm font-medium text-muted-foreground/70 sm:text-xs",
++          className,
++        )}
++      >
++        {projectContent}
++      </span>
++    );
++  }
++
++  return (
++    <Select
++      modal={false}
++      value={value}
++      onValueChange={(nextValue) => {
++        const nextProject = projectOptions.find(
++          (project) => projectSelectValue(project) === nextValue,
++        );
++        if (nextProject) {
++          onProjectChange?.(nextProject);
++        }
++      }}
++      items={items}
++    >
++      <SelectTrigger
++        variant="ghost"
++        size="xs"
++        className={cn("max-w-full font-medium text-muted-foreground/78", className)}
++        aria-label="Project"
++      >
++        <ProjectFavicon
++          environmentId={activeProject.environmentId}
++          cwd={activeProject.cwd}
++          folderStateIcon
++          className="size-3.5"
++        />
++        <SelectValue />
++      </SelectTrigger>
++      <SelectPopup matchTriggerWidth={false} popupClassName="w-72">
++        <SelectGroup>
++          <SelectGroupLabel>Project</SelectGroupLabel>
++          {projectOptions.map((project) => (
++            <SelectItem key={projectSelectValue(project)} value={projectSelectValue(project)}>
++              <span className="inline-flex min-w-0 items-center gap-1.5">
++                <ProjectFavicon
++                  environmentId={project.environmentId}
++                  cwd={project.cwd}
++                  folderStateIcon
++                  className="size-3.5"
++                />
++                <span className="truncate">{project.name}</span>
++              </span>
++            </SelectItem>
++          ))}
++        </SelectGroup>
++      </SelectPopup>
++    </Select>
++  );
++});
++
+ export const BranchToolbar = memo(function BranchToolbar({
+   environmentId,
+   threadId,
+@@ -202,6 +320,8 @@ export const BranchToolbar = memo(function BranchToolbar({
+   onComposerFocusRequest,
+   availableEnvironments,
+   onEnvironmentChange,
++  projects,
++  onProjectChange,
+ }: BranchToolbarProps) {
+   const threadRef = useMemo(
+     () => scopeThreadRef(environmentId, threadId),
+@@ -241,19 +361,27 @@ export const BranchToolbar = memo(function BranchToolbar({
    if (!hasActiveThread || !activeProject) return null;
  
    return (
 -    <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-2.5 pb-3 pt-1 sm:px-3">
-+    <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-1 pb-3 pt-1">
++    <div className="relative z-20 mx-auto flex w-full max-w-3xl items-center gap-2 px-1 pb-3 pt-1">
        {isMobile ? (
-         <MobileRunContextSelector
-           envLocked={envLocked}
+-        <MobileRunContextSelector
+-          envLocked={envLocked}
+-          envModeLocked={envModeLocked}
+-          environmentId={environmentId}
+-          availableEnvironments={availableEnvironments}
+-          showEnvironmentPicker={showEnvironmentPicker}
+-          onEnvironmentChange={onEnvironmentChange}
+-          effectiveEnvMode={effectiveEnvMode}
+-          activeWorktreePath={activeWorktreePath}
+-          onEnvModeChange={onEnvModeChange}
+-        />
++        <>
++          <MobileRunContextSelector
++            envLocked={envLocked}
++            envModeLocked={envModeLocked}
++            environmentId={environmentId}
++            availableEnvironments={availableEnvironments}
++            showEnvironmentPicker={showEnvironmentPicker}
++            onEnvironmentChange={onEnvironmentChange}
++            effectiveEnvMode={effectiveEnvMode}
++            activeWorktreePath={activeWorktreePath}
++            onEnvModeChange={onEnvModeChange}
++          />
++          <BranchToolbarProjectSelector
++            activeProject={activeProject}
++            projects={projects}
++            onProjectChange={onProjectChange}
++            className="max-w-[48%] flex-1 justify-start"
++          />
++        </>
+       ) : (
+         <div className="flex min-w-0 shrink-0 items-center gap-1">
+           {showEnvironmentPicker && availableEnvironments && onEnvironmentChange && (
+@@ -273,6 +401,12 @@ export const BranchToolbar = memo(function BranchToolbar({
+             activeWorktreePath={activeWorktreePath}
+             onEnvModeChange={onEnvModeChange}
+           />
++          <BranchToolbarProjectSelector
++            activeProject={activeProject}
++            projects={projects}
++            onProjectChange={onProjectChange}
++            className="max-w-44"
++          />
+         </div>
+       )}
+ 
 diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index aa6c761a..f6f0875f 100644
+index aa6c761a..8453ea37 100644
 --- a/apps/web/src/components/ChatView.tsx
 +++ b/apps/web/src/components/ChatView.tsx
-@@ -444,7 +444,7 @@ function StartupDraftProjectSelector(props: {
-   );
+@@ -23,7 +23,6 @@ import {
+ } from "@t3tools/contracts";
+ import {
+   parseScopedThreadKey,
+-  scopedProjectKey,
+   scopedThreadKey,
+   scopeProjectRef,
+   scopeThreadRef,
+@@ -160,16 +159,6 @@ import { orderItemsByPreferredIds } from "./Sidebar.logic";
+ import { ProviderStatusBanner } from "./chat/ProviderStatusBanner";
+ import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
+ import { ComposerBannerStack, type ComposerBannerStackItem } from "./chat/ComposerBannerStack";
+-import { ProjectFavicon } from "./ProjectFavicon";
+-import {
+-  Select,
+-  SelectGroup,
+-  SelectGroupLabel,
+-  SelectItem,
+-  SelectPopup,
+-  SelectTrigger,
+-  SelectValue,
+-} from "./ui/select";
+ import {
+   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
+   buildExpiredTerminalContextToastCopy,
+@@ -423,77 +412,6 @@ type ChatViewProps =
+       startupDraft?: boolean;
+     };
  
-   return (
+-function projectSelectValue(project: Project): string {
+-  return scopedProjectKey(scopeProjectRef(project.environmentId, project.id));
+-}
+-
+-function StartupDraftProjectSelector(props: {
+-  activeProject: Project;
+-  projects: readonly Project[];
+-  onProjectChange: (project: Project) => void;
+-}) {
+-  const { activeProject, projects, onProjectChange } = props;
+-  const value = projectSelectValue(activeProject);
+-  const items = useMemo(
+-    () =>
+-      projects.map((project) => ({
+-        value: projectSelectValue(project),
+-        label: project.name,
+-      })),
+-    [projects],
+-  );
+-
+-  return (
 -    <div className="mb-2 flex max-w-full justify-start pl-2">
-+    <div className="mb-2 flex max-w-full justify-start">
-       <Select
-         modal={false}
-         value={value}
-@@ -466,7 +466,6 @@ function StartupDraftProjectSelector(props: {
-             environmentId={activeProject.environmentId}
-             cwd={activeProject.cwd}
-             folderStateIcon
+-      <Select
+-        modal={false}
+-        value={value}
+-        onValueChange={(nextValue) => {
+-          const nextProject = projects.find((project) => projectSelectValue(project) === nextValue);
+-          if (nextProject) {
+-            onProjectChange(nextProject);
+-          }
+-        }}
+-        items={items}
+-      >
+-        <SelectTrigger
+-          variant="ghost"
+-          size="xs"
+-          className="max-w-full font-medium text-muted-foreground/78 hover:text-foreground"
+-          aria-label="New thread project"
+-        >
+-          <ProjectFavicon
+-            environmentId={activeProject.environmentId}
+-            cwd={activeProject.cwd}
+-            folderStateIcon
 -            open
-             className="size-3.5"
-           />
-           <SelectValue className="max-w-64" />
+-            className="size-3.5"
+-          />
+-          <SelectValue className="max-w-64" />
+-        </SelectTrigger>
+-        <SelectPopup matchTriggerWidth={false} popupClassName="w-72">
+-          <SelectGroup>
+-            <SelectGroupLabel>Project</SelectGroupLabel>
+-            {projects.map((project) => (
+-              <SelectItem key={projectSelectValue(project)} value={projectSelectValue(project)}>
+-                <span className="inline-flex min-w-0 items-center gap-1.5">
+-                  <ProjectFavicon
+-                    environmentId={project.environmentId}
+-                    cwd={project.cwd}
+-                    folderStateIcon
+-                    className="size-3.5"
+-                  />
+-                  <span className="truncate">{project.name}</span>
+-                </span>
+-              </SelectItem>
+-            ))}
+-          </SelectGroup>
+-        </SelectPopup>
+-      </Select>
+-    </div>
+-  );
+-}
+-
+ interface TerminalLaunchContext {
+   threadId: ThreadId;
+   cwd: string;
+@@ -912,7 +830,6 @@ export default function ChatView(props: ChatViewProps) {
+     onDiffPanelOpen,
+     reserveTitleBarControlInset = true,
+   } = props;
+-  const startupDraft = routeKind === "draft" ? (props.startupDraft ?? false) : false;
+   const draftId = routeKind === "draft" ? props.draftId : null;
+   const routeThreadRef = useMemo(
+     () => scopeThreadRef(environmentId, threadId),
+@@ -3969,10 +3886,7 @@ export default function ChatView(props: ChatViewProps) {
+   }
+ 
+   const shouldUseStartupDraftLayout =
+-    startupDraft &&
+-    isLocalDraftThread &&
+-    timelineEntries.length === 0 &&
+-    optimisticUserMessages.length === 0;
++    isLocalDraftThread && timelineEntries.length === 0 && optimisticUserMessages.length === 0;
+   const composerStack = (
+     <div className="relative isolate">
+       <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
+@@ -4069,6 +3983,12 @@ export default function ChatView(props: ChatViewProps) {
+         : {})}
+       {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
+       availableEnvironments={logicalProjectEnvironments}
++      {...(shouldUseStartupDraftLayout
++        ? {
++            projects: orderedProjects,
++            onProjectChange: onStartupDraftProjectChange,
++          }
++        : {})}
+     />
+   ) : null;
+ 
+@@ -4129,13 +4049,6 @@ export default function ChatView(props: ChatViewProps) {
+           {shouldUseStartupDraftLayout ? (
+             <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
+               <div className="w-full max-w-3xl">
+-                {activeProject ? (
+-                  <StartupDraftProjectSelector
+-                    activeProject={activeProject}
+-                    projects={orderedProjects}
+-                    onProjectChange={onStartupDraftProjectChange}
+-                  />
+-                ) : null}
+                 {composerStack}
+                 {branchToolbar}
+               </div>
 -- 
 2.50.1 (Apple Git-155)
 

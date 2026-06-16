@@ -1,0 +1,183 @@
+From e1cd1030c1ad56668843b0608a8592a53d9c4e31 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:33:37 -0400
+Subject: [PATCH 21/32] fix(provider): refresh VCS status after tool
+ completions
+
+---
+ .../Layers/ProviderRuntimeIngestion.test.ts   | 57 ++++++++++++++++++-
+ .../Layers/ProviderRuntimeIngestion.ts        | 41 +++++++++++++
+ 2 files changed, 97 insertions(+), 1 deletion(-)
+
+diff --git a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.test.ts b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.test.ts
+index 64955590..db01b8a1 100644
+--- a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.test.ts
++++ b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.test.ts
+@@ -49,6 +49,7 @@ import { ProviderRuntimeIngestionService } from "../Services/ProviderRuntimeInge
+ import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
+ import { ServerConfig } from "../../config.ts";
+ import { ServerSettingsService } from "../../serverSettings.ts";
++import { VcsStatusBroadcaster } from "../../vcs/VcsStatusBroadcaster.ts";
+ import * as NodeServices from "@effect/platform-node/NodeServices";
+ 
+ function makeTestServerSettingsLayer(overrides: Partial<ServerSettings> = {}) {
+@@ -217,7 +218,10 @@ describe("ProviderRuntimeIngestion", () => {
+     }
+   });
+ 
+-  async function createHarness(options?: { serverSettings?: Partial<ServerSettings> }) {
++  async function createHarness(options?: {
++    serverSettings?: Partial<ServerSettings>;
++    gitStatusRefreshCalls?: string[];
++  }) {
+     const workspaceRoot = makeTempDir("t3-provider-project-");
+     fs.mkdirSync(path.join(workspaceRoot, ".git"));
+     const provider = createProviderServiceHarness();
+@@ -239,6 +243,26 @@ describe("ProviderRuntimeIngestion", () => {
+       Layer.provideMerge(SqlitePersistenceMemory),
+       Layer.provideMerge(Layer.succeed(ProviderService, provider.service)),
+       Layer.provideMerge(makeTestServerSettingsLayer(options?.serverSettings)),
++      Layer.provideMerge(
++        Layer.succeed(VcsStatusBroadcaster, {
++          getStatus: () => Effect.die("getStatus should not be called in this test"),
++          refreshLocalStatus: (cwd: string) =>
++            Effect.sync(() => {
++              options?.gitStatusRefreshCalls?.push(cwd);
++            }).pipe(
++              Effect.as({
++                isRepo: true,
++                hasPrimaryRemote: false,
++                isDefaultRef: true,
++                refName: "main",
++                hasWorkingTreeChanges: false,
++                workingTree: { files: [], insertions: 0, deletions: 0 },
++              }),
++            ),
++          refreshStatus: () => Effect.die("refreshStatus should not be called in this test"),
++          streamStatus: () => Stream.empty,
++        }),
++      ),
+       Layer.provideMerge(ServerConfig.layerTest(process.cwd(), process.cwd())),
+       Layer.provideMerge(NodeServices.layer),
+     );
+@@ -315,6 +339,7 @@ describe("ProviderRuntimeIngestion", () => {
+       emit: provider.emit,
+       setProviderSession: provider.setSession,
+       drain,
++      workspaceRoot,
+     };
+   }
+ 
+@@ -2531,6 +2556,36 @@ describe("ProviderRuntimeIngestion", () => {
+     ).toBe(true);
+   });
+ 
++  it("refreshes local VCS status after completed tool calls", async () => {
++    const gitStatusRefreshCalls: string[] = [];
++    const harness = await createHarness({ gitStatusRefreshCalls });
++    const now = "2026-01-01T00:00:00.000Z";
++
++    harness.emit({
++      type: "item.completed",
++      eventId: asEventId("evt-tool-completed"),
++      provider: ProviderDriverKind.make("codex"),
++      createdAt: now,
++      threadId: asThreadId("thread-1"),
++      turnId: asTurnId("turn-9"),
++      payload: {
++        itemType: "command_execution",
++        status: "completed",
++        title: "Edit file",
++        detail: "apply_patch",
++      },
++    });
++
++    await waitForThread(harness.readModel, (entry) =>
++      entry.activities.some(
++        (activity: ProviderRuntimeTestActivity) => activity.kind === "tool.completed",
++      ),
++    );
++    await harness.drain();
++
++    expect(gitStatusRefreshCalls).toEqual([harness.workspaceRoot]);
++  });
++
+   it("consumes P1 runtime events into thread metadata, diff checkpoints, and activities", async () => {
+     const harness = await createHarness();
+     const now = "2026-01-01T00:00:00.000Z";
+diff --git a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
+index 49e6a8a5..8a56f6b8 100644
+--- a/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
++++ b/apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts
+@@ -38,6 +38,7 @@ import {
+   type ProviderRuntimeIngestionShape,
+ } from "../Services/ProviderRuntimeIngestion.ts";
+ import { ServerSettingsService } from "../../serverSettings.ts";
++import { VcsStatusBroadcaster } from "../../vcs/VcsStatusBroadcaster.ts";
+ 
+ const providerTurnKey = (threadId: ThreadId, turnId: TurnId) => `${threadId}:${turnId}`;
+ 
+@@ -211,6 +212,10 @@ function buildContextWindowActivityPayload(
+   return event.payload.usage;
+ }
+ 
++function shouldRefreshVcsStatusForRuntimeEvent(event: ProviderRuntimeEvent): boolean {
++  return event.type === "item.completed" && isToolLifecycleItemType(event.payload.itemType);
++}
++
+ function normalizeRuntimeTurnState(
+   value: string | undefined,
+ ): "completed" | "failed" | "interrupted" | "cancelled" {
+@@ -634,6 +639,7 @@ const make = Effect.gen(function* () {
+   const providerService = yield* ProviderService;
+   const projectionTurnRepository = yield* ProjectionTurnRepository;
+   const serverSettingsService = yield* ServerSettingsService;
++  const vcsStatusBroadcaster = yield* VcsStatusBroadcaster;
+   const providerCommandId = (event: ProviderRuntimeEvent, tag: string) =>
+     crypto.randomUUIDv4.pipe(
+       Effect.map((uuid) => CommandId.make(`provider:${event.eventId}:${tag}:${uuid}`)),
+@@ -1668,6 +1674,41 @@ const make = Effect.gen(function* () {
+           ),
+         ),
+       ).pipe(Effect.asVoid);
++
++      if (shouldRefreshVcsStatusForRuntimeEvent(event)) {
++        const cwd = yield* Effect.gen(function* () {
++          if (thread.worktreePath) {
++            return thread.worktreePath;
++          }
++          const checkpointContext = yield* projectionSnapshotQuery
++            .getThreadCheckpointContext(thread.id)
++            .pipe(Effect.map(Option.getOrUndefined));
++          return checkpointContext?.worktreePath ?? checkpointContext?.workspaceRoot ?? null;
++        }).pipe(
++          Effect.catchCause((cause) =>
++            Effect.logWarning("provider runtime ingestion failed to resolve VCS refresh cwd", {
++              threadId: thread.id,
++              eventId: event.eventId,
++              eventType: event.type,
++              cause: Cause.pretty(cause),
++            }).pipe(Effect.as(null)),
++          ),
++        );
++
++        if (cwd && isGitRepository(cwd)) {
++          yield* vcsStatusBroadcaster.refreshLocalStatus(cwd).pipe(
++            Effect.catchCause((cause) =>
++              Effect.logWarning("provider runtime ingestion failed to refresh VCS status", {
++                threadId: thread.id,
++                eventId: event.eventId,
++                eventType: event.type,
++                cwd,
++                cause: Cause.pretty(cause),
++              }),
++            ),
++          );
++        }
++      }
+     });
+ 
+   const processDomainEvent = (_event: TurnStartRequestedDomainEvent) => Effect.void;
+-- 
+2.50.1 (Apple Git-155)
+

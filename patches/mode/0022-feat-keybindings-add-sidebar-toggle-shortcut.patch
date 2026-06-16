@@ -1,0 +1,200 @@
+From 58b28e385a4897e309ece72ad1541dcfaf8502c2 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:33:42 -0400
+Subject: [PATCH 22/32] feat(keybindings): add sidebar toggle shortcut
+
+---
+ apps/server/src/keybindings.test.ts           |  1 +
+ apps/web/src/components/AppSidebarLayout.tsx  | 41 ++++++++++++++++++-
+ .../KeybindingsSettings.logic.test.ts         |  1 +
+ apps/web/src/keybindings.test.ts              | 25 +++++++++++
+ packages/contracts/src/keybindings.test.ts    |  6 +++
+ packages/contracts/src/keybindings.ts         |  1 +
+ packages/shared/src/keybindings.ts            |  1 +
+ 7 files changed, 75 insertions(+), 1 deletion(-)
+
+diff --git a/apps/server/src/keybindings.test.ts b/apps/server/src/keybindings.test.ts
+index 188a8d32..2df93ec2 100644
+--- a/apps/server/src/keybindings.test.ts
++++ b/apps/server/src/keybindings.test.ts
+@@ -202,6 +202,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
+ 
+       assert.equal(defaultsByCommand.get("thread.previous"), "mod+shift+[");
+       assert.equal(defaultsByCommand.get("thread.next"), "mod+shift+]");
++      assert.equal(defaultsByCommand.get("sidebar.toggle"), "mod+s");
+       assert.equal(defaultsByCommand.get("thread.jump.1"), "mod+1");
+       assert.equal(defaultsByCommand.get("thread.jump.9"), "mod+9");
+       assert.equal(defaultsByCommand.get("modelPicker.toggle"), "mod+shift+m");
+diff --git a/apps/web/src/components/AppSidebarLayout.tsx b/apps/web/src/components/AppSidebarLayout.tsx
+index d98f30a1..2dea2386 100644
+--- a/apps/web/src/components/AppSidebarLayout.tsx
++++ b/apps/web/src/components/AppSidebarLayout.tsx
+@@ -1,8 +1,12 @@
+ import { useEffect, type ReactNode } from "react";
+ import { useNavigate } from "@tanstack/react-router";
+ 
++import { useCommandPaletteStore } from "../commandPaletteStore";
+ import ThreadSidebar from "./Sidebar";
+-import { Sidebar, SidebarProvider, SidebarRail } from "./ui/sidebar";
++import { resolveShortcutCommand } from "../keybindings";
++import { isTerminalFocused } from "../lib/terminalFocus";
++import { useServerKeybindings } from "../rpc/serverState";
++import { Sidebar, SidebarProvider, SidebarRail, useSidebar } from "./ui/sidebar";
+ import {
+   clearShortcutModifierState,
+   syncShortcutModifierStateFromKeyboardEvent,
+@@ -11,6 +15,40 @@ import {
+ const THREAD_SIDEBAR_WIDTH_STORAGE_KEY = "chat_thread_sidebar_width";
+ const THREAD_SIDEBAR_MIN_WIDTH = 13 * 16;
+ const THREAD_MAIN_CONTENT_MIN_WIDTH = 40 * 16;
++
++function SidebarGlobalShortcuts() {
++  const { toggleSidebar } = useSidebar();
++  const keybindings = useServerKeybindings();
++
++  useEffect(() => {
++    const onWindowKeyDown = (event: KeyboardEvent) => {
++      if (event.defaultPrevented || useCommandPaletteStore.getState().open) {
++        return;
++      }
++
++      const command = resolveShortcutCommand(event, keybindings, {
++        context: {
++          terminalFocus: isTerminalFocused(),
++        },
++      });
++      if (command !== "sidebar.toggle") {
++        return;
++      }
++
++      event.preventDefault();
++      event.stopPropagation();
++      toggleSidebar();
++    };
++
++    window.addEventListener("keydown", onWindowKeyDown);
++    return () => {
++      window.removeEventListener("keydown", onWindowKeyDown);
++    };
++  }, [keybindings, toggleSidebar]);
++
++  return null;
++}
++
+ export function AppSidebarLayout({ children }: { children: ReactNode }) {
+   const navigate = useNavigate();
+ 
+@@ -55,6 +93,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
+ 
+   return (
+     <SidebarProvider className="h-dvh! min-h-0!" defaultOpen>
++      <SidebarGlobalShortcuts />
+       <Sidebar
+         side="left"
+         collapsible="offcanvas"
+diff --git a/apps/web/src/components/settings/KeybindingsSettings.logic.test.ts b/apps/web/src/components/settings/KeybindingsSettings.logic.test.ts
+index 75235a05..b37a557d 100644
+--- a/apps/web/src/components/settings/KeybindingsSettings.logic.test.ts
++++ b/apps/web/src/components/settings/KeybindingsSettings.logic.test.ts
+@@ -122,6 +122,7 @@ describe("KeybindingsSettings.logic", () => {
+ 
+   it("formats static and project script command labels", () => {
+     expect(commandLabel("commandPalette.toggle")).toBe("Command Palette: Toggle");
++    expect(commandLabel("sidebar.toggle")).toBe("Sidebar: Toggle");
+     expect(commandLabel("script.setup-db.run")).toBe("Run Script: Setup Db");
+   });
+ 
+diff --git a/apps/web/src/keybindings.test.ts b/apps/web/src/keybindings.test.ts
+index a0190ed9..f3268a2d 100644
+--- a/apps/web/src/keybindings.test.ts
++++ b/apps/web/src/keybindings.test.ts
+@@ -105,6 +105,10 @@ const DEFAULT_BINDINGS = compile([
+     command: "diff.toggle",
+     whenAst: whenNot(whenIdentifier("terminalFocus")),
+   },
++  {
++    shortcut: modShortcut("s"),
++    command: "sidebar.toggle",
++  },
+   {
+     shortcut: modShortcut("k"),
+     command: "commandPalette.toggle",
+@@ -287,6 +291,10 @@ describe("shortcutLabelForCommand", () => {
+   it("returns effective labels for non-terminal commands", () => {
+     assert.strictEqual(shortcutLabelForCommand(DEFAULT_BINDINGS, "chat.new", "MacIntel"), "⇧⌘O");
+     assert.strictEqual(shortcutLabelForCommand(DEFAULT_BINDINGS, "diff.toggle", "Linux"), "Ctrl+D");
++    assert.strictEqual(
++      shortcutLabelForCommand(DEFAULT_BINDINGS, "sidebar.toggle", "MacIntel"),
++      "⌘S",
++    );
+     assert.strictEqual(
+       shortcutLabelForCommand(DEFAULT_BINDINGS, "commandPalette.toggle", "MacIntel"),
+       "⌘K",
+@@ -492,6 +500,23 @@ describe("chat/editor shortcuts", () => {
+       }),
+     );
+   });
++
++  it("matches sidebar.toggle shortcut", () => {
++    assert.strictEqual(
++      resolveShortcutCommand(event({ key: "s", metaKey: true }), DEFAULT_BINDINGS, {
++        platform: "MacIntel",
++        context: { terminalFocus: false },
++      }),
++      "sidebar.toggle",
++    );
++    assert.strictEqual(
++      resolveShortcutCommand(event({ key: "s", metaKey: true }), DEFAULT_BINDINGS, {
++        platform: "MacIntel",
++        context: { terminalFocus: true },
++      }),
++      "sidebar.toggle",
++    );
++  });
+ });
+ 
+ describe("cross-command precedence", () => {
+diff --git a/packages/contracts/src/keybindings.test.ts b/packages/contracts/src/keybindings.test.ts
+index 2165597a..c731882a 100644
+--- a/packages/contracts/src/keybindings.test.ts
++++ b/packages/contracts/src/keybindings.test.ts
+@@ -47,6 +47,12 @@ it.effect("parses keybinding rules", () =>
+     });
+     assert.strictEqual(parsedCommandPalette.command, "commandPalette.toggle");
+ 
++    const parsedSidebarToggle = yield* decode(KeybindingRule, {
++      key: "mod+s",
++      command: "sidebar.toggle",
++    });
++    assert.strictEqual(parsedSidebarToggle.command, "sidebar.toggle");
++
+     const parsedLocal = yield* decode(KeybindingRule, {
+       key: "mod+shift+n",
+       command: "chat.newLocal",
+diff --git a/packages/contracts/src/keybindings.ts b/packages/contracts/src/keybindings.ts
+index 303d5c71..a65f3aef 100644
+--- a/packages/contracts/src/keybindings.ts
++++ b/packages/contracts/src/keybindings.ts
+@@ -53,6 +53,7 @@ const STATIC_KEYBINDING_COMMANDS = [
+   "terminal.new",
+   "terminal.close",
+   "diff.toggle",
++  "sidebar.toggle",
+   "commandPalette.toggle",
+   "chat.new",
+   "chat.newLocal",
+diff --git a/packages/shared/src/keybindings.ts b/packages/shared/src/keybindings.ts
+index 3cc2e913..1ed9deb1 100644
+--- a/packages/shared/src/keybindings.ts
++++ b/packages/shared/src/keybindings.ts
+@@ -24,6 +24,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
+   { key: "mod+n", command: "terminal.new", when: "terminalFocus" },
+   { key: "mod+w", command: "terminal.close", when: "terminalFocus" },
+   { key: "mod+d", command: "diff.toggle", when: "!terminalFocus" },
++  { key: "mod+s", command: "sidebar.toggle" },
+   { key: "mod+k", command: "commandPalette.toggle", when: "!terminalFocus" },
+   { key: "mod+n", command: "chat.new", when: "!terminalFocus" },
+   { key: "mod+shift+o", command: "chat.new", when: "!terminalFocus" },
+-- 
+2.50.1 (Apple Git-155)
+

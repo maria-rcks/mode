@@ -1,7 +1,7 @@
-From 9efacdaf820410951ad2f08450e2706e7b298783 Mon Sep 17 00:00:00 2001
+From 7957d5f18f3f9687c32530ffa3805ab06d06697d Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 02:33:24 -0400
-Subject: [PATCH 16/18] fix(chat): center startup draft composer
+Subject: [PATCH 16/32] fix(chat): center startup draft composer
 
 ---
  apps/web/src/components/ChatView.tsx         | 446 +++++++++++++------

@@ -1,0 +1,259 @@
+From 90ea7dca254cca42e6b8b67b239e5973573953f4 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:34:18 -0400
+Subject: [PATCH 25/32] style(ui): use selected-row option highlights
+
+---
+ apps/web/src/components/BranchToolbar.tsx     |  3 --
+ .../BranchToolbarEnvModeSelector.tsx          |  2 -
+ apps/web/src/components/chat/ModelListRow.tsx |  5 +--
+ apps/web/src/components/ui/combobox.tsx       | 11 ++---
+ apps/web/src/components/ui/menu.tsx           | 42 +++----------------
+ apps/web/src/components/ui/select.tsx         | 26 ++----------
+ apps/web/src/components/ui/toggle.tsx         |  2 +-
+ 7 files changed, 16 insertions(+), 75 deletions(-)
+
+diff --git a/apps/web/src/components/BranchToolbar.tsx b/apps/web/src/components/BranchToolbar.tsx
+index 3a2166c1..73d0c7e4 100644
+--- a/apps/web/src/components/BranchToolbar.tsx
++++ b/apps/web/src/components/BranchToolbar.tsx
+@@ -32,7 +32,6 @@ import { Button } from "./ui/button";
+ import {
+   Select,
+   SelectGroup,
+-  SelectGroupLabel,
+   SelectItem,
+   SelectPopup,
+   SelectTrigger,
+@@ -173,7 +172,6 @@ const MobileRunContextSelector = memo(function MobileRunContextSelector({
+           </>
+         ) : null}
+         <MenuGroup>
+-          <MenuGroupLabel>Workspace</MenuGroupLabel>
+           <MenuRadioGroup
+             value={effectiveEnvMode}
+             onValueChange={(value) => onEnvModeChange(value as EnvMode)}
+@@ -287,7 +285,6 @@ const BranchToolbarProjectSelector = memo(function BranchToolbarProjectSelector(
+       </SelectTrigger>
+       <SelectPopup matchTriggerWidth={false} popupClassName="w-72">
+         <SelectGroup>
+-          <SelectGroupLabel>Project</SelectGroupLabel>
+           {projectOptions.map((project) => (
+             <SelectItem key={projectSelectValue(project)} value={projectSelectValue(project)}>
+               <span className="inline-flex min-w-0 items-center gap-1.5">
+diff --git a/apps/web/src/components/BranchToolbarEnvModeSelector.tsx b/apps/web/src/components/BranchToolbarEnvModeSelector.tsx
+index 6d068826..13fb2f9f 100644
+--- a/apps/web/src/components/BranchToolbarEnvModeSelector.tsx
++++ b/apps/web/src/components/BranchToolbarEnvModeSelector.tsx
+@@ -10,7 +10,6 @@ import {
+ import {
+   Select,
+   SelectGroup,
+-  SelectGroupLabel,
+   SelectItem,
+   SelectPopup,
+   SelectTrigger,
+@@ -75,7 +74,6 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
+       </SelectTrigger>
+       <SelectPopup>
+         <SelectGroup>
+-          <SelectGroupLabel>Workspace</SelectGroupLabel>
+           <SelectItem value="local">
+             <span className="inline-flex items-center gap-1.5">
+               {activeWorktreePath ? (
+diff --git a/apps/web/src/components/chat/ModelListRow.tsx b/apps/web/src/components/chat/ModelListRow.tsx
+index 740b54d9..d4e45cbf 100644
+--- a/apps/web/src/components/chat/ModelListRow.tsx
++++ b/apps/web/src/components/chat/ModelListRow.tsx
+@@ -1,6 +1,6 @@
+ import { type ProviderDriverKind, type ProviderInstanceId } from "@t3tools/contracts";
+ import { memo } from "react";
+-import { CheckIcon, StarIcon } from "lucide-react";
++import { StarIcon } from "lucide-react";
+ import {
+   getDisplayModelName,
+   getTriggerDisplayModelLabel,
+@@ -50,7 +50,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
+       contentClassName="flex w-full items-center gap-3"
+       className={cn(
+         "group relative w-full !min-w-0 max-w-full cursor-pointer rounded-md px-2 py-2.5 transition-[background-color,box-shadow,color]",
+-        "data-highlighted:bg-muted/56 data-selected:bg-transparent data-selected:text-foreground data-selected:ring-0",
++        "data-highlighted:bg-muted/56 data-selected:bg-accent/56 data-selected:text-foreground data-selected:ring-0 [&[data-highlighted][data-selected]]:bg-muted",
+         props.disabledReason &&
+           "data-disabled:pointer-events-auto data-disabled:cursor-not-allowed data-disabled:hover:bg-transparent",
+       )}
+@@ -65,7 +65,6 @@ export const ModelListRow = memo(function ModelListRow(props: {
+                   props.preferShortName ? { preferShortName: true } : undefined,
+                 )}
+           </div>
+-          {props.isSelected ? <CheckIcon className="size-3.5 shrink-0 text-blue-400" /> : null}
+           {props.showNewBadge ? (
+             <span
+               className="shrink-0 rounded border border-amber-500/35 bg-amber-500/15 px-0.5 py-px text-[10px] font-bold uppercase leading-none tracking-wide text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/12 dark:text-amber-200"
+diff --git a/apps/web/src/components/ui/combobox.tsx b/apps/web/src/components/ui/combobox.tsx
+index 672b3882..5b51713b 100644
+--- a/apps/web/src/components/ui/combobox.tsx
++++ b/apps/web/src/components/ui/combobox.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
+-import { CheckIcon, ChevronsUpDownIcon, XIcon } from "lucide-react";
++import { ChevronsUpDownIcon, XIcon } from "lucide-react";
+ import * as React from "react";
+ 
+ import { cn } from "~/lib/utils";
+@@ -200,19 +200,16 @@ function ComboboxItem({
+   return (
+     <ComboboxPrimitive.Item
+       className={cn(
+-        "grid min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[1rem_1fr] items-center gap-2 rounded-sm py-1 ps-2 pe-4 text-base outline-none hover:bg-accent data-disabled:pointer-events-none data-selected:bg-accent/50 data-selected:text-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground [&[data-highlighted][data-selected]]:bg-accent [&[data-highlighted][data-selected]]:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
++        "flex min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default items-center gap-2 rounded-sm px-2 py-1 text-base outline-none hover:bg-accent data-disabled:pointer-events-none data-selected:bg-accent/56 data-selected:text-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground [&[data-highlighted][data-selected]]:bg-accent [&[data-highlighted][data-selected]]:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
++        hideIndicator && "px-2",
+         className,
+       )}
+       data-slot="combobox-item"
+       {...props}
+     >
+-      <ComboboxPrimitive.ItemIndicator className={cn("col-start-1", hideIndicator && "hidden")}>
+-        <CheckIcon />
+-      </ComboboxPrimitive.ItemIndicator>
+       <div
+         className={cn(
+-          "[&_svg:not([class*='text-'])]:text-muted-foreground",
+-          hideIndicator ? "col-start-1 col-span-full" : "col-start-2",
++          "min-w-0 flex-1 [&_svg:not([class*='text-'])]:text-muted-foreground",
+           contentClassName,
+         )}
+         data-slot="combobox-item-content"
+diff --git a/apps/web/src/components/ui/menu.tsx b/apps/web/src/components/ui/menu.tsx
+index 07e27d23..3a9e65fc 100644
+--- a/apps/web/src/components/ui/menu.tsx
++++ b/apps/web/src/components/ui/menu.tsx
+@@ -103,7 +103,9 @@ function MenuCheckboxItem({
+       checked={checked}
+       className={cn(
+         "grid min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default items-center gap-2 rounded-sm py-1 ps-2 text-base text-foreground outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+-        variant === "switch" ? "grid-cols-[1fr_auto] gap-4 pe-1.5" : "grid-cols-[1rem_1fr] pe-4",
++        variant === "switch"
++          ? "grid-cols-[1fr_auto] gap-4 pe-1.5"
++          : "grid-cols-[1fr] pe-2 data-checked:bg-accent/56 data-checked:text-foreground [&[data-highlighted][data-checked]]:bg-accent [&[data-highlighted][data-checked]]:text-accent-foreground",
+         className,
+       )}
+       data-slot="menu-checkbox-item"
+@@ -120,24 +122,7 @@ function MenuCheckboxItem({
+           </MenuPrimitive.CheckboxItemIndicator>
+         </>
+       ) : (
+-        <>
+-          <MenuPrimitive.CheckboxItemIndicator className="col-start-1">
+-            <svg
+-              fill="none"
+-              height="24"
+-              stroke="currentColor"
+-              strokeLinecap="round"
+-              strokeLinejoin="round"
+-              strokeWidth="2"
+-              viewBox="0 0 24 24"
+-              width="24"
+-              xmlns="http://www.w3.org/2000/svg"
+-            >
+-              <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
+-            </svg>
+-          </MenuPrimitive.CheckboxItemIndicator>
+-          <span className="col-start-2">{children}</span>
+-        </>
++        <span className="col-start-1">{children}</span>
+       )}
+     </MenuPrimitive.CheckboxItem>
+   );
+@@ -151,28 +136,13 @@ function MenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioIte
+   return (
+     <MenuPrimitive.RadioItem
+       className={cn(
+-        "grid min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default grid-cols-[1rem_1fr] items-center gap-2 rounded-sm py-1 ps-2 pe-4 text-base text-foreground outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
++        "flex min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default items-center gap-2 rounded-sm px-2 py-1 text-base text-foreground outline-none data-disabled:pointer-events-none data-checked:bg-accent/56 data-checked:text-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground [&[data-highlighted][data-checked]]:bg-accent [&[data-highlighted][data-checked]]:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+         className,
+       )}
+       data-slot="menu-radio-item"
+       {...props}
+     >
+-      <MenuPrimitive.RadioItemIndicator className="col-start-1">
+-        <svg
+-          fill="none"
+-          height="24"
+-          stroke="currentColor"
+-          strokeLinecap="round"
+-          strokeLinejoin="round"
+-          strokeWidth="2"
+-          viewBox="0 0 24 24"
+-          width="24"
+-          xmlns="http://www.w3.org/2000/svg"
+-        >
+-          <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
+-        </svg>
+-      </MenuPrimitive.RadioItemIndicator>
+-      <span className="col-start-2">{children}</span>
++      <span className="min-w-0 flex-1">{children}</span>
+     </MenuPrimitive.RadioItem>
+   );
+ }
+diff --git a/apps/web/src/components/ui/select.tsx b/apps/web/src/components/ui/select.tsx
+index 7761b035..70e0d096 100644
+--- a/apps/web/src/components/ui/select.tsx
++++ b/apps/web/src/components/ui/select.tsx
+@@ -185,35 +185,15 @@ function SelectItem({
+   return (
+     <SelectPrimitive.Item
+       className={cn(
+-        "grid min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default items-center gap-2 rounded-sm py-1 text-base outline-none data-disabled:pointer-events-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+-        hideIndicator ? "grid-cols-[1fr] ps-3 pe-3" : "grid-cols-[1rem_1fr] ps-2 pe-4",
++        "flex min-h-8 in-data-[side=none]:min-w-[calc(var(--anchor-width)+1.25rem)] cursor-default items-center gap-2 rounded-sm py-1 text-base text-foreground outline-none data-disabled:pointer-events-none data-selected:bg-accent/56 data-selected:text-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground [&[data-highlighted][data-selected]]:bg-accent [&[data-highlighted][data-selected]]:text-accent-foreground data-disabled:opacity-64 sm:min-h-7 sm:text-sm [&_svg:not([class*='size-'])]:size-4.5 sm:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
++        hideIndicator ? "px-3" : "px-2",
+         className,
+       )}
+       data-slot="select-item"
+       {...props}
+     >
+-      {hideIndicator ? null : (
+-        <SelectPrimitive.ItemIndicator className="col-start-1" data-slot="select-item-indicator">
+-          <svg
+-            fill="none"
+-            height="24"
+-            stroke="currentColor"
+-            strokeLinecap="round"
+-            strokeLinejoin="round"
+-            strokeWidth="2"
+-            viewBox="0 0 24 24"
+-            width="24"
+-            xmlns="http://www.w3.org/1500/svg"
+-          >
+-            <path d="M5.252 12.7 10.2 18.63 18.748 5.37" />
+-          </svg>
+-        </SelectPrimitive.ItemIndicator>
+-      )}
+       <SelectPrimitive.ItemText
+-        className={cn(
+-          "min-w-0 [&_svg:not([class*='text-'])]:text-muted-foreground",
+-          hideIndicator ? "col-start-1" : "col-start-2",
+-        )}
++        className="min-w-0 flex-1 [&_svg:not([class*='text-'])]:text-muted-foreground"
+         data-slot="select-item-text"
+       >
+         {children}
+diff --git a/apps/web/src/components/ui/toggle.tsx b/apps/web/src/components/ui/toggle.tsx
+index 936d4eec..71be381c 100644
+--- a/apps/web/src/components/ui/toggle.tsx
++++ b/apps/web/src/components/ui/toggle.tsx
+@@ -24,7 +24,7 @@ const toggleVariants = cva(
+         ghost:
+           "border-transparent text-foreground shadow-none [:disabled,:active,[data-pressed]]:shadow-none before:shadow-none data-pressed:bg-accent data-pressed:text-accent-foreground disabled:opacity-100 disabled:text-muted-foreground disabled:[&_svg]:opacity-100",
+         outline:
+-          "border-input bg-background not-dark:bg-clip-padding shadow-xs/5 not-disabled:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:data-pressed:bg-input dark:hover:bg-input/64 dark:not-disabled:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/6%)] dark:not-disabled:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/2%)] [:disabled,:active,[data-pressed]]:shadow-none",
++          "border-input bg-background not-dark:bg-clip-padding shadow-xs/5 not-disabled:not-active:not-data-pressed:before:shadow-[0_1px_--theme(--color-black/4%)] dark:bg-input/32 dark:data-pressed:bg-input dark:hover:bg-input/64 dark:not-disabled:not-active:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/6%)] dark:not-disabled:not-data-pressed:before:shadow-[0_-1px_--theme(--color-white/2%)] [:disabled,:active,[data-pressed]]:shadow-none [&_svg:not([class*='text-'])]:text-muted-foreground",
+       },
+     },
+   },
+-- 
+2.50.1 (Apple Git-155)
+

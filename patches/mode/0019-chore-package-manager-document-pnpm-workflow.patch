@@ -1,0 +1,160 @@
+From 37b3f4817580da72f33dc8da8485a87dcd472629 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Sun, 14 Jun 2026 18:10:08 -0400
+Subject: [PATCH 19/32] chore(package-manager): document pnpm workflow
+
+---
+ .devcontainer/devcontainer.json     |  7 ++-----
+ AGENTS.md                           |  2 +-
+ docs/getting-started/quick-start.md | 14 ++++++-------
+ docs/operations/ci.md               |  2 +-
+ docs/reference/scripts.md           | 32 ++++++++++++++---------------
+ 5 files changed, 27 insertions(+), 30 deletions(-)
+
+diff --git a/.devcontainer/devcontainer.json b/.devcontainer/devcontainer.json
+index cc1f11cd..75ed25d1 100644
+--- a/.devcontainer/devcontainer.json
++++ b/.devcontainer/devcontainer.json
+@@ -3,9 +3,6 @@
+   "image": "debian:bookworm",
+   "features": {
+     "ghcr.io/devcontainers/features/git:1": {},
+-    "ghcr.io/devcontainers-extra/features/bun:1": {
+-      "version": "1.3.11"
+-    },
+     "ghcr.io/devcontainers/features/node:1": {
+       "version": "24.13.1"
+     },
+@@ -16,10 +13,10 @@
+   },
+   "overrideFeatureInstallOrder": [
+     "ghcr.io/devcontainers/features/git",
+-    "ghcr.io/devcontainers-extra/features/bun"
++    "ghcr.io/devcontainers/features/node"
+   ],
+   "postCreateCommand": {
+-    "bun-install": "bun install --backend=copyfile --frozen-lockfile"
++    "pnpm-install": "corepack enable && pnpm install --frozen-lockfile"
+   },
+   "customizations": {
+     "vscode": {
+diff --git a/AGENTS.md b/AGENTS.md
+index 380a9202..2db1a940 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -47,7 +47,7 @@ agents.
+ - Prefer examples and patterns from the vendored source code over generated guesses or web search results.
+ - Do not edit files under `.repos/` unless explicitly asked.
+ - Do not import from `.repos/`; application code must continue importing from normal package dependencies.
+-- Manage vendored subtrees with `bun run sync:repos`; use `bun run sync:repos --repo <id>` to sync one
++- Manage vendored subtrees with `pnpm run sync:repos`; use `pnpm run sync:repos --repo <id>` to sync one
+   configured repository.
+ - When updating a dependency with a configured vendored subtree, sync that subtree in the same change so
+   `.repos/` matches the installed dependency version.
+diff --git a/docs/getting-started/quick-start.md b/docs/getting-started/quick-start.md
+index 5138bd43..8175d340 100644
+--- a/docs/getting-started/quick-start.md
++++ b/docs/getting-started/quick-start.md
+@@ -2,23 +2,23 @@
+ 
+ ```bash
+ # Desktop development (with hot reload)
+-bun run dev
++pnpm run dev
+ 
+ # Web-only development
+-bun run dev:web
++pnpm run dev:web
+ 
+ # Server-only development
+-bun run dev:server
++pnpm run dev:server
+ 
+ # Desktop development on an isolated port set
+-MODE_DEV_INSTANCE=feature-xyz bun run dev:desktop
++MODE_DEV_INSTANCE=feature-xyz pnpm run dev:desktop
+ 
+ # Production
+-bun run build
+-bun run start
++pnpm run build
++pnpm run start
+ 
+ # Build a shareable macOS .dmg (arm64 by default)
+-bun run dist:desktop:dmg
++pnpm run dist:desktop:dmg
+ 
+ # Or from any project directory after publishing:
+ npx t3
+diff --git a/docs/operations/ci.md b/docs/operations/ci.md
+index 244446ba..c4f9a8fd 100644
+--- a/docs/operations/ci.md
++++ b/docs/operations/ci.md
+@@ -1,6 +1,6 @@
+ # CI quality gates
+ 
+-- `.github/workflows/ci.yml` runs `bun run lint`, `bun run typecheck`, and `bun run test` on pull requests and pushes to `main`.
++- `.github/workflows/ci.yml` runs `pnpm run lint`, `pnpm run typecheck`, and `pnpm run test` on pull requests and pushes to `main`.
+ - `.github/workflows/release.yml` builds macOS (`arm64` and `x64`), Linux (`x64`), and Windows (`x64`) desktop artifacts from a single `v*.*.*` tag and publishes one GitHub release.
+ - The release workflow auto-enables signing only when secrets are present: Apple credentials for macOS and Azure Trusted Signing credentials for Windows. Without secrets, it still releases unsigned artifacts.
+ - See [Release Checklist](./release.md) for the full release/signing setup checklist.
+diff --git a/docs/reference/scripts.md b/docs/reference/scripts.md
+index 2c43c11a..260c9b47 100644
+--- a/docs/reference/scripts.md
++++ b/docs/reference/scripts.md
+@@ -1,21 +1,21 @@
+ # Scripts
+ 
+-- `bun run dev` — Starts desktop development mode (same target as `bun run dev:desktop`).
+-- `bun run dev:server` — Starts just the WebSocket server (uses Bun TypeScript execution).
+-- `bun run dev:web` — Starts just the Vite dev server for the web app.
+-- `bun run dev:desktop` — Starts desktop and web development mode together.
++- `pnpm run dev` — Starts desktop development mode (same target as `pnpm run dev:desktop`).
++- `pnpm run dev:server` — Starts just the WebSocket server.
++- `pnpm run dev:web` — Starts just the Vite dev server for the web app.
++- `pnpm run dev:desktop` — Starts desktop and web development mode together.
+ - Dev commands default `MODE_STATE_DIR` to `~/.mode/dev` to keep dev state isolated from desktop/prod state.
+ - Override server CLI-equivalent flags from root dev commands with `--`, for example:
+-  `bun run dev -- --base-dir ~/.t3-2`
+-- `bun run start` — Runs the production server (serves built web app as static files).
+-- `bun run build` — Builds contracts, web app, and server through Turbo.
+-- `bun run typecheck` — Strict TypeScript checks for all packages.
+-- `bun run test` — Runs workspace tests.
+-- `bun run dist:desktop:artifact -- --platform <mac|linux|win> --target <target> --arch <arch>` — Builds a desktop artifact for a specific platform/target/arch.
+-- `bun run dist:desktop:dmg` — Builds a shareable macOS `.dmg` into `./release`.
+-- `bun run dist:desktop:dmg:x64` — Builds an Intel macOS `.dmg`.
+-- `bun run dist:desktop:linux` — Builds a Linux AppImage into `./release`.
+-- `bun run dist:desktop:win` — Builds a Windows NSIS installer into `./release`.
++  `pnpm run dev -- --base-dir ~/.t3-2`
++- `pnpm run start` — Runs the production server (serves built web app as static files).
++- `pnpm run build` — Builds contracts, web app, and server through Turbo.
++- `pnpm run typecheck` — Strict TypeScript checks for all packages.
++- `pnpm run test` — Runs workspace tests.
++- `pnpm run dist:desktop:artifact -- --platform <mac|linux|win> --target <target> --arch <arch>` — Builds a desktop artifact for a specific platform/target/arch.
++- `pnpm run dist:desktop:dmg` — Builds a shareable macOS `.dmg` into `./release`.
++- `pnpm run dist:desktop:dmg:x64` — Builds an Intel macOS `.dmg`.
++- `pnpm run dist:desktop:linux` — Builds a Linux AppImage into `./release`.
++- `pnpm run dist:desktop:win` — Builds a Windows NSIS installer into `./release`.
+ 
+ ## Desktop `.dmg` packaging notes
+ 
+@@ -24,7 +24,7 @@
+ - Desktop production windows load the bundled UI from `t3://app/index.html` (not a `127.0.0.1` document URL).
+ - Desktop packaging includes `apps/server/dist` (the `t3` backend) and starts it on loopback with an auth token for WebSocket/API traffic.
+ - Your tester can still open it on macOS by right-clicking the app and choosing **Open** on first launch.
+-- To keep staging files for debugging package contents, run: `bun run dist:desktop:dmg -- --keep-stage`
++- To keep staging files for debugging package contents, run: `pnpm run dist:desktop:dmg -- --keep-stage`
+ - To allow code-signing/notarization when configured in CI/secrets, add: `--signed`.
+ - Windows `--signed` uses Azure Trusted Signing and expects:
+   `AZURE_TRUSTED_SIGNING_ENDPOINT`, `AZURE_TRUSTED_SIGNING_ACCOUNT_NAME`,
+@@ -38,6 +38,6 @@ Set `MODE_DEV_INSTANCE` to any value to deterministically shift all dev ports to
+ 
+ - Default ports: server `3773`, web `5733`
+ - Shifted ports: `base + offset` (offset is hashed from `MODE_DEV_INSTANCE`)
+-- Example: `MODE_DEV_INSTANCE=branch-a bun run dev:desktop`
++- Example: `MODE_DEV_INSTANCE=branch-a pnpm run dev:desktop`
+ 
+ If you want full control instead of hashing, set `MODE_PORT_OFFSET` to a numeric offset.
+-- 
+2.50.1 (Apple Git-155)
+

@@ -19,3 +19,17 @@ mode/0015-fix-chat-open-latest-project-draft-by-default.patch
 mode/0016-fix-chat-center-startup-draft-composer.patch
 mode/0017-fix-chat-align-composer-width-with-timeline.patch
 mode/0018-fix-chat-align-checkout-toolbar-icon.patch
+mode/0019-chore-package-manager-document-pnpm-workflow.patch
+mode/0020-build-web-add-presentation-dependencies.patch
+mode/0021-fix-provider-refresh-VCS-status-after-tool-completio.patch
+mode/0022-feat-keybindings-add-sidebar-toggle-shortcut.patch
+mode/0023-style-time-use-compact-relative-timestamps.patch
+mode/0024-style-runtime-simplify-auto-approve-presentation.patch
+mode/0025-style-ui-use-selected-row-option-highlights.patch
+mode/0026-style-ui-reduce-overlay-blur-and-motion.patch
+mode/0027-refactor-diff-show-one-all-turn-diff-view.patch
+mode/0028-feat-diff-show-live-diff-stats-in-chat-header.patch
+mode/0029-feat-chat-improve-image-attachment-previews.patch
+mode/0030-style-timeline-animate-working-status-metadata.patch
+mode/0031-feat-chat-animate-startup-draft-composer-docking.patch
+mode/0032-style-web-consolidate-top-chrome-actions.patch

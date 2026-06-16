@@ -1,0 +1,146 @@
+From 0d07d75252988189d559451949b1cf87658c6a4f Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:33:52 -0400
+Subject: [PATCH 23/32] style(time): use compact relative timestamps
+
+---
+ apps/web/src/components/CommandPalette.logic.test.ts |  6 +++---
+ apps/web/src/components/CommandPalette.logic.ts      |  6 +++---
+ apps/web/src/components/CommandPaletteResults.tsx    |  2 +-
+ apps/web/src/components/Sidebar.logic.test.ts        |  4 ++--
+ apps/web/src/timestampFormat.test.ts                 |  6 +++---
+ apps/web/src/timestampFormat.ts                      | 10 +++++-----
+ 6 files changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/apps/web/src/components/CommandPalette.logic.test.ts b/apps/web/src/components/CommandPalette.logic.test.ts
+index eb5fec9a..e6b48ca2 100644
+--- a/apps/web/src/components/CommandPalette.logic.test.ts
++++ b/apps/web/src/components/CommandPalette.logic.test.ts
+@@ -37,7 +37,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
+ }
+ 
+ describe("buildThreadActionItems", () => {
+-  it("orders threads by most recent activity and formats timestamps from updatedAt", () => {
++  it("orders threads by most recent activity and formats timestamps without a suffix", () => {
+     vi.useFakeTimers();
+     vi.setSystemTime(new Date("2026-03-25T12:00:00.000Z"));
+ 
+@@ -66,8 +66,8 @@ describe("buildThreadActionItems", () => {
+         "thread:thread-older",
+         "thread:thread-newer",
+       ]);
+-      expect(items[0]?.timestamp).toBe("1d ago");
+-      expect(items[1]?.timestamp).toBe("5d ago");
++      expect(items[0]?.timestamp).toBe("1d");
++      expect(items[1]?.timestamp).toBe("5d");
+     } finally {
+       vi.useRealTimers();
+     }
+diff --git a/apps/web/src/components/CommandPalette.logic.ts b/apps/web/src/components/CommandPalette.logic.ts
+index 982950be..43fdc87b 100644
+--- a/apps/web/src/components/CommandPalette.logic.ts
++++ b/apps/web/src/components/CommandPalette.logic.ts
+@@ -4,7 +4,7 @@ import * as Arr from "effect/Array";
+ import * as Result from "effect/Result";
+ import { type ReactNode } from "react";
+ import { sortThreads } from "../lib/threadSort";
+-import { formatRelativeTimeLabel } from "../timestampFormat";
++import { formatRelativeTime } from "../timestampFormat";
+ import { type Project, type SidebarThreadSummary, type Thread } from "../types";
+ 
+ export const RECENT_THREAD_LIMIT = 12;
+@@ -163,9 +163,9 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
+         searchTerms: [thread.title, projectTitle ?? ``, thread.branch ?? ``],
+         title: thread.title,
+         description: descriptionParts.join(` · `),
+-        timestamp: formatRelativeTimeLabel(
++        timestamp: formatRelativeTime(
+           thread.latestUserMessageAt ?? thread.updatedAt ?? thread.createdAt,
+-        ),
++        ).value,
+         icon: input.icon,
+       },
+       leadingContent ? { titleLeadingContent: leadingContent } : {},
+diff --git a/apps/web/src/components/CommandPaletteResults.tsx b/apps/web/src/components/CommandPaletteResults.tsx
+index 4ad08db0..e62fadd3 100644
+--- a/apps/web/src/components/CommandPaletteResults.tsx
++++ b/apps/web/src/components/CommandPaletteResults.tsx
+@@ -133,7 +133,7 @@ function CommandPaletteResultRow(props: {
+       )}
+       {props.item.titleTrailingContent}
+       {props.item.timestamp ? (
+-        <span className="min-w-12 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground/70">
++        <span className="min-w-12 shrink-0 text-right text-sm tabular-nums text-muted-foreground/70">
+           {props.item.timestamp}
+         </span>
+       ) : null}
+diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
+index f2323729..9b9117df 100644
+--- a/apps/web/src/components/Sidebar.logic.test.ts
++++ b/apps/web/src/components/Sidebar.logic.test.ts
+@@ -611,8 +611,8 @@ describe("formatSidebarThreadTimeLabel", () => {
+     expect(formatSidebarThreadTimeLabel("2026-03-09T10:06:00.000Z")).toBe("24m");
+   });
+ 
+-  it("keeps just now labels unchanged", () => {
+-    expect(formatSidebarThreadTimeLabel("2026-03-09T10:29:45.000Z")).toBe("just now");
++  it("keeps now labels unchanged", () => {
++    expect(formatSidebarThreadTimeLabel("2026-03-09T10:29:45.000Z")).toBe("now");
+   });
+ });
+ 
+diff --git a/apps/web/src/timestampFormat.test.ts b/apps/web/src/timestampFormat.test.ts
+index c68d5b7e..ba967053 100644
+--- a/apps/web/src/timestampFormat.test.ts
++++ b/apps/web/src/timestampFormat.test.ts
+@@ -100,9 +100,9 @@ describe("formatElapsedDurationLabel", () => {
+     vi.useRealTimers();
+   });
+ 
+-  it("returns just now when the instant is current or in the future", () => {
+-    expect(formatElapsedDurationLabel("2026-04-07T12:00:00.000Z")).toBe("just now");
+-    expect(formatElapsedDurationLabel("2026-04-07T12:01:00.000Z")).toBe("just now");
++  it("returns now when the instant is current or in the future", () => {
++    expect(formatElapsedDurationLabel("2026-04-07T12:00:00.000Z")).toBe("now");
++    expect(formatElapsedDurationLabel("2026-04-07T12:01:00.000Z")).toBe("now");
+   });
+ 
+   it("formats seconds, minutes, hours, and days", () => {
+diff --git a/apps/web/src/timestampFormat.ts b/apps/web/src/timestampFormat.ts
+index 28facf87..872dc9a6 100644
+--- a/apps/web/src/timestampFormat.ts
++++ b/apps/web/src/timestampFormat.ts
+@@ -84,14 +84,14 @@ export function formatShortTimestamp(isoDate: string, timestampFormat: Timestamp
+ 
+ /**
+  * Format a relative time string from an ISO date.
+- * Returns `{ value: "20s", suffix: "ago" }` or `{ value: "just now", suffix: null }`
++ * Returns `{ value: "20s", suffix: "ago" }` or `{ value: "now", suffix: null }`
+  * so callers can style the numeric portion independently.
+  */
+ export function formatRelativeTime(isoDate: string): { value: string; suffix: string | null } {
+   const diffMs = Date.now() - new Date(isoDate).getTime();
+-  if (diffMs < 0) return { value: "just now", suffix: null };
++  if (diffMs < 0) return { value: "now", suffix: null };
+   const seconds = Math.floor(diffMs / 1000);
+-  if (seconds < 60) return { value: "just now", suffix: null };
++  if (seconds < 60) return { value: "now", suffix: null };
+   const minutes = Math.floor(seconds / 60);
+   if (minutes < 60) return { value: `${minutes}m`, suffix: "ago" };
+   const hours = Math.floor(minutes / 60);
+@@ -111,10 +111,10 @@ export function formatRelativeTimeLabel(isoDate: string) {
+  */
+ export function formatElapsedDurationLabel(isoDate: string, nowMs: number = Date.now()): string {
+   const diffMs = nowMs - new Date(isoDate).getTime();
+-  if (diffMs <= 0) return "just now";
++  if (diffMs <= 0) return "now";
+ 
+   const seconds = Math.floor(diffMs / 1000);
+-  if (seconds < 5) return "just now";
++  if (seconds < 5) return "now";
+   if (seconds < 60) return `${seconds}s`;
+ 
+   const minutes = Math.floor(seconds / 60);
+-- 
+2.50.1 (Apple Git-155)
+

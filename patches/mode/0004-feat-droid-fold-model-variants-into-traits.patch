@@ -1,7 +1,7 @@
-From 48d39bd14cbae84fc1c29a9a105b553ccca1efb7 Mon Sep 17 00:00:00 2001
+From b03119be87e0c1077bce50977768e2206bb0208a Mon Sep 17 00:00:00 2001
 From: maria <maria@kuuro.net>
 Date: Sun, 7 Jun 2026 01:38:23 +0000
-Subject: [PATCH 04/18] feat(droid): fold model variants into traits
+Subject: [PATCH 04/32] feat(droid): fold model variants into traits
 
 Co-Authored-By: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 ---

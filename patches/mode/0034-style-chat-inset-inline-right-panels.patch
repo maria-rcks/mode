@@ -1,0 +1,126 @@
+From 188c2c61e8c196caa2716a06ce954bf75392fe47 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Tue, 16 Jun 2026 00:51:17 -0400
+Subject: [PATCH 34/34] style(chat): inset inline right panels
+
+---
+ apps/web/src/components/PlanSidebar.tsx            | 14 +++++++++++---
+ apps/web/src/components/ui/sidebar.tsx             |  7 ++++++-
+ apps/web/src/rightPanelLayout.ts                   | 12 ++++++++++++
+ .../src/routes/_chat.$environmentId.$threadId.tsx  |  9 +++++++--
+ 4 files changed, 36 insertions(+), 6 deletions(-)
+
+diff --git a/apps/web/src/components/PlanSidebar.tsx b/apps/web/src/components/PlanSidebar.tsx
+index 62bd1ba8..f83d643c 100644
+--- a/apps/web/src/components/PlanSidebar.tsx
++++ b/apps/web/src/components/PlanSidebar.tsx
+@@ -28,6 +28,10 @@ import { Menu, MenuItem, MenuPopup, MenuTrigger } from "./ui/menu";
+ import { readEnvironmentApi } from "~/environmentApi";
+ import { stackedThreadToast, toastManager } from "./ui/toast";
+ import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
++import {
++  RIGHT_PANEL_INLINE_STATIC_CLASS_NAME,
++  RIGHT_PANEL_INLINE_SURFACE_CLASS_NAME,
++} from "../rightPanelLayout";
+ 
+ function stepStatusIcon(status: string): React.ReactNode {
+   if (status === "completed") {
+@@ -129,10 +133,14 @@ const PlanSidebar = memo(function PlanSidebar({
+   return (
+     <div
+       className={cn(
+-        "flex min-h-0 flex-col bg-card/50",
++        "flex min-h-0 flex-col",
+         mode === "sidebar"
+-          ? "h-full w-[340px] shrink-0 border-l border-border/70"
+-          : "h-full w-full",
++          ? cn(
++              "w-[340px] shrink-0",
++              RIGHT_PANEL_INLINE_STATIC_CLASS_NAME,
++              RIGHT_PANEL_INLINE_SURFACE_CLASS_NAME,
++            )
++          : "h-full w-full bg-card/50",
+       )}
+     >
+       {/* Header */}
+diff --git a/apps/web/src/components/ui/sidebar.tsx b/apps/web/src/components/ui/sidebar.tsx
+index 7e431f70..4edb83df 100644
+--- a/apps/web/src/components/ui/sidebar.tsx
++++ b/apps/web/src/components/ui/sidebar.tsx
+@@ -176,12 +176,14 @@ function Sidebar({
+   collapsible = "offcanvas",
+   resizable = false,
+   className,
++  innerClassName,
+   children,
+   ...props
+ }: React.ComponentProps<"div"> & {
+   side?: "left" | "right";
+   variant?: "sidebar" | "floating" | "inset";
+   collapsible?: "offcanvas" | "icon" | "none";
++  innerClassName?: string;
+   resizable?: boolean | SidebarResizableOptions;
+ }) {
+   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+@@ -297,7 +299,10 @@ function Sidebar({
+           {...props}
+         >
+           <div
+-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm/5"
++            className={cn(
++              "flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm/5",
++              innerClassName,
++            )}
+             data-sidebar="sidebar"
+             data-slot="sidebar-inner"
+           >
+diff --git a/apps/web/src/rightPanelLayout.ts b/apps/web/src/rightPanelLayout.ts
+index 5528072e..e60a5baa 100644
+--- a/apps/web/src/rightPanelLayout.ts
++++ b/apps/web/src/rightPanelLayout.ts
+@@ -1,3 +1,15 @@
+ export const RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY = "(max-width: 980px)";
+ export const RIGHT_PANEL_SHEET_CLASS_NAME =
+   "w-[min(42vw,28rem)] min-w-80 max-w-[28rem] p-0 max-[760px]:w-[min(88vw,24rem)] max-[760px]:min-w-0 wco:mt-[env(titlebar-area-height)] wco:h-[calc(100%-env(titlebar-area-height))] wco:max-h-[calc(100%-env(titlebar-area-height))]";
++
++const RIGHT_PANEL_OFFSET_VARS_CLASS_NAME =
++  "[--right-panel-block-offset:5rem] [--right-panel-inline-start-offset:0.75rem] wco:[--right-panel-block-offset:calc(env(titlebar-area-height)+1.5rem)]";
++const RIGHT_PANEL_INLINE_SIZE_CLASS_NAME =
++  "[--right-panel-block-size:calc(100svh-var(--right-panel-block-offset)-var(--right-panel-block-offset))] md:[--right-panel-block-size:calc(100dvh-var(--right-panel-block-offset)-var(--right-panel-block-offset))]";
++
++export const RIGHT_PANEL_INLINE_FIXED_CLASS_NAME = `${RIGHT_PANEL_OFFSET_VARS_CLASS_NAME} top-[var(--right-panel-block-offset)] bottom-[var(--right-panel-block-offset)] h-auto max-h-none border-0 bg-transparent pl-[var(--right-panel-inline-start-offset)] pr-0 py-0`;
++
++export const RIGHT_PANEL_INLINE_STATIC_CLASS_NAME = `${RIGHT_PANEL_OFFSET_VARS_CLASS_NAME} ${RIGHT_PANEL_INLINE_SIZE_CLASS_NAME} my-[var(--right-panel-block-offset)] ml-[var(--right-panel-inline-start-offset)] mr-0 h-[var(--right-panel-block-size)] max-h-[var(--right-panel-block-size)]`;
++
++export const RIGHT_PANEL_INLINE_SURFACE_CLASS_NAME =
++  "overflow-hidden rounded-l-lg border-y border-l border-border/70 bg-card/70 text-foreground shadow-lg/5 backdrop-blur-md";
+diff --git a/apps/web/src/routes/_chat.$environmentId.$threadId.tsx b/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
+index b7dcb9a3..67b4d68f 100644
+--- a/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
++++ b/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
+@@ -17,7 +17,11 @@ import {
+   stripDiffSearchParams,
+ } from "../diffRouteSearch";
+ import { useMediaQuery } from "../hooks/useMediaQuery";
+-import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
++import {
++  RIGHT_PANEL_INLINE_FIXED_CLASS_NAME,
++  RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY,
++  RIGHT_PANEL_INLINE_SURFACE_CLASS_NAME,
++} from "../rightPanelLayout";
+ import { selectEnvironmentState, selectThreadExistsByRef, useStore } from "../store";
+ import { createThreadSelectorByRef } from "../storeSelectors";
+ import { resolveThreadRouteRef, buildThreadRouteParams } from "../threadRoutes";
+@@ -123,7 +127,8 @@ const DiffPanelInlineSidebar = (props: {
+       <Sidebar
+         side="right"
+         collapsible="offcanvas"
+-        className="border-l border-border bg-card text-foreground"
++        className={RIGHT_PANEL_INLINE_FIXED_CLASS_NAME}
++        innerClassName={RIGHT_PANEL_INLINE_SURFACE_CLASS_NAME}
+         resizable={{
+           maxWidth: DIFF_INLINE_SIDEBAR_MAX_WIDTH,
+           minWidth: DIFF_INLINE_SIDEBAR_MIN_WIDTH,
+-- 
+2.50.1 (Apple Git-155)
+

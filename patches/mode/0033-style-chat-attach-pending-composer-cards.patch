@@ -1,7 +1,7 @@
-From 50f3bf3ee57747c9bf3a692b9206b491486519d9 Mon Sep 17 00:00:00 2001
+From 6178caf49f6f0d67a91ffda2792497293a4767aa Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Mon, 15 Jun 2026 23:40:17 -0400
-Subject: [PATCH 33/33] style(chat): attach pending composer cards
+Subject: [PATCH 33/34] style(chat): attach pending composer cards
 
 ---
  .../chat/ComposerPendingUserInputPanel.tsx    | 140 +++++++++---------

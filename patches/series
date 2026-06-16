@@ -34,3 +34,4 @@ mode/0030-feat-chat-animate-startup-draft-composer-docking.patch
 mode/0031-style-web-consolidate-top-chrome-actions.patch
 mode/0032-feat-chat-allow-replacing-pending-approvals-from-com.patch
 mode/0033-style-chat-attach-pending-composer-cards.patch
+mode/0034-style-chat-inset-inline-right-panels.patch

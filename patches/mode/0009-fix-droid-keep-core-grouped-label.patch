@@ -1,7 +1,7 @@
-From 5e67847386f32e57a84c0c9384e0cf83764a1efc Mon Sep 17 00:00:00 2001
+From f03f8d16d41c3bc20271ef864b51365e2f2d384f Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 01:07:51 +0000
-Subject: [PATCH 09/33] fix(droid): keep core grouped label
+Subject: [PATCH 09/34] fix(droid): keep core grouped label
 
 ---
  apps/server/src/provider/Layers/DroidProvider.test.ts | 1 +

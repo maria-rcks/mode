@@ -1,7 +1,7 @@
-From c11d1c1028b6023931cbe52f5ab09352883b1e8e Mon Sep 17 00:00:00 2001
+From 0fcdd2180a0cd71d2648c38a892ab49ab4f7c3d0 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:38:25 -0400
-Subject: [PATCH 28/33] feat(chat): improve image attachment previews
+Subject: [PATCH 28/34] feat(chat): improve image attachment previews
 
 ---
  .../chat/ExpandedImageDialog.test.tsx         |  39 ++++++

@@ -1,7 +1,7 @@
-From 36eded7921b4ee72d8326995f9216842b08bfba4 Mon Sep 17 00:00:00 2001
+From 5035ba6ab2f5b40f16fdf069c08f43643a0e7486 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:40:16 -0400
-Subject: [PATCH 31/33] style(web): consolidate top chrome actions
+Subject: [PATCH 31/34] style(web): consolidate top chrome actions
 
 ---
  apps/web/src/components/ChatView.tsx          |  23 +-

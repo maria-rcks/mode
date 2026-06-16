@@ -9,13 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
       - uses: pnpm/action-setup@v4
         with:
           version: 10.24.0
-      - run: bun install
-      - run: bun mode setup
-      - run: bun mode apply
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.13.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm mode setup
+      - run: pnpm mode apply
       - run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: .mode/t3code
-      - run: bun mode check
+      - run: pnpm mode check

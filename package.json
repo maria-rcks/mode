@@ -3,18 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "mode": "bun scripts/mode.ts",
-    "setup": "bun scripts/mode.ts setup",
-    "apply": "bun scripts/mode.ts apply",
-    "export": "bun scripts/mode.ts export",
-    "status": "bun scripts/mode.ts status",
-    "check": "bun scripts/mode.ts check",
-    "dev": "bun scripts/mode.ts dev"
+    "mode": "node scripts/mode.mjs",
+    "setup": "node scripts/mode.mjs setup",
+    "apply": "node scripts/mode.mjs apply",
+    "export": "node scripts/mode.mjs export",
+    "status": "node scripts/mode.mjs status",
+    "check": "node scripts/mode.mjs check",
+    "dev": "node scripts/mode.mjs dev"
   },
-  "devDependencies": {
-    "@types/bun": "^1.3.11",
-    "@types/node": "^24.10.13"
-  },
-  "packageManager": "bun@1.3.14"
+  "packageManager": "pnpm@10.24.0"
 }
-

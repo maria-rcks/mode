@@ -7,10 +7,10 @@ M.O.D.E. is a minimal patch-stack workspace for shaping T3 Code into Maria's pre
 ## Use
 
 ```sh
-bun install
-bun mode setup
-bun mode apply
-bun mode dev
+pnpm install
+pnpm mode setup
+pnpm mode apply
+pnpm mode dev
 ```
 
 ## Work
@@ -18,7 +18,7 @@ bun mode dev
 Edit product code in `.mode/t3code`, then export changes back here:
 
 ```sh
-bun mode export
+pnpm mode export
 ```
 
 Mode-owned files live in `patches/`, `assets/`, `scripts/`, docs, and config.

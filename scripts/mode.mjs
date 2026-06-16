@@ -4,41 +4,19 @@ import { fileURLToPath } from "node:url";
 import { chdir, cwd, exit } from "node:process";
 import { spawnSync } from "node:child_process";
 
-type ModeConfig = {
-  name: string;
-  upstream: {
-    repo: string;
-    ref: string;
-    localSeed?: string;
-    worktree: string;
-    branch: string;
-  };
-  patches: {
-    dir: string;
-    series: string;
-    exportDir: string;
-  };
-};
-
-type UpstreamLock = {
-  repo: string;
-  ref: string;
-  commit: string;
-};
-
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const config = readJson<ModeConfig>("mode.config.json");
-const lock = readJson<UpstreamLock>("upstream.lock");
+const config = readJson("mode.config.json");
+const lock = readJson("upstream.lock");
 const checkout = resolve(root, config.upstream.worktree);
 const patchesDir = resolve(root, config.patches.dir);
 const seriesPath = resolve(root, config.patches.series);
 const exportDir = resolve(root, config.patches.exportDir);
 
-function readJson<T>(path: string): T {
-  return JSON.parse(readFileSync(resolve(root, path), "utf8")) as T;
+function readJson(path) {
+  return JSON.parse(readFileSync(resolve(root, path), "utf8"));
 }
 
-function run(command: string, args: string[], options: { cwd?: string; quiet?: boolean; trim?: boolean } = {}) {
+function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? root,
     encoding: "utf8",
@@ -57,12 +35,12 @@ function run(command: string, args: string[], options: { cwd?: string; quiet?: b
   return options.trim === false ? result.stdout : result.stdout.trim();
 }
 
-function git(args: string[], options: { cwd?: string; quiet?: boolean; trim?: boolean } = {}) {
+function git(args, options = {}) {
   return run("git", args, options);
 }
 
-function bun(args: string[], options: { cwd?: string } = {}) {
-  return run("bun", args, options);
+function pnpm(args, options = {}) {
+  return run("pnpm", args, options);
 }
 
 function checkoutExists() {
@@ -175,7 +153,7 @@ function applyPatchStack() {
 }
 
 function exportPatchStack() {
-  if (!checkoutExists()) throw new Error("Missing .mode/t3code. Run bun mode setup first.");
+  if (!checkoutExists()) throw new Error("Missing .mode/t3code. Run pnpm mode setup first.");
 
   const status = worktreeStatus();
   const commitCount = Number(git(["rev-list", "--count", `${lock.commit}..HEAD`], { cwd: checkout, quiet: true }));
@@ -183,7 +161,7 @@ function exportPatchStack() {
   rmSync(exportDir, { recursive: true, force: true });
   mkdirSync(exportDir, { recursive: true });
 
-  let exported: string[] = [];
+  let exported = [];
 
   if (commitCount > 0) {
     if (status) {
@@ -242,16 +220,16 @@ function status() {
 }
 
 function check() {
-  if (!checkoutExists()) throw new Error("Missing .mode/t3code. Run bun mode setup first.");
-  bun(["fmt"], { cwd: checkout });
-  bun(["lint"], { cwd: checkout });
-  bun(["typecheck"], { cwd: checkout });
+  if (!checkoutExists()) throw new Error("Missing .mode/t3code. Run pnpm mode setup first.");
+  pnpm(["fmt"], { cwd: checkout });
+  pnpm(["lint"], { cwd: checkout });
+  pnpm(["typecheck"], { cwd: checkout });
 }
 
 function dev() {
-  if (!checkoutExists()) throw new Error("Missing .mode/t3code. Run bun mode setup first.");
+  if (!checkoutExists()) throw new Error("Missing .mode/t3code. Run pnpm mode setup first.");
   chdir(checkout);
-  run("bun", ["dev"], { cwd: cwd() });
+  pnpm(["dev"], { cwd: cwd() });
 }
 
 const command = process.argv[2] ?? "help";
@@ -277,7 +255,7 @@ try {
       dev();
       break;
     default:
-      console.log("usage: bun mode <setup|apply|export|status|check|dev>");
+      console.log("usage: pnpm mode <setup|apply|export|status|check|dev>");
       break;
   }
 } catch (error) {

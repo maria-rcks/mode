@@ -1,7 +1,7 @@
-From 4afa9460fd47599cf604d1a892248a0381b04e71 Mon Sep 17 00:00:00 2001
+From d999a0216778e028fc7232cd84df7773e140c1e5 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:37:41 -0400
-Subject: [PATCH 28/32] feat(diff): show live diff stats in chat header
+Subject: [PATCH 27/31] feat(diff): show live diff stats in chat header
 
 ---
  apps/web/src/components/ChatView.tsx          |  13 +++
@@ -10,7 +10,7 @@ Subject: [PATCH 28/32] feat(diff): show live diff stats in chat header
  3 files changed, 130 insertions(+), 5 deletions(-)
 
 diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index d5226e23..1a9f336a 100644
+index 8453ea37..c8d5486e 100644
 --- a/apps/web/src/components/ChatView.tsx
 +++ b/apps/web/src/components/ChatView.tsx
 @@ -1918,6 +1918,18 @@ export default function ChatView(props: ChatViewProps) {
@@ -32,7 +32,7 @@ index d5226e23..1a9f336a 100644
    const keybindings = useServerKeybindings();
    const availableEditors = useServerAvailableEditors();
    // Prefer an instance-id match so a custom Codex instance (e.g.
-@@ -4023,6 +4035,7 @@ export default function ChatView(props: ChatViewProps) {
+@@ -4025,6 +4037,7 @@ export default function ChatView(props: ChatViewProps) {
            terminalOpen={terminalUiState.terminalOpen}
            terminalToggleShortcutLabel={terminalToggleShortcutLabel}
            diffToggleShortcutLabel={diffPanelShortcutLabel}

@@ -1,7 +1,7 @@
-From 226a5a581bb5b9973a00ec9e5d9007fecd9bc391 Mon Sep 17 00:00:00 2001
+From ec6288636522be6d45df2c392fa0562314d16253 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:39:57 -0400
-Subject: [PATCH 31/32] feat(chat): animate startup draft composer docking
+Subject: [PATCH 30/31] feat(chat): animate startup draft composer docking
 
 ---
  apps/web/src/components/ChatView.tsx | 139 +++++++++++++++++++++++++--
@@ -10,7 +10,7 @@ Subject: [PATCH 31/32] feat(chat): animate startup draft composer docking
  3 files changed, 157 insertions(+), 8 deletions(-)
 
 diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index 1a9f336a..daef0336 100644
+index c8d5486e..29fd316f 100644
 --- a/apps/web/src/components/ChatView.tsx
 +++ b/apps/web/src/components/ChatView.tsx
 @@ -36,7 +36,8 @@ import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/proje
@@ -165,7 +165,7 @@ index 1a9f336a..daef0336 100644
      }
    };
  
-@@ -3896,7 +3988,15 @@ export default function ChatView(props: ChatViewProps) {
+@@ -3898,7 +3990,15 @@ export default function ChatView(props: ChatViewProps) {
    }
  
    const shouldUseStartupDraftLayout =
@@ -182,7 +182,7 @@ index 1a9f336a..daef0336 100644
    const composerStack = (
      <div className="relative isolate">
        <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
-@@ -4001,6 +4101,26 @@ export default function ChatView(props: ChatViewProps) {
+@@ -4003,6 +4103,26 @@ export default function ChatView(props: ChatViewProps) {
          : {})}
      />
    ) : null;
@@ -209,7 +209,7 @@ index 1a9f336a..daef0336 100644
  
    return (
      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
-@@ -4059,10 +4179,7 @@ export default function ChatView(props: ChatViewProps) {
+@@ -4061,10 +4181,7 @@ export default function ChatView(props: ChatViewProps) {
          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
            {shouldUseStartupDraftLayout ? (
              <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
@@ -221,7 +221,7 @@ index 1a9f336a..daef0336 100644
              </div>
            ) : (
              <>
-@@ -4117,8 +4234,14 @@ export default function ChatView(props: ChatViewProps) {
+@@ -4119,8 +4236,14 @@ export default function ChatView(props: ChatViewProps) {
                      : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
                  )}
                >

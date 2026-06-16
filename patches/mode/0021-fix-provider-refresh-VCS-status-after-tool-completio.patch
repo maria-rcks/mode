@@ -1,7 +1,7 @@
-From e1cd1030c1ad56668843b0608a8592a53d9c4e31 Mon Sep 17 00:00:00 2001
+From b3f200f9dc53cf06687c5380c2bdd82c4ef6f442 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:33:37 -0400
-Subject: [PATCH 21/32] fix(provider): refresh VCS status after tool
+Subject: [PATCH 21/31] fix(provider): refresh VCS status after tool
  completions
 
 ---

@@ -1,7 +1,7 @@
-From 832e683df0afb295f7af5c788ec3dc6a14a5adce Mon Sep 17 00:00:00 2001
+From 36eded7921b4ee72d8326995f9216842b08bfba4 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:40:16 -0400
-Subject: [PATCH 32/32] style(web): consolidate top chrome actions
+Subject: [PATCH 31/31] style(web): consolidate top chrome actions
 
 ---
  apps/web/src/components/ChatView.tsx          |  23 +-
@@ -20,7 +20,7 @@ Subject: [PATCH 32/32] style(web): consolidate top chrome actions
  create mode 100644 apps/web/src/components/FadingTopBar.tsx
 
 diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index daef0336..15c7bf44 100644
+index 29fd316f..8f3c730a 100644
 --- a/apps/web/src/components/ChatView.tsx
 +++ b/apps/web/src/components/ChatView.tsx
 @@ -101,6 +101,7 @@ import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
@@ -55,7 +55,7 @@ index daef0336..15c7bf44 100644
    } = props;
    const draftId = routeKind === "draft" ? props.draftId : null;
    const routeThreadRef = useMemo(
-@@ -4123,25 +4127,16 @@ export default function ChatView(props: ChatViewProps) {
+@@ -4125,25 +4129,16 @@ export default function ChatView(props: ChatViewProps) {
    );
  
    return (
@@ -85,7 +85,7 @@ index daef0336..15c7bf44 100644
            activeProjectName={activeProject?.name}
            isGitRepo={isGitRepo}
            openInCwd={gitCwd}
-@@ -4165,7 +4160,7 @@ export default function ChatView(props: ChatViewProps) {
+@@ -4167,7 +4162,7 @@ export default function ChatView(props: ChatViewProps) {
            onToggleTerminal={toggleTerminalVisibility}
            onToggleDiff={onToggleDiff}
          />
@@ -1248,10 +1248,10 @@ index 718fc22b..7e431f70 100644
      </Button>
    );
 diff --git a/apps/web/src/routes/_chat.$environmentId.$threadId.tsx b/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
-index b1a21191..171006e7 100644
+index 1877fee6..b7dcb9a3 100644
 --- a/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
 +++ b/apps/web/src/routes/_chat.$environmentId.$threadId.tsx
-@@ -247,8 +247,8 @@ function ChatThreadRouteView() {
+@@ -245,8 +245,8 @@ function ChatThreadRouteView() {
              environmentId={threadRef.environmentId}
              threadId={threadRef.threadId}
              onDiffPanelOpen={markDiffOpened}

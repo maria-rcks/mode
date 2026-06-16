@@ -1,7 +1,7 @@
-From bca37c4bb9143cac6cc6d7502706f7ca5b218d23 Mon Sep 17 00:00:00 2001
+From d17b798972433de315d6a31d21a2f772eb6d7a07 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:33:32 -0400
-Subject: [PATCH 20/32] build(web): add presentation dependencies
+Subject: [PATCH 20/31] build(web): add presentation dependencies
 
 ---
  apps/web/package.json |  2 ++

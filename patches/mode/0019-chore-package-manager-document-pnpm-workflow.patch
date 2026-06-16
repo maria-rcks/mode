@@ -1,7 +1,7 @@
-From 37b3f4817580da72f33dc8da8485a87dcd472629 Mon Sep 17 00:00:00 2001
+From 7734c519a1c541f1fa5a17d0c5749ac73c7bb28e Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 18:10:08 -0400
-Subject: [PATCH 19/32] chore(package-manager): document pnpm workflow
+Subject: [PATCH 19/31] chore(package-manager): document pnpm workflow
 
 ---
  .devcontainer/devcontainer.json     |  7 ++-----

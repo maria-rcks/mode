@@ -1,7 +1,7 @@
-From 1be875653d7d27943568da771fd3e0d9e0d8d73d Mon Sep 17 00:00:00 2001
+From 7c8d9806e4474644614064b66e4b511002e4c03d Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 03/32] mode: apply
+Subject: [PATCH 03/31] mode: apply
  mode/0003-feat-mode-use-Mode-runtime-namespace.patch
 
 ---

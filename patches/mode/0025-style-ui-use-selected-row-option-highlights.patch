@@ -1,7 +1,7 @@
-From 90ea7dca254cca42e6b8b67b239e5973573953f4 Mon Sep 17 00:00:00 2001
+From e3842d083d3564e1322c1cd8f355b1954cfd5d14 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:34:18 -0400
-Subject: [PATCH 25/32] style(ui): use selected-row option highlights
+Subject: [PATCH 25/31] style(ui): use selected-row option highlights
 
 ---
  apps/web/src/components/BranchToolbar.tsx     |  3 --

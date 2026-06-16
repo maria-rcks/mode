@@ -32,3 +32,4 @@ mode/0028-feat-chat-improve-image-attachment-previews.patch
 mode/0029-style-timeline-animate-working-status-metadata.patch
 mode/0030-feat-chat-animate-startup-draft-composer-docking.patch
 mode/0031-style-web-consolidate-top-chrome-actions.patch
+mode/0032-feat-chat-allow-replacing-pending-approvals-from-com.patch

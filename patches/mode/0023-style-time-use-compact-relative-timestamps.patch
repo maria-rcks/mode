@@ -1,7 +1,7 @@
 From f5f8aa20196490c8341637ce3442b569c69633d5 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:33:52 -0400
-Subject: [PATCH 23/31] style(time): use compact relative timestamps
+Subject: [PATCH 23/32] style(time): use compact relative timestamps
 
 ---
  apps/web/src/components/CommandPalette.logic.test.ts |  6 +++---

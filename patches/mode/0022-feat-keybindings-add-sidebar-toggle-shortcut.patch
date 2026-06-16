@@ -1,7 +1,7 @@
 From c72cc1796043b17ef9c7a4b92964ae3bf53005c2 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:33:42 -0400
-Subject: [PATCH 22/31] feat(keybindings): add sidebar toggle shortcut
+Subject: [PATCH 22/32] feat(keybindings): add sidebar toggle shortcut
 
 ---
  apps/server/src/keybindings.test.ts           |  1 +

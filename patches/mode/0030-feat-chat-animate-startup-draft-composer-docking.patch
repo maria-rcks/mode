@@ -1,7 +1,7 @@
 From ec6288636522be6d45df2c392fa0562314d16253 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:39:57 -0400
-Subject: [PATCH 30/31] feat(chat): animate startup draft composer docking
+Subject: [PATCH 30/32] feat(chat): animate startup draft composer docking
 
 ---
  apps/web/src/components/ChatView.tsx | 139 +++++++++++++++++++++++++--

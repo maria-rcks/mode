@@ -1,7 +1,7 @@
 From de5799deee0d2b0b6f39fcd7e17420a282dac5d6 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sat, 13 Jun 2026 18:41:34 -0400
-Subject: [PATCH 12/31] fix(mode): satisfy lint after rebase
+Subject: [PATCH 12/32] fix(mode): satisfy lint after rebase
 
 ---
  .../src/provider/Layers/DroidProvider.test.ts | 27 ++++++++++---------

@@ -1,7 +1,7 @@
 From d766082614f438b5b3451a4a07949d3b1963a60b Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 14:00:47 -0400
-Subject: [PATCH 29/38] fix(rebase): restore mode product checks
+Subject: [PATCH 29/48] fix(rebase): restore mode product checks
 
 ---
  apps/desktop/scripts/dev-electron.mjs         |    7 +-

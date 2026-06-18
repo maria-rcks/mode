@@ -1,0 +1,473 @@
+From 32d2fe2308dc5700ddeb169240fec98bef953c8c Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:06:27 -0400
+Subject: [PATCH 44/48] fix(chat): hydrate stored attachment preview URLs
+
+---
+ .../web/src/components/ChatView.logic.test.ts | 130 +++++++++++++++++-
+ apps/web/src/components/ChatView.logic.ts     |  93 +++++++++++++
+ apps/web/src/components/ChatView.tsx          | 122 +++++++++++++++-
+ 3 files changed, 339 insertions(+), 6 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.logic.test.ts b/apps/web/src/components/ChatView.logic.test.ts
+index d7607522..ed6bdc62 100644
+--- a/apps/web/src/components/ChatView.logic.test.ts
++++ b/apps/web/src/components/ChatView.logic.test.ts
+@@ -1,6 +1,7 @@
+ import { scopeThreadRef } from "@t3tools/client-runtime";
+ import {
+   EnvironmentId,
++  MessageId,
+   ProjectId,
+   ProviderDriverKind,
+   ProviderInstanceId,
+@@ -9,13 +10,16 @@ import {
+ } from "@t3tools/contracts";
+ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+ import { type EnvironmentState, useStore } from "../store";
+-import { type Thread } from "../types";
++import { type ChatMessage, type Thread } from "../types";
+ 
+ import {
+   MAX_HIDDEN_MOUNTED_PREVIEW_THREADS,
+   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
++  applyResolvedAttachmentPreviewUrls,
++  attachmentPreviewAssetKey,
+   buildExpiredTerminalContextToastCopy,
+   canNormalizeRuntimeModeForProviderSelection,
++  collectMissingAttachmentPreviewAssetIds,
+   createLocalDispatchSnapshot,
+   deriveComposerSendState,
+   getStartedThreadModelChangeBlockReason,
+@@ -159,6 +163,130 @@ describe("deriveComposerSendState", () => {
+   });
+ });
+ 
++function makeImageMessage(input: {
++  id: string;
++  attachments: NonNullable<ChatMessage["attachments"]>;
++}): ChatMessage {
++  return {
++    id: MessageId.make(input.id),
++    role: "user",
++    text: "image message",
++    attachments: input.attachments,
++    createdAt: "2026-03-29T00:00:00.000Z",
++    streaming: false,
++  };
++}
++
++describe("attachment preview asset URLs", () => {
++  const imageAttachment = (input: { id: string; previewUrl?: string }) => ({
++    type: "image" as const,
++    id: input.id,
++    name: `${input.id}.png`,
++    mimeType: "image/png",
++    sizeBytes: 123,
++    ...(input.previewUrl ? { previewUrl: input.previewUrl } : {}),
++  });
++
++  it("collects missing stored user image preview IDs once", () => {
++    const messages: ChatMessage[] = [
++      makeImageMessage({
++        id: "message-1",
++        attachments: [
++          imageAttachment({ id: "attachment-1" }),
++          imageAttachment({ id: "attachment-2", previewUrl: "blob:already-visible" }),
++          imageAttachment({ id: "attachment-1" }),
++        ],
++      }),
++      {
++        id: MessageId.make("message-assistant"),
++        role: "assistant",
++        text: "ignored",
++        attachments: [imageAttachment({ id: "attachment-assistant" })],
++        createdAt: "2026-03-29T00:00:01.000Z",
++        streaming: false,
++      },
++    ];
++
++    expect(
++      collectMissingAttachmentPreviewAssetIds({
++        environmentId: localEnvironmentId,
++        messages,
++        previewUrlByKey: {},
++      }),
++    ).toEqual(["attachment-1"]);
++  });
++
++  it("skips attachments with cached preview asset URLs", () => {
++    const attachmentId = "attachment-cached";
++
++    expect(
++      collectMissingAttachmentPreviewAssetIds({
++        environmentId: localEnvironmentId,
++        messages: [
++          makeImageMessage({
++            id: "message-cached",
++            attachments: [imageAttachment({ id: attachmentId })],
++          }),
++        ],
++        previewUrlByKey: {
++          [attachmentPreviewAssetKey(localEnvironmentId, attachmentId)]: {
++            url: "http://localhost/api/assets/token/attachment-cached.png",
++            expiresAt: Date.now() + 60_000,
++          },
++        },
++      }),
++    ).toEqual([]);
++  });
++
++  it("applies resolved preview URLs without mutating server messages", () => {
++    const messages: ChatMessage[] = [
++      makeImageMessage({
++        id: "message-hydrate",
++        attachments: [imageAttachment({ id: "attachment-hydrate" })],
++      }),
++    ];
++
++    const hydrated = applyResolvedAttachmentPreviewUrls({
++      environmentId: localEnvironmentId,
++      messages,
++      previewUrlByKey: {
++        [attachmentPreviewAssetKey(localEnvironmentId, "attachment-hydrate")]: {
++          url: "http://localhost/api/assets/token/attachment-hydrate.png",
++          expiresAt: Date.now() + 60_000,
++        },
++      },
++    });
++
++    expect(hydrated).not.toBe(messages);
++    expect(hydrated[0]?.attachments?.[0]?.previewUrl).toBe(
++      "http://localhost/api/assets/token/attachment-hydrate.png",
++    );
++    expect(messages[0]?.attachments?.[0]?.previewUrl).toBeUndefined();
++  });
++
++  it("keeps existing preview URLs and preserves the message array when unchanged", () => {
++    const messages: ChatMessage[] = [
++      makeImageMessage({
++        id: "message-existing",
++        attachments: [imageAttachment({ id: "attachment-existing", previewUrl: "blob:current" })],
++      }),
++    ];
++
++    expect(
++      applyResolvedAttachmentPreviewUrls({
++        environmentId: localEnvironmentId,
++        messages,
++        previewUrlByKey: {
++          [attachmentPreviewAssetKey(localEnvironmentId, "attachment-existing")]: {
++            url: "http://localhost/api/assets/token/attachment-existing.png",
++            expiresAt: Date.now() + 60_000,
++          },
++        },
++      }),
++    ).toBe(messages);
++  });
++});
++
+ describe("buildExpiredTerminalContextToastCopy", () => {
+   it("formats clear empty-state guidance", () => {
+     expect(buildExpiredTerminalContextToastCopy(1, "empty")).toEqual({
+diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
+index ced9b5b4..aef594c7 100644
+--- a/apps/web/src/components/ChatView.logic.ts
++++ b/apps/web/src/components/ChatView.logic.ts
+@@ -171,6 +171,99 @@ export function collectUserMessageBlobPreviewUrls(message: ChatMessage): string[
+   return previewUrls;
+ }
+ 
++export interface AttachmentPreviewAssetUrl {
++  readonly url: string;
++  readonly expiresAt: number;
++}
++
++export type AttachmentPreviewAssetUrlByKey = Readonly<
++  Record<string, AttachmentPreviewAssetUrl | undefined>
++>;
++
++export function attachmentPreviewAssetKey(
++  environmentId: EnvironmentId,
++  attachmentId: string,
++): string {
++  return `${environmentId}:${attachmentId}`;
++}
++
++export function collectMissingAttachmentPreviewAssetIds(input: {
++  readonly environmentId: EnvironmentId;
++  readonly messages: ReadonlyArray<ChatMessage>;
++  readonly previewUrlByKey: AttachmentPreviewAssetUrlByKey;
++}): string[] {
++  const missingAttachmentIds: string[] = [];
++  const seenAttachmentIds = new Set<string>();
++
++  for (const message of input.messages) {
++    if (message.role !== "user" || !message.attachments) {
++      continue;
++    }
++
++    for (const attachment of message.attachments) {
++      if (attachment.type !== "image" || attachment.previewUrl) {
++        continue;
++      }
++      if (seenAttachmentIds.has(attachment.id)) {
++        continue;
++      }
++      const key = attachmentPreviewAssetKey(input.environmentId, attachment.id);
++      if (input.previewUrlByKey[key]) {
++        continue;
++      }
++      seenAttachmentIds.add(attachment.id);
++      missingAttachmentIds.push(attachment.id);
++    }
++  }
++
++  return missingAttachmentIds;
++}
++
++export function applyResolvedAttachmentPreviewUrls(input: {
++  readonly environmentId: EnvironmentId;
++  readonly messages: ChatMessage[];
++  readonly previewUrlByKey: AttachmentPreviewAssetUrlByKey;
++}): ChatMessage[] {
++  let messagesChanged = false;
++
++  const messages = input.messages.map((message) => {
++    if (message.role !== "user" || !message.attachments || message.attachments.length === 0) {
++      return message;
++    }
++
++    let attachmentsChanged = false;
++    const attachments = message.attachments.map((attachment) => {
++      if (attachment.type !== "image" || attachment.previewUrl) {
++        return attachment;
++      }
++
++      const resolved =
++        input.previewUrlByKey[attachmentPreviewAssetKey(input.environmentId, attachment.id)];
++      if (!resolved) {
++        return attachment;
++      }
++
++      attachmentsChanged = true;
++      return {
++        ...attachment,
++        previewUrl: resolved.url,
++      };
++    });
++
++    if (!attachmentsChanged) {
++      return message;
++    }
++
++    messagesChanged = true;
++    return {
++      ...message,
++      attachments,
++    };
++  });
++
++  return messagesChanged ? messages : input.messages;
++}
++
+ export interface PullRequestDialogState {
+   initialReference: string | null;
+   key: number;
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index a239c14c..eb9e3988 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -54,6 +54,7 @@ import { usePrimaryEnvironmentId } from "../environments/primary";
+ import { readEnvironmentApi } from "../environmentApi";
+ import { isElectron } from "../env";
+ import { readLocalApi } from "../localApi";
++import { resolveAssetUrl } from "../assets/assetUrls";
+ import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
+ import {
+   collapseExpandedComposerCursor,
+@@ -191,9 +192,12 @@ import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
+ import { ComposerBannerStack, type ComposerBannerStackItem } from "./chat/ComposerBannerStack";
+ import {
+   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
++  applyResolvedAttachmentPreviewUrls,
++  attachmentPreviewAssetKey,
+   buildExpiredTerminalContextToastCopy,
+   buildLocalDraftThread,
+   canNormalizeRuntimeModeForProviderSelection,
++  collectMissingAttachmentPreviewAssetIds,
+   collectUserMessageBlobPreviewUrls,
+   createLocalDispatchSnapshot,
+   deriveComposerSendState,
+@@ -213,6 +217,7 @@ import {
+   revokeUserMessagePreviewUrls,
+   shouldWriteThreadErrorToCurrentServerThread,
+   waitForStartedServerThread,
++  type AttachmentPreviewAssetUrl,
+ } from "./ChatView.logic";
+ import { useLocalStorage } from "~/hooks/useLocalStorage";
+ import { useComposerHandleContext } from "../composerHandleContext";
+@@ -234,6 +239,8 @@ import {
+ 
+ const IMAGE_ONLY_BOOTSTRAP_PROMPT =
+   "[User attached one or more images without additional text. Respond using the conversation context and the attached image(s).]";
++const ATTACHMENT_PREVIEW_REFRESH_MARGIN_MS = 30_000;
++const EMPTY_CHAT_MESSAGES: ChatMessage[] = [];
+ const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
+ const EMPTY_PROPOSED_PLANS: Thread["proposedPlans"] = [];
+ const EMPTY_PROVIDERS: ServerProvider[] = [];
+@@ -1175,6 +1182,9 @@ export default function ChatView(props: ChatViewProps) {
+   const [attachmentPreviewHandoffByMessageId, setAttachmentPreviewHandoffByMessageId] = useState<
+     Record<string, string[]>
+   >({});
++  const [attachmentPreviewAssetUrlByKey, setAttachmentPreviewAssetUrlByKey] = useState<
++    Record<string, AttachmentPreviewAssetUrl>
++  >({});
+   const [pendingServerThreadEnvMode, setPendingServerThreadEnvMode] =
+     useState<DraftThreadEnvMode | null>(null);
+   const [pendingServerThreadBranch, setPendingServerThreadBranch] = useState<string | null>();
+@@ -1188,6 +1198,11 @@ export default function ChatView(props: ChatViewProps) {
+   const isAtEndRef = useRef(true);
+   const attachmentPreviewHandoffByMessageIdRef = useRef<Record<string, string[]>>({});
+   const attachmentPreviewPromotionInFlightByMessageIdRef = useRef<Record<string, true>>({});
++  const attachmentPreviewAssetUrlMountedRef = useRef(false);
++  const attachmentPreviewAssetUrlRequestKeysRef = useRef<Set<string>>(new Set());
++  const attachmentPreviewAssetUrlRefreshTimersRef = useRef<
++    Record<string, ReturnType<typeof setTimeout>>
++  >({});
+   const sendInFlightRef = useRef(false);
+   const terminalUiOpenByThreadRef = useRef<Record<string, boolean>>({});
+   const pendingDiffRouteTargetRef = useRef<boolean | null>(null);
+@@ -2175,9 +2190,102 @@ export default function ChatView(props: ChatViewProps) {
+       return next;
+     });
+   }, []);
+-  const serverMessages = activeThread?.messages;
++  const serverMessages = activeThread?.messages ?? EMPTY_CHAT_MESSAGES;
++  const activeThreadEnvironmentId = activeThread?.environmentId ?? null;
++  useEffect(() => {
++    attachmentPreviewAssetUrlMountedRef.current = true;
++    return () => {
++      attachmentPreviewAssetUrlMountedRef.current = false;
++      attachmentPreviewAssetUrlRequestKeysRef.current.clear();
++      for (const timer of Object.values(attachmentPreviewAssetUrlRefreshTimersRef.current)) {
++        clearTimeout(timer);
++      }
++      attachmentPreviewAssetUrlRefreshTimersRef.current = {};
++    };
++  }, []);
++  useEffect(() => {
++    if (!activeThreadEnvironmentId || serverMessages.length === 0) {
++      return;
++    }
++
++    const missingAttachmentIds = collectMissingAttachmentPreviewAssetIds({
++      environmentId: activeThreadEnvironmentId,
++      messages: serverMessages,
++      previewUrlByKey: attachmentPreviewAssetUrlByKey,
++    });
++    if (missingAttachmentIds.length === 0) {
++      return;
++    }
++
++    const scheduleRefresh = (key: string, expiresAt: number) => {
++      const existingTimer = attachmentPreviewAssetUrlRefreshTimersRef.current[key];
++      if (existingTimer) {
++        clearTimeout(existingTimer);
++      }
++      const delay = Math.max(0, expiresAt - Date.now() - ATTACHMENT_PREVIEW_REFRESH_MARGIN_MS);
++      attachmentPreviewAssetUrlRefreshTimersRef.current[key] = setTimeout(() => {
++        delete attachmentPreviewAssetUrlRefreshTimersRef.current[key];
++        if (!attachmentPreviewAssetUrlMountedRef.current) {
++          return;
++        }
++        setAttachmentPreviewAssetUrlByKey((existing) => {
++          if (!(key in existing)) {
++            return existing;
++          }
++          const next = { ...existing };
++          delete next[key];
++          return next;
++        });
++      }, delay);
++    };
++
++    for (const attachmentId of missingAttachmentIds) {
++      const key = attachmentPreviewAssetKey(activeThreadEnvironmentId, attachmentId);
++      if (attachmentPreviewAssetUrlRequestKeysRef.current.has(key)) {
++        continue;
++      }
++      attachmentPreviewAssetUrlRequestKeysRef.current.add(key);
++      void resolveAssetUrl(activeThreadEnvironmentId, {
++        _tag: "attachment",
++        attachmentId,
++      })
++        .then((result) => {
++          if (!attachmentPreviewAssetUrlMountedRef.current) {
++            return;
++          }
++          setAttachmentPreviewAssetUrlByKey((existing) => {
++            const current = existing[key];
++            if (current?.url === result.url && current.expiresAt === result.expiresAt) {
++              return existing;
++            }
++            return {
++              ...existing,
++              [key]: result,
++            };
++          });
++          scheduleRefresh(key, result.expiresAt);
++        })
++        .catch(() => {
++          // A missing or temporarily unavailable attachment keeps the filename
++          // fallback. Future thread/environment updates will retry resolution.
++        })
++        .finally(() => {
++          attachmentPreviewAssetUrlRequestKeysRef.current.delete(key);
++        });
++    }
++  }, [activeThreadEnvironmentId, attachmentPreviewAssetUrlByKey, serverMessages]);
++  const serverMessagesWithResolvedPreviews = useMemo(() => {
++    if (!activeThreadEnvironmentId) {
++      return serverMessages;
++    }
++    return applyResolvedAttachmentPreviewUrls({
++      environmentId: activeThreadEnvironmentId,
++      messages: serverMessages,
++      previewUrlByKey: attachmentPreviewAssetUrlByKey,
++    });
++  }, [activeThreadEnvironmentId, attachmentPreviewAssetUrlByKey, serverMessages]);
+   useEffect(() => {
+-    if (typeof Image === "undefined" || !serverMessages || serverMessages.length === 0) {
++    if (typeof Image === "undefined" || serverMessagesWithResolvedPreviews.length === 0) {
+       return;
+     }
+ 
+@@ -2190,7 +2298,7 @@ export default function ChatView(props: ChatViewProps) {
+         continue;
+       }
+ 
+-      const serverMessage = serverMessages.find(
++      const serverMessage = serverMessagesWithResolvedPreviews.find(
+         (message) => message.id === messageId && message.role === "user",
+       );
+       if (!serverMessage?.attachments || serverMessage.attachments.length === 0) {
+@@ -2256,9 +2364,13 @@ export default function ChatView(props: ChatViewProps) {
+         cleanup();
+       }
+     };
+-  }, [attachmentPreviewHandoffByMessageId, clearAttachmentPreviewHandoff, serverMessages]);
++  }, [
++    attachmentPreviewHandoffByMessageId,
++    clearAttachmentPreviewHandoff,
++    serverMessagesWithResolvedPreviews,
++  ]);
+   const timelineMessages = useMemo(() => {
+-    const messages = serverMessages ?? [];
++    const messages = serverMessagesWithResolvedPreviews;
+     const serverMessagesWithPreviewHandoff =
+       Object.keys(attachmentPreviewHandoffByMessageId).length === 0
+         ? messages
+-- 
+2.50.1 (Apple Git-155)
+

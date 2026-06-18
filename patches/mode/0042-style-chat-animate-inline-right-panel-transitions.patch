@@ -1,0 +1,539 @@
+From 99fa7000ff090d3de256e1d76435a9decb2cbb19 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:04:04 -0400
+Subject: [PATCH 42/48] style(chat): animate inline right panel transitions
+
+---
+ apps/web/src/components/ChatView.browser.tsx  |  19 +--
+ apps/web/src/components/ChatView.tsx          | 154 +++++++++++++++---
+ apps/web/src/components/RightPanelTabs.tsx    |   8 +-
+ .../components/chat/PanelLayoutControls.tsx   |  20 ++-
+ .../preview/PreviewPanelShell.browser.tsx     |  74 +++++++++
+ .../components/preview/PreviewPanelShell.tsx  |  15 +-
+ apps/web/src/components/ui/sheet.tsx          |   4 +-
+ 7 files changed, 252 insertions(+), 42 deletions(-)
+ create mode 100644 apps/web/src/components/preview/PreviewPanelShell.browser.tsx
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index b561b8b3..e81d64a5 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -2663,9 +2663,15 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       );
+       rightPanelToggle.click();
+ 
+-      await vi.waitFor(() => {
+-        expect(document.body.textContent).toContain("Open a surface");
+-      });
++      const emptyStateTerminalButton = await waitForElement(
++        () =>
++          Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((button) =>
++            button.textContent?.includes("Start a shell in this workspace."),
++          ) ?? null,
++        "Unable to find the empty-state Terminal button.",
++      );
++      expect(document.body.textContent).not.toContain("Open a surface");
++      expect(document.body.textContent).not.toContain("Choose what to show in the right panel.");
+       expect(document.querySelector('button[aria-label="Add panel surface"]')).toBeNull();
+       expect(
+         selectThreadRightPanelState(useRightPanelStore.getState().byThreadKey, THREAD_REF),
+@@ -2676,13 +2682,6 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       });
+       expect(wsRequests.some((request) => request._tag === WS_METHODS.terminalOpen)).toBe(false);
+ 
+-      const emptyStateTerminalButton = await waitForElement(
+-        () =>
+-          Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((button) =>
+-            button.textContent?.includes("Start a shell in this workspace."),
+-          ) ?? null,
+-        "Unable to find the empty-state Terminal button.",
+-      );
+       emptyStateTerminalButton.click();
+ 
+       await vi.waitFor(() => {
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 7e6573ef..a239c14c 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -431,6 +431,7 @@ const SCRIPT_TERMINAL_COLS = 120;
+ const SCRIPT_TERMINAL_ROWS = 30;
+ const STARTUP_DRAFT_COMPOSER_DOCK_MS = 220;
+ const STARTUP_DRAFT_COMPOSER_TRANSITION_RESET_MS = 320;
++const RIGHT_PANEL_INLINE_TRANSITION_MS = 260;
+ 
+ type StartupDraftComposerAnimation = {
+   y: number;
+@@ -1316,6 +1317,10 @@ export default function ChatView(props: ChatViewProps) {
+   const activeRightPanelSurface = useRightPanelStore((store) =>
+     selectActiveRightPanelSurface(store.byThreadKey, activeThreadRef),
+   );
++  const storedActiveRightPanelSurface =
++    rightPanelState.surfaces.find((surface) => surface.id === rightPanelState.activeSurfaceId) ??
++    null;
++  const renderedRightPanelSurface = activeRightPanelSurface ?? storedActiveRightPanelSurface;
+   const activePreviewState = usePreviewStateStore((state) =>
+     selectThreadPreviewState(state.byThreadKey, activeThreadRef),
+   );
+@@ -1327,7 +1332,84 @@ export default function ChatView(props: ChatViewProps) {
+   const canMaximizeRightPanel = rightPanelOpen && !shouldUsePlanSidebarSheet;
+   const rightPanelMaximized =
+     canMaximizeRightPanel && maximizedRightPanelThreadKey === routeThreadKey;
+-  const inlineRightPanelOwnsTitleBar = rightPanelOpen && !shouldUsePlanSidebarSheet;
++  const [inlineRightPanelMountedThreadKey, setInlineRightPanelMountedThreadKey] = useState<
++    string | null
++  >(null);
++  const [inlineRightPanelVisible, setInlineRightPanelVisible] = useState(false);
++  const inlineRightPanelMounted =
++    !shouldUsePlanSidebarSheet &&
++    activeThreadKey !== null &&
++    inlineRightPanelMountedThreadKey === activeThreadKey;
++  const inlineRightPanelOpen = inlineRightPanelMounted && rightPanelOpen && inlineRightPanelVisible;
++  const inlineRightPanelOwnsTitleBar =
++    !shouldUsePlanSidebarSheet &&
++    (inlineRightPanelMounted || (rightPanelOpen && activeThreadKey !== null));
++
++  useEffect(() => {
++    if (shouldUsePlanSidebarSheet || activeThreadKey === null) {
++      setInlineRightPanelVisible(false);
++      setInlineRightPanelMountedThreadKey(null);
++      return;
++    }
++
++    if (!rightPanelOpen) {
++      setInlineRightPanelVisible(false);
++      return;
++    }
++
++    setInlineRightPanelMountedThreadKey(activeThreadKey);
++    setInlineRightPanelVisible(false);
++  }, [activeThreadKey, rightPanelOpen, shouldUsePlanSidebarSheet]);
++
++  useEffect(() => {
++    if (
++      !inlineRightPanelMounted ||
++      !rightPanelOpen ||
++      inlineRightPanelVisible ||
++      shouldUsePlanSidebarSheet
++    ) {
++      return;
++    }
++
++    if (prefersReducedMotion()) {
++      setInlineRightPanelVisible(true);
++      return;
++    }
++
++    let secondFrame = 0;
++    const firstFrame = window.requestAnimationFrame(() => {
++      secondFrame = window.requestAnimationFrame(() => {
++        setInlineRightPanelVisible(true);
++      });
++    });
++    return () => {
++      window.cancelAnimationFrame(firstFrame);
++      if (secondFrame !== 0) {
++        window.cancelAnimationFrame(secondFrame);
++      }
++    };
++  }, [inlineRightPanelMounted, inlineRightPanelVisible, rightPanelOpen, shouldUsePlanSidebarSheet]);
++
++  useEffect(() => {
++    if (!inlineRightPanelMounted || rightPanelOpen || shouldUsePlanSidebarSheet) {
++      return;
++    }
++
++    if (prefersReducedMotion()) {
++      setInlineRightPanelMountedThreadKey(null);
++      return;
++    }
++
++    const closingThreadKey = activeThreadKey;
++    const timeout = window.setTimeout(() => {
++      setInlineRightPanelMountedThreadKey((current) =>
++        current === closingThreadKey ? null : current,
++      );
++    }, RIGHT_PANEL_INLINE_TRANSITION_MS);
++    return () => {
++      window.clearTimeout(timeout);
++    };
++  }, [activeThreadKey, inlineRightPanelMounted, rightPanelOpen, shouldUsePlanSidebarSheet]);
+ 
+   useEffect(() => {
+     if (!activeThreadRef) {
+@@ -4856,7 +4938,11 @@ export default function ChatView(props: ChatViewProps) {
+       {branchToolbar}
+     </div>
+   );
+-  const renderPanelLayoutControls = (placement: "inline" | "titlebar") => (
++  const renderPanelLayoutControls = (
++    placement: "inline" | "titlebar",
++    showRightPanelMaximizeControl: boolean,
++    alignTitlebarWithHeaderInset = false,
++  ) => (
+     <PanelLayoutControls
+       placement={placement}
+       terminalAvailable={Boolean(activeProject)}
+@@ -4867,28 +4953,54 @@ export default function ChatView(props: ChatViewProps) {
+       rightPanelShortcutLabel={diffPanelShortcutLabel}
+       rightPanelMaximized={rightPanelMaximized}
+       canMaximizeRightPanel={canMaximizeRightPanel}
++      showRightPanelMaximizeControl={showRightPanelMaximizeControl}
++      alignTitlebarWithHeaderInset={alignTitlebarWithHeaderInset}
+       onToggleTerminal={toggleTerminalVisibility}
+       onToggleRightPanel={toggleRightPanel}
+       onToggleRightPanelMaximized={toggleRightPanelMaximized}
+     />
+   );
+-  const inlinePanelLayoutControls = renderPanelLayoutControls("inline");
+-  const titlebarPanelLayoutControls = renderPanelLayoutControls("titlebar");
++  const inlinePanelLayoutControls = renderPanelLayoutControls("inline", false);
++  const titlebarPanelLayoutControls = renderPanelLayoutControls(
++    "titlebar",
++    inlineRightPanelOwnsTitleBar && rightPanelOpen,
++    inlineRightPanelOwnsTitleBar && !rightPanelOpen,
++  );
++  const inlinePanelLayoutControlsPlaceholder = inlineRightPanelOwnsTitleBar ? (
++    <div
++      aria-hidden="true"
++      className={cn(
++        "pointer-events-none h-7 shrink-0 overflow-hidden transition-[width,margin-left,opacity] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none sm:h-6",
++        inlineRightPanelOpen
++          ? "-ml-1.5 w-0 opacity-0 @3xl/header-actions:-ml-2"
++          : "ml-0 w-[57px] opacity-100 sm:w-[49px]",
++      )}
++      data-panel-layout-controls-placeholder
++    />
++  ) : null;
++  const headerPanelLayoutControls = inlineRightPanelOwnsTitleBar
++    ? inlinePanelLayoutControlsPlaceholder
++    : inlinePanelLayoutControls;
++  const reserveHeaderTitleBarInset =
++    reserveTitleBarControlInset && (!inlineRightPanelOwnsTitleBar || !inlineRightPanelOpen);
++  const rightPanelSurfaceVisible = shouldUsePlanSidebarSheet
++    ? rightPanelOpen
++    : inlineRightPanelOpen;
+   let rightPanelContent: ReactNode = null;
+-  if (activeThreadRef && activeRightPanelSurface?.kind === "preview") {
++  if (activeThreadRef && renderedRightPanelSurface?.kind === "preview") {
+     rightPanelContent = (
+       <PreviewPanel
+         mode="embedded"
+         threadRef={activeThreadRef}
+-        tabId={activeRightPanelSurface.resourceId}
+-        visible
++        tabId={renderedRightPanelSurface.resourceId}
++        visible={rightPanelSurfaceVisible}
+       />
+     );
+-  } else if (activeThreadRef && activeRightPanelSurface?.kind === "terminal") {
++  } else if (activeThreadRef && renderedRightPanelSurface?.kind === "terminal") {
+     rightPanelContent = (
+       <PersistentThreadTerminalPanel
+         threadRef={activeThreadRef}
+-        surface={activeRightPanelSurface}
++        surface={renderedRightPanelSurface}
+         launchContext={activeTerminalLaunchContext ?? null}
+         focusRequestId={terminalFocusRequestId}
+         keybindings={keybindings}
+@@ -4904,10 +5016,10 @@ export default function ChatView(props: ChatViewProps) {
+         closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
+       />
+     );
+-  } else if (activeRightPanelSurface?.kind === "diff") {
++  } else if (renderedRightPanelSurface?.kind === "diff") {
+     rightPanelContent = <DiffPanel mode="embedded" />;
+   } else if (
+-    (activeRightPanelSurface?.kind === "files" || activeRightPanelSurface?.kind === "file") &&
++    (renderedRightPanelSurface?.kind === "files" || renderedRightPanelSurface?.kind === "file") &&
+     activeProject &&
+     activeWorkspaceRoot
+   ) {
+@@ -4918,7 +5030,7 @@ export default function ChatView(props: ChatViewProps) {
+         cwd={activeWorkspaceRoot}
+         projectName={activeProject.name}
+         relativePath={
+-          activeRightPanelSurface.kind === "file" ? activeRightPanelSurface.relativePath : null
++          renderedRightPanelSurface.kind === "file" ? renderedRightPanelSurface.relativePath : null
+         }
+         onOpenFile={openFileSurface}
+         onPendingChange={handleFilePendingChange}
+@@ -4942,7 +5054,12 @@ export default function ChatView(props: ChatViewProps) {
+         {/* Top bar */}
+         <FadingTopBar
+           data-chat-header
+-          reserveTitleBarControlInset={reserveTitleBarControlInset && !inlineRightPanelOwnsTitleBar}
++          className={
++            inlineRightPanelOwnsTitleBar
++              ? "transition-[padding-right] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
++              : undefined
++          }
++          reserveTitleBarControlInset={reserveHeaderTitleBarInset}
+           viewportFixed={topBarViewportFixed && !inlineRightPanelOwnsTitleBar}
+         >
+           <ChatHeader
+@@ -4963,9 +5080,7 @@ export default function ChatView(props: ChatViewProps) {
+             onAddProjectScript={saveProjectScript}
+             onUpdateProjectScript={updateProjectScript}
+             onDeleteProjectScript={deleteProjectScript}
+-            {...(!inlineRightPanelOwnsTitleBar
+-              ? { trailingActions: inlinePanelLayoutControls }
+-              : {})}
++            {...(headerPanelLayoutControls ? { trailingActions: headerPanelLayoutControls } : {})}
+           />
+         </FadingTopBar>
+ 
+@@ -5118,12 +5233,13 @@ export default function ChatView(props: ChatViewProps) {
+         ) : null}
+       </div>
+ 
+-      {!shouldUsePlanSidebarSheet && rightPanelOpen && activeThreadRef ? (
++      {!shouldUsePlanSidebarSheet && inlineRightPanelMounted && activeThreadRef ? (
+         <RightPanelTabs
+           mode="inline"
+           maximized={rightPanelMaximized}
++          inlineOpen={inlineRightPanelOpen}
+           surfaces={rightPanelState.surfaces}
+-          activeSurfaceId={activeRightPanelSurface?.id ?? null}
++          activeSurfaceId={renderedRightPanelSurface?.id ?? null}
+           pendingSurfaceIds={pendingFileSurfaceIds}
+           previewSessions={activePreviewState.sessions}
+           terminalLabelsById={activeTerminalLabelsById}
+@@ -5146,7 +5262,7 @@ export default function ChatView(props: ChatViewProps) {
+           <RightPanelTabs
+             mode="sheet"
+             surfaces={rightPanelState.surfaces}
+-            activeSurfaceId={activeRightPanelSurface?.id ?? null}
++            activeSurfaceId={renderedRightPanelSurface?.id ?? null}
+             pendingSurfaceIds={pendingFileSurfaceIds}
+             previewSessions={activePreviewState.sessions}
+             terminalLabelsById={activeTerminalLabelsById}
+diff --git a/apps/web/src/components/RightPanelTabs.tsx b/apps/web/src/components/RightPanelTabs.tsx
+index bf99a7f2..88e94a68 100644
+--- a/apps/web/src/components/RightPanelTabs.tsx
++++ b/apps/web/src/components/RightPanelTabs.tsx
+@@ -18,6 +18,7 @@ import { PierreEntryIcon } from "./chat/PierreEntryIcon";
+ interface RightPanelTabsProps {
+   mode: PreviewPanelMode;
+   maximized?: boolean;
++  inlineOpen?: boolean;
+   surfaces: readonly RightPanelSurface[];
+   activeSurfaceId: string | null;
+   pendingSurfaceIds: ReadonlySet<string>;
+@@ -116,12 +117,6 @@ function RightPanelEmptyState(props: {
+   return (
+     <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+       <div className="w-full max-w-xl">
+-        <div className="mb-5 text-center">
+-          <h3 className="text-sm font-medium text-foreground">Open a surface</h3>
+-          <p className="mt-1 text-xs text-muted-foreground">
+-            Choose what to show in the right panel.
+-          </p>
+-        </div>
+         <div className="grid grid-cols-2 gap-2">
+           {actions.map((action) => {
+             const Icon = action.icon;
+@@ -266,6 +261,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
+     <PreviewPanelShell
+       mode={props.mode}
+       {...(props.maximized !== undefined ? { maximized: props.maximized } : {})}
++      {...(props.inlineOpen !== undefined ? { inlineOpen: props.inlineOpen } : {})}
+     >
+       <div
+         className={cn(
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index eae31f99..eb6fd72a 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -18,6 +18,8 @@ interface PanelLayoutControlsProps {
+   rightPanelShortcutLabel: string | null;
+   rightPanelMaximized: boolean;
+   canMaximizeRightPanel: boolean;
++  showRightPanelMaximizeControl: boolean;
++  alignTitlebarWithHeaderInset?: boolean;
+   onToggleTerminal: () => void;
+   onToggleRightPanel: () => void;
+   onToggleRightPanelMaximized: () => void;
+@@ -33,6 +35,8 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+   rightPanelShortcutLabel,
+   rightPanelMaximized,
+   canMaximizeRightPanel,
++  showRightPanelMaximizeControl,
++  alignTitlebarWithHeaderInset = false,
+   onToggleTerminal,
+   onToggleRightPanel,
+   onToggleRightPanelMaximized,
+@@ -43,12 +47,22 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+       className={cn(
+         "pointer-events-auto z-50 [-webkit-app-region:no-drag]",
+         placement === "titlebar" &&
+-          "workspace-titlebar-controls items-start pt-3 [-webkit-app-region:no-drag]",
++          "workspace-titlebar-controls items-start pt-3 transition-[right] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] [-webkit-app-region:no-drag] motion-reduce:transition-none",
++        placement === "titlebar" &&
++          alignTitlebarWithHeaderInset &&
++          "sm:right-[calc(env(safe-area-inset-right)+1.25rem)] wco:right-[calc(100vw-env(titlebar-area-width,100vw)-env(titlebar-area-x,0px)+1em)]",
+       )}
+       data-panel-layout-controls
+     >
+-      <Group aria-label="Panel layout controls" className="shrink-0">
+-        {rightPanelOpen ? (
++      <Group
++        aria-label="Panel layout controls"
++        className={cn(
++          "shrink-0",
++          placement === "titlebar" &&
++            "rounded-lg bg-background/90 shadow-sm ring-1 ring-border/60 backdrop-blur",
++        )}
++      >
++        {showRightPanelMaximizeControl ? (
+           <>
+             <Tooltip>
+               <TooltipTrigger
+diff --git a/apps/web/src/components/preview/PreviewPanelShell.browser.tsx b/apps/web/src/components/preview/PreviewPanelShell.browser.tsx
+new file mode 100644
+index 00000000..4c20100e
+--- /dev/null
++++ b/apps/web/src/components/preview/PreviewPanelShell.browser.tsx
+@@ -0,0 +1,74 @@
++import "../../index.css";
++
++import { afterEach, describe, expect, it, vi } from "vite-plus/test";
++import { render } from "vitest-browser-react";
++
++import { PreviewPanelShell } from "./PreviewPanelShell";
++
++describe("PreviewPanelShell", () => {
++  afterEach(() => {
++    vi.restoreAllMocks();
++    document.body.innerHTML = "";
++    localStorage.clear();
++  });
++
++  it("stages inline opening from a closed frame before animating open", async () => {
++    const animationFrames: FrameRequestCallback[] = [];
++    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
++      animationFrames.push(callback);
++      return animationFrames.length;
++    });
++    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => {});
++    vi.spyOn(window, "matchMedia").mockImplementation(
++      () =>
++        ({
++          media: "(prefers-reduced-motion: reduce)",
++          matches: false,
++          onchange: null,
++          addListener: () => {},
++          removeListener: () => {},
++          addEventListener: () => {},
++          removeEventListener: () => {},
++          dispatchEvent: () => false,
++        }) satisfies MediaQueryList,
++    );
++
++    const screen = await render(
++      <PreviewPanelShell mode="inline" inlineOpen={false}>
++        <div>Panel</div>
++      </PreviewPanelShell>,
++    );
++
++    try {
++      const panel = document.querySelector<HTMLElement>('[data-preview-panel-mode="inline"]');
++      expect(panel).not.toBeNull();
++      if (!panel) {
++        throw new Error("Expected inline preview panel shell to render.");
++      }
++
++      expect(panel.getAttribute("data-preview-panel-open")).toBe("false");
++      expect(panel.style.width).toBe("0px");
++      expect(panel.className).toContain("transition-[width,translate,transform,opacity");
++
++      await screen.rerender(
++        <PreviewPanelShell mode="inline" inlineOpen>
++          <div>Panel</div>
++        </PreviewPanelShell>,
++      );
++
++      await vi.waitFor(() => {
++        expect(animationFrames.length).toBe(1);
++      });
++      expect(panel.getAttribute("data-preview-panel-open")).toBe("false");
++      expect(panel.style.width).toBe("0px");
++
++      animationFrames[0]?.(performance.now());
++      await vi.waitFor(() => {
++        expect(panel.getAttribute("data-preview-panel-open")).toBe("true");
++        expect(panel.style.width).not.toBe("0px");
++      });
++    } finally {
++      await screen.unmount();
++    }
++  });
++});
+diff --git a/apps/web/src/components/preview/PreviewPanelShell.tsx b/apps/web/src/components/preview/PreviewPanelShell.tsx
+index 6de828c1..d859afc7 100644
+--- a/apps/web/src/components/preview/PreviewPanelShell.tsx
++++ b/apps/web/src/components/preview/PreviewPanelShell.tsx
+@@ -24,6 +24,7 @@ const PREVIEW_PANEL_DEFAULT_WIDTH = 540;
+ export function PreviewPanelShell(props: {
+   mode: PreviewPanelMode;
+   maximized?: boolean;
++  inlineOpen?: boolean;
+   children: ReactNode;
+ }) {
+   const useDragRegion = isElectron && props.mode !== "sheet" && props.mode !== "embedded";
+@@ -36,6 +37,7 @@ export function PreviewPanelShell(props: {
+     maxWidth,
+     edge: "left",
+   });
++  const inlineOpen = isInline ? (props.inlineOpen ?? true) : true;
+ 
+   return (
+     <div
+@@ -46,12 +48,21 @@ export function PreviewPanelShell(props: {
+             ? "flex-1 border-l border-border"
+             : "shrink-0 border-l border-border"
+           : "w-full",
++        isInline &&
++          "overflow-hidden transition-[width,translate,transform,opacity,border-color] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[width,transform,opacity] motion-reduce:transition-none",
++        isInline &&
++          (inlineOpen
++            ? "translate-x-0 opacity-100"
++            : "pointer-events-none translate-x-3 border-l-transparent opacity-0"),
+       )}
+-      style={isInline && !props.maximized ? { width: `${width}px` } : undefined}
++      style={isInline && !props.maximized ? { width: inlineOpen ? `${width}px` : 0 } : undefined}
+       data-preview-panel-mode={props.mode}
+       data-preview-panel-maximized={props.maximized ? "true" : "false"}
++      data-preview-panel-open={isInline ? (inlineOpen ? "true" : "false") : undefined}
+     >
+-      {isInline && !props.maximized ? <RightPanelResizeHandle handlers={handlers} /> : null}
++      {isInline && !props.maximized && inlineOpen ? (
++        <RightPanelResizeHandle handlers={handlers} />
++      ) : null}
+       {useDragRegion ? <div className="electron-drag-region h-0 w-full" aria-hidden /> : null}
+       {props.children}
+     </div>
+diff --git a/apps/web/src/components/ui/sheet.tsx b/apps/web/src/components/ui/sheet.tsx
+index 62254325..a915eba9 100644
+--- a/apps/web/src/components/ui/sheet.tsx
++++ b/apps/web/src/components/ui/sheet.tsx
+@@ -22,7 +22,7 @@ function SheetBackdrop({ className, ...props }: SheetPrimitive.Backdrop.Props) {
+   return (
+     <SheetPrimitive.Backdrop
+       className={cn(
+-        "fixed inset-0 z-50 bg-background/60 data-ending-style:opacity-0 data-starting-style:opacity-0",
++        "fixed inset-0 z-50 bg-background/60 transition-opacity duration-200 ease-out data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none",
+         className,
+       )}
+       data-slot="sheet-backdrop"
+@@ -77,7 +77,7 @@ function SheetPopup({
+       <SheetViewport side={side} variant={variant}>
+         <SheetPrimitive.Popup
+           className={cn(
+-            "relative flex max-h-full min-h-0 w-full min-w-0 flex-col bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:before:hidden dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
++            "relative flex max-h-full min-h-0 w-full min-w-0 flex-col bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 transition-[opacity,translate,transform] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[opacity,translate,transform] before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:before:hidden motion-reduce:transition-none dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+             side === "bottom" &&
+               "row-start-2 border-t data-ending-style:translate-y-8 data-starting-style:translate-y-8",
+             side === "top" &&
+-- 
+2.50.1 (Apple Git-155)
+

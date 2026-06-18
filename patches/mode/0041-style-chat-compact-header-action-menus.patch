@@ -1,0 +1,685 @@
+From 611b8471992f9e5b1a072b62fb66d08b71c9ffc0 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:00:59 -0400
+Subject: [PATCH 41/48] style(chat): compact header action menus
+
+---
+ apps/web/src/components/GitActionsControl.tsx | 321 ++++++------------
+ .../src/components/ProjectScriptsControl.tsx  | 152 ++++-----
+ apps/web/src/components/chat/OpenInPicker.tsx |  63 ++--
+ 3 files changed, 205 insertions(+), 331 deletions(-)
+
+diff --git a/apps/web/src/components/GitActionsControl.tsx b/apps/web/src/components/GitActionsControl.tsx
+index 8c7356e2..419bbe2d 100644
+--- a/apps/web/src/components/GitActionsControl.tsx
++++ b/apps/web/src/components/GitActionsControl.tsx
+@@ -21,7 +21,6 @@ import {
+   ExternalLinkIcon,
+   GitBranchPlusIcon,
+   GitCommitIcon,
+-  InfoIcon,
+   LockIcon,
+   GlobeIcon,
+ } from "lucide-react";
+@@ -35,12 +34,10 @@ import {
+   buildMenuItems,
+   type GitActionIconName,
+   type GitActionMenuItem,
+-  type GitQuickAction,
+   type DefaultBranchConfirmableAction,
+   requiresDefaultBranchConfirmation,
+   resolveDefaultBranchActionDialogCopy,
+   resolveLiveThreadBranchUpdate,
+-  resolveQuickAction,
+   resolveThreadBranchUpdate,
+ } from "./GitActionsControl.logic";
+ import { AnimatedHeight } from "./AnimatedHeight";
+@@ -55,7 +52,6 @@ import {
+   DialogPopup,
+   DialogTitle,
+ } from "~/components/ui/dialog";
+-import { Group, GroupSeparator } from "~/components/ui/group";
+ import { Input } from "~/components/ui/input";
+ import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
+ import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+@@ -69,7 +65,6 @@ import {
+   useSourceControlActionRunning,
+   useSourceControlPublishRepositoryAction,
+   useVcsInitAction,
+-  useVcsPullAction,
+ } from "~/lib/sourceControlActions";
+ import { getVcsStatusDataForTarget, refreshVcsStatus, useVcsStatus } from "~/lib/vcsStatusState";
+ import { useSourceControlDiscovery } from "~/lib/sourceControlDiscoveryState";
+@@ -317,28 +312,6 @@ function GitActionItemIcon({
+   return <SourceControlIcon />;
+ }
+ 
+-function GitQuickActionIcon({
+-  quickAction,
+-  SourceControlIcon,
+-}: {
+-  quickAction: GitQuickAction;
+-  SourceControlIcon: ReturnType<typeof getSourceControlPresentation>["Icon"];
+-}) {
+-  const iconClassName = "size-3.5";
+-  if (quickAction.kind === "open_pr") return <SourceControlIcon className={iconClassName} />;
+-  if (quickAction.kind === "open_publish") return <CloudUploadIcon className={iconClassName} />;
+-  if (quickAction.kind === "run_pull") return <InfoIcon className={iconClassName} />;
+-  if (quickAction.kind === "run_action") {
+-    if (quickAction.action === "commit") return <GitCommitIcon className={iconClassName} />;
+-    if (quickAction.action === "push" || quickAction.action === "commit_push") {
+-      return <CloudUploadIcon className={iconClassName} />;
+-    }
+-    return <SourceControlIcon className={iconClassName} />;
+-  }
+-  if (quickAction.label === "Commit") return <GitCommitIcon className={iconClassName} />;
+-  return <InfoIcon className={iconClassName} />;
+-}
+-
+ interface PublishRepositoryDialogProps {
+   readonly open: boolean;
+   readonly onOpenChange: (open: boolean) => void;
+@@ -1083,7 +1056,6 @@ export default function GitActionsControl({
+ 
+   const initAction = useVcsInitAction(sourceControlScope);
+   const runImmediateGitAction = useGitStackedAction(sourceControlScope);
+-  const pullAction = useVcsPullAction(sourceControlScope);
+   const isGitActionRunning = useSourceControlActionRunning(
+     sourceControlScope,
+     RUNNING_SOURCE_CONTROL_ACTIONS,
+@@ -1124,14 +1096,6 @@ export default function GitActionsControl({
+     () => buildMenuItems(gitStatusForActions, isGitActionRunning, hasPrimaryRemote),
+     [gitStatusForActions, hasPrimaryRemote, isGitActionRunning],
+   );
+-  const quickAction = useMemo(
+-    () =>
+-      resolveQuickAction(gitStatusForActions, isGitActionRunning, isDefaultRef, hasPrimaryRemote),
+-    [gitStatusForActions, hasPrimaryRemote, isDefaultRef, isGitActionRunning],
+-  );
+-  const quickActionDisabledReason = quickAction.disabled
+-    ? (quickAction.hint ?? "This action is currently unavailable.")
+-    : null;
+   const pendingDefaultBranchActionCopy = pendingDefaultBranchAction
+     ? resolveDefaultBranchActionDialogCopy({
+         action: pendingDefaultBranchAction.action,
+@@ -1494,53 +1458,6 @@ export default function GitActionsControl({
+     });
+   };
+ 
+-  const runQuickAction = () => {
+-    if (quickAction.kind === "open_pr") {
+-      void openExistingPr();
+-      return;
+-    }
+-    if (quickAction.kind === "open_publish") {
+-      setIsPublishDialogOpen(true);
+-      return;
+-    }
+-    if (quickAction.kind === "run_pull") {
+-      const promise = pullAction.run();
+-      void toastManager.promise<Awaited<ReturnType<typeof pullAction.run>>, ThreadToastData>(
+-        promise,
+-        {
+-          loading: { title: "Pulling...", data: threadToastData },
+-          success: (result) => ({
+-            title: result.status === "pulled" ? "Pulled" : "Already up to date",
+-            description:
+-              result.status === "pulled"
+-                ? `Updated ${result.refName} from ${result.upstreamRef ?? "upstream"}`
+-                : `${result.refName} is already synchronized.`,
+-            data: threadToastData,
+-          }),
+-          error: (err) => ({
+-            title: "Pull failed",
+-            description: err instanceof Error ? err.message : "An error occurred.",
+-            data: threadToastData,
+-          }),
+-        },
+-      );
+-      void promise.catch(() => undefined);
+-      return;
+-    }
+-    if (quickAction.kind === "show_hint") {
+-      toastManager.add({
+-        type: "info",
+-        title: quickAction.label,
+-        description: quickAction.hint,
+-        data: threadToastData,
+-      });
+-      return;
+-    }
+-    if (quickAction.action) {
+-      void runGitActionWithToast({ action: quickAction.action });
+-    }
+-  };
+-
+   const openDialogForMenuItem = (item: GitActionMenuItem) => {
+     if (item.disabled) return;
+     if (item.kind === "open_pr") {
+@@ -1607,152 +1524,124 @@ export default function GitActionsControl({
+   return (
+     <>
+       {!isRepo ? (
+-        <Button
+-          variant="outline"
+-          size="xs"
+-          disabled={initAction.isPending}
+-          onClick={() => {
+-            void initAction.run();
+-          }}
+-        >
+-          <GitBranchPlusIcon className="size-3.5" aria-hidden />
+-          <span className="ml-0.5">
++        <Tooltip>
++          <TooltipTrigger
++            render={
++              <Button
++                variant="outline"
++                size="icon-xs"
++                aria-label="Initialize Git"
++                title="Initialize Git"
++                disabled={initAction.isPending}
++                onClick={() => {
++                  void initAction.run();
++                }}
++              />
++            }
++          >
++            <GitBranchPlusIcon className="size-3.5" aria-hidden />
++          </TooltipTrigger>
++          <TooltipPopup side="top">
+             {initAction.isPending ? "Initializing..." : "Initialize Git"}
+-          </span>
+-        </Button>
++          </TooltipPopup>
++        </Tooltip>
+       ) : (
+-        <Group aria-label="Git actions" className="shrink-0">
+-          {quickActionDisabledReason ? (
+-            <Popover>
+-              <PopoverTrigger
+-                openOnHover
+-                render={
+-                  <Button
+-                    aria-disabled="true"
+-                    className="cursor-not-allowed rounded-e-none border-e-0 opacity-64 before:rounded-e-none"
+-                    size="xs"
+-                    variant="outline"
+-                  />
+-                }
+-              >
+-                <GitQuickActionIcon
+-                  quickAction={quickAction}
+-                  SourceControlIcon={SourceControlIcon}
+-                />
+-                <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-                  {quickAction.label}
+-                </span>
+-              </PopoverTrigger>
+-              <PopoverPopup tooltipStyle side="bottom" align="start">
+-                {quickActionDisabledReason}
+-              </PopoverPopup>
+-            </Popover>
+-          ) : (
+-            <Button
+-              variant="outline"
+-              size="xs"
+-              disabled={isGitActionRunning || quickAction.disabled}
+-              onClick={runQuickAction}
+-            >
+-              <GitQuickActionIcon quickAction={quickAction} SourceControlIcon={SourceControlIcon} />
+-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-                {quickAction.label}
+-              </span>
+-            </Button>
+-          )}
+-          <GroupSeparator className="hidden @3xl/header-actions:block" />
+-          <Menu
+-            onOpenChange={(open) => {
+-              if (open) {
+-                void refreshVcsStatus({
+-                  environmentId: activeEnvironmentId,
+-                  cwd: gitCwd,
+-                }).catch(() => undefined);
+-              }
+-            }}
++        <Menu
++          onOpenChange={(open) => {
++            if (open) {
++              void refreshVcsStatus({
++                environmentId: activeEnvironmentId,
++                cwd: gitCwd,
++              }).catch(() => undefined);
++            }
++          }}
++        >
++          <MenuTrigger
++            render={
++              <Button
++                aria-label="Git actions"
++                size="icon-xs"
++                variant="outline"
++                className="shrink-0"
++                disabled={isGitActionRunning}
++                title="Git actions"
++              />
++            }
+           >
+-            <MenuTrigger
+-              render={<Button aria-label="Git action options" size="icon-xs" variant="outline" />}
+-              disabled={isGitActionRunning}
+-            >
+-              <ChevronDownIcon aria-hidden="true" className="size-4" />
+-            </MenuTrigger>
+-            <MenuPopup align="end" className="w-full">
+-              {gitActionMenuItems.map((item) => {
+-                const disabledReason = getMenuActionDisabledReason({
+-                  item,
+-                  gitStatus: gitStatusForActions,
+-                  isBusy: isGitActionRunning,
+-                  hasPrimaryRemote,
+-                });
+-                if (item.disabled && disabledReason) {
+-                  return (
+-                    <Popover key={`${item.id}-${item.label}`}>
+-                      <PopoverTrigger
+-                        openOnHover
+-                        nativeButton={false}
+-                        render={<span className="block w-max cursor-not-allowed" />}
+-                      >
+-                        <MenuItem className="w-full" disabled>
+-                          <GitActionItemIcon
+-                            icon={item.icon}
+-                            SourceControlIcon={SourceControlIcon}
+-                          />
+-                          {item.label}
+-                        </MenuItem>
+-                      </PopoverTrigger>
+-                      <PopoverPopup tooltipStyle side="left" align="center">
+-                        {disabledReason}
+-                      </PopoverPopup>
+-                    </Popover>
+-                  );
+-                }
+-
++            <SourceControlIcon aria-hidden="true" className="size-3.5" />
++          </MenuTrigger>
++          <MenuPopup align="end" className="w-full">
++            {gitActionMenuItems.map((item) => {
++              const disabledReason = getMenuActionDisabledReason({
++                item,
++                gitStatus: gitStatusForActions,
++                isBusy: isGitActionRunning,
++                hasPrimaryRemote,
++              });
++              if (item.disabled && disabledReason) {
+                 return (
+-                  <MenuItem
+-                    key={`${item.id}-${item.label}`}
+-                    disabled={item.disabled}
+-                    onClick={() => {
+-                      openDialogForMenuItem(item);
+-                    }}
+-                  >
+-                    <GitActionItemIcon icon={item.icon} SourceControlIcon={SourceControlIcon} />
+-                    {item.label}
+-                  </MenuItem>
++                  <Popover key={`${item.id}-${item.label}`}>
++                    <PopoverTrigger
++                      openOnHover
++                      nativeButton={false}
++                      render={<span className="block w-max cursor-not-allowed" />}
++                    >
++                      <MenuItem className="w-full" disabled>
++                        <GitActionItemIcon icon={item.icon} SourceControlIcon={SourceControlIcon} />
++                        {item.label}
++                      </MenuItem>
++                    </PopoverTrigger>
++                    <PopoverPopup tooltipStyle side="left" align="center">
++                      {disabledReason}
++                    </PopoverPopup>
++                  </Popover>
+                 );
+-              })}
+-              {canPublishRepository ? (
++              }
++
++              return (
+                 <MenuItem
+-                  disabled={isGitActionRunning}
++                  key={`${item.id}-${item.label}`}
++                  disabled={item.disabled}
+                   onClick={() => {
+-                    setIsPublishDialogOpen(true);
++                    openDialogForMenuItem(item);
+                   }}
+                 >
+-                  <CloudUploadIcon />
+-                  Publish repository...
++                  <GitActionItemIcon icon={item.icon} SourceControlIcon={SourceControlIcon} />
++                  {item.label}
+                 </MenuItem>
+-              ) : null}
+-              {gitStatusForActions?.refName === null && (
++              );
++            })}
++            {canPublishRepository ? (
++              <MenuItem
++                disabled={isGitActionRunning}
++                onClick={() => {
++                  setIsPublishDialogOpen(true);
++                }}
++              >
++                <CloudUploadIcon />
++                Publish repository...
++              </MenuItem>
++            ) : null}
++            {gitStatusForActions?.refName === null && (
++              <p className="px-2 py-1.5 text-xs text-warning">
++                Detached HEAD: create and checkout a refName to enable push and pull request
++                actions.
++              </p>
++            )}
++            {gitStatusForActions &&
++              gitStatusForActions.refName !== null &&
++              !gitStatusForActions.hasWorkingTreeChanges &&
++              gitStatusForActions.behindCount > 0 &&
++              gitStatusForActions.aheadCount === 0 && (
+                 <p className="px-2 py-1.5 text-xs text-warning">
+-                  Detached HEAD: create and checkout a refName to enable push and pull request
+-                  actions.
++                  Behind upstream. Pull/rebase first.
+                 </p>
+               )}
+-              {gitStatusForActions &&
+-                gitStatusForActions.refName !== null &&
+-                !gitStatusForActions.hasWorkingTreeChanges &&
+-                gitStatusForActions.behindCount > 0 &&
+-                gitStatusForActions.aheadCount === 0 && (
+-                  <p className="px-2 py-1.5 text-xs text-warning">
+-                    Behind upstream. Pull/rebase first.
+-                  </p>
+-                )}
+-              {gitStatusError && (
+-                <p className="px-2 py-1.5 text-xs text-destructive">{gitStatusError.message}</p>
+-              )}
+-            </MenuPopup>
+-          </Menu>
+-        </Group>
++            {gitStatusError && (
++              <p className="px-2 py-1.5 text-xs text-destructive">{gitStatusError.message}</p>
++            )}
++          </MenuPopup>
++        </Menu>
+       )}
+ 
+       <Dialog
+diff --git a/apps/web/src/components/ProjectScriptsControl.tsx b/apps/web/src/components/ProjectScriptsControl.tsx
+index a9c218c0..faeb0eb2 100644
+--- a/apps/web/src/components/ProjectScriptsControl.tsx
++++ b/apps/web/src/components/ProjectScriptsControl.tsx
+@@ -5,7 +5,6 @@ import type {
+ } from "@t3tools/contracts";
+ import {
+   BugIcon,
+-  ChevronDownIcon,
+   FlaskConicalIcon,
+   HammerIcon,
+   ListChecksIcon,
+@@ -46,7 +45,6 @@ import {
+   DialogPopup,
+   DialogTitle,
+ } from "./ui/dialog";
+-import { Group, GroupSeparator } from "./ui/group";
+ import { Input } from "./ui/input";
+ import { Label } from "./ui/label";
+ import { Menu, MenuItem, MenuPopup, MenuShortcut, MenuTrigger } from "./ui/menu";
+@@ -232,94 +230,82 @@ export default function ProjectScriptsControl({
+   return (
+     <>
+       {primaryScript ? (
+-        <Group aria-label="Project scripts">
+-          <Tooltip>
+-            <TooltipTrigger
+-              render={
+-                <Button
+-                  size="xs"
+-                  variant="outline"
+-                  aria-label={`Run ${primaryScript.name}`}
+-                  onClick={() => onRunScript(primaryScript)}
+-                />
+-              }
+-            >
+-              <ScriptIcon icon={primaryScript.icon} />
+-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-                {primaryScript.name}
+-              </span>
+-            </TooltipTrigger>
+-            <TooltipPopup side="top">Run {primaryScript.name}</TooltipPopup>
+-          </Tooltip>
+-          <GroupSeparator className="hidden @3xl/header-actions:block" />
+-          <Menu highlightItemOnHover={false}>
+-            <MenuTrigger
+-              render={<Button size="icon-xs" variant="outline" aria-label="Script actions" />}
+-            >
+-              <ChevronDownIcon className="size-4" />
+-            </MenuTrigger>
+-            <MenuPopup align="end">
+-              {scripts.map((script) => {
+-                const shortcutLabel = shortcutLabelForCommand(
+-                  keybindings,
+-                  commandForProjectScript(script.id),
+-                );
+-                return (
+-                  <MenuItem
+-                    key={script.id}
+-                    className={`group ${dropdownItemClassName}`}
+-                    onClick={() => onRunScript(script)}
+-                  >
+-                    <ScriptIcon icon={script.icon} className="size-4" />
+-                    <span className="truncate">
+-                      {script.runOnWorktreeCreate ? `${script.name} (setup)` : script.name}
+-                    </span>
+-                    <span className="relative ms-auto flex h-6 min-w-6 items-center justify-end">
+-                      {shortcutLabel && (
+-                        <MenuShortcut className="ms-0 transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0">
+-                          {shortcutLabel}
+-                        </MenuShortcut>
+-                      )}
+-                      <Button
+-                        type="button"
+-                        variant="ghost"
+-                        size="icon-xs"
+-                        className="absolute right-0 top-1/2 size-6 -translate-y-1/2 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-visible:opacity-100 group-focus-visible:pointer-events-auto"
+-                        aria-label={`Edit ${script.name}`}
+-                        onPointerDown={(event) => {
+-                          event.preventDefault();
+-                          event.stopPropagation();
+-                        }}
+-                        onClick={(event) => {
+-                          event.preventDefault();
+-                          event.stopPropagation();
+-                          openEditDialog(script);
+-                        }}
+-                      >
+-                        <SettingsIcon className="size-3.5" />
+-                      </Button>
+-                    </span>
+-                  </MenuItem>
+-                );
+-              })}
+-              <MenuItem className={dropdownItemClassName} onClick={openAddDialog}>
+-                <PlusIcon className="size-4" />
+-                Add action
+-              </MenuItem>
+-            </MenuPopup>
+-          </Menu>
+-        </Group>
++        <Menu highlightItemOnHover={false}>
++          <MenuTrigger
++            render={
++              <Button
++                size="icon-xs"
++                variant="outline"
++                aria-label="Project scripts"
++                title="Project scripts"
++              />
++            }
++          >
++            <ScriptIcon icon={primaryScript.icon} />
++          </MenuTrigger>
++          <MenuPopup align="end">
++            {scripts.map((script) => {
++              const shortcutLabel = shortcutLabelForCommand(
++                keybindings,
++                commandForProjectScript(script.id),
++              );
++              return (
++                <MenuItem
++                  key={script.id}
++                  className={`group ${dropdownItemClassName}`}
++                  onClick={() => onRunScript(script)}
++                >
++                  <ScriptIcon icon={script.icon} className="size-4" />
++                  <span className="truncate">
++                    {script.runOnWorktreeCreate ? `${script.name} (setup)` : script.name}
++                  </span>
++                  <span className="relative ms-auto flex h-6 min-w-6 items-center justify-end">
++                    {shortcutLabel && (
++                      <MenuShortcut className="ms-0 transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0">
++                        {shortcutLabel}
++                      </MenuShortcut>
++                    )}
++                    <Button
++                      type="button"
++                      variant="ghost"
++                      size="icon-xs"
++                      className="absolute right-0 top-1/2 size-6 -translate-y-1/2 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-visible:opacity-100 group-focus-visible:pointer-events-auto"
++                      aria-label={`Edit ${script.name}`}
++                      onPointerDown={(event) => {
++                        event.preventDefault();
++                        event.stopPropagation();
++                      }}
++                      onClick={(event) => {
++                        event.preventDefault();
++                        event.stopPropagation();
++                        openEditDialog(script);
++                      }}
++                    >
++                      <SettingsIcon className="size-3.5" />
++                    </Button>
++                  </span>
++                </MenuItem>
++              );
++            })}
++            <MenuItem className={dropdownItemClassName} onClick={openAddDialog}>
++              <PlusIcon className="size-4" />
++              Add action
++            </MenuItem>
++          </MenuPopup>
++        </Menu>
+       ) : (
+         <Tooltip>
+           <TooltipTrigger
+             render={
+-              <Button size="xs" variant="outline" aria-label="Add action" onClick={openAddDialog} />
++              <Button
++                size="icon-xs"
++                variant="outline"
++                aria-label="Add action"
++                onClick={openAddDialog}
++              />
+             }
+           >
+             <PlusIcon className="size-3.5" />
+-            <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-              Add action
+-            </span>
+           </TooltipTrigger>
+           <TooltipPopup side="top">Add action</TooltipPopup>
+         </Tooltip>
+diff --git a/apps/web/src/components/chat/OpenInPicker.tsx b/apps/web/src/components/chat/OpenInPicker.tsx
+index cc023d34..94f04974 100644
+--- a/apps/web/src/components/chat/OpenInPicker.tsx
++++ b/apps/web/src/components/chat/OpenInPicker.tsx
+@@ -2,9 +2,8 @@ import { EditorId, type ResolvedKeybindingsConfig } from "@t3tools/contracts";
+ import { memo, useCallback, useEffect, useMemo } from "react";
+ import { isOpenFavoriteEditorShortcut, shortcutLabelForCommand } from "../../keybindings";
+ import { usePreferredEditor } from "../../editorPreferences";
+-import { ChevronDownIcon, FolderClosedIcon } from "lucide-react";
++import { FolderClosedIcon } from "lucide-react";
+ import { Button } from "../ui/button";
+-import { Group, GroupSeparator } from "../ui/group";
+ import { Menu, MenuItem, MenuPopup, MenuShortcut, MenuTrigger } from "../ui/menu";
+ import {
+   AntigravityIcon,
+@@ -198,36 +197,36 @@ export const OpenInPicker = memo(function OpenInPicker({
+   }, [preferredEditor, keybindings, openInCwd]);
+ 
+   return (
+-    <Group aria-label="Subscription actions">
+-      <Button
+-        size="xs"
+-        variant="outline"
+-        disabled={!preferredEditor || !openInCwd}
+-        onClick={() => openInEditor(preferredEditor)}
++    <Menu>
++      <MenuTrigger
++        render={
++          <Button
++            aria-label="Open in editor"
++            size="icon-xs"
++            variant="outline"
++            disabled={!openInCwd || options.length === 0}
++            title="Open in editor"
++          />
++        }
+       >
+-        {primaryOption?.Icon && <primaryOption.Icon aria-hidden="true" className="size-3.5" />}
+-        <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+-          Open
+-        </span>
+-      </Button>
+-      <GroupSeparator className="hidden @3xl/header-actions:block" />
+-      <Menu>
+-        <MenuTrigger render={<Button aria-label="Copy options" size="icon-xs" variant="outline" />}>
+-          <ChevronDownIcon aria-hidden="true" className="size-4" />
+-        </MenuTrigger>
+-        <MenuPopup align="end">
+-          {options.length === 0 && <MenuItem disabled>No installed editors found</MenuItem>}
+-          {options.map(({ label, Icon, value }) => (
+-            <MenuItem key={value} onClick={() => openInEditor(value)}>
+-              <Icon aria-hidden="true" className="text-muted-foreground" />
+-              {label}
+-              {value === preferredEditor && openFavoriteEditorShortcutLabel && (
+-                <MenuShortcut>{openFavoriteEditorShortcutLabel}</MenuShortcut>
+-              )}
+-            </MenuItem>
+-          ))}
+-        </MenuPopup>
+-      </Menu>
+-    </Group>
++        {primaryOption?.Icon ? (
++          <primaryOption.Icon aria-hidden="true" className="size-3.5" />
++        ) : (
++          <FolderClosedIcon aria-hidden="true" className="size-3.5" />
++        )}
++      </MenuTrigger>
++      <MenuPopup align="end">
++        {options.length === 0 && <MenuItem disabled>No installed editors found</MenuItem>}
++        {options.map(({ label, Icon, value }) => (
++          <MenuItem key={value} onClick={() => openInEditor(value)}>
++            <Icon aria-hidden="true" className="text-muted-foreground" />
++            {label}
++            {value === preferredEditor && openFavoriteEditorShortcutLabel && (
++              <MenuShortcut>{openFavoriteEditorShortcutLabel}</MenuShortcut>
++            )}
++          </MenuItem>
++        ))}
++      </MenuPopup>
++    </Menu>
+   );
+ });
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,24 @@
+From a9f109a3b3fa69d1bc85df5ccd2bb7157ee87b7d Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:00:54 -0400
+Subject: [PATCH 40/48] build(server): externalize fff node
+
+---
+ apps/server/vite.config.ts | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/apps/server/vite.config.ts b/apps/server/vite.config.ts
+index 473df069..56517279 100644
+--- a/apps/server/vite.config.ts
++++ b/apps/server/vite.config.ts
+@@ -35,6 +35,7 @@ export default mergeConfig(
+       sourcemap: true,
+       clean: true,
+       deps: {
++        neverBundle: ["@ff-labs/fff-node"],
+         alwaysBundle: shouldBundleCliDependency,
+         onlyBundle: false,
+       },
+-- 
+2.50.1 (Apple Git-155)
+

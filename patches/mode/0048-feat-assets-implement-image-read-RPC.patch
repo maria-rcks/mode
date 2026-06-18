@@ -1,0 +1,229 @@
+From e0e4390f1c6f347104e1d7ce1161fb9d07f30496 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:10:51 -0400
+Subject: [PATCH 48/48] feat(assets): implement image read RPC
+
+---
+ apps/server/src/assets/AssetAccess.ts         | 60 ++++++++++++++++++-
+ apps/server/src/ws.ts                         |  7 ++-
+ apps/web/src/components/ChatView.browser.tsx  |  1 +
+ apps/web/src/environmentApi.ts                |  1 +
+ .../service.threadSubscriptions.test.ts       |  2 +-
+ apps/web/src/localApi.test.ts                 |  1 +
+ packages/client-runtime/src/wsRpcClient.ts    |  3 +
+ packages/contracts/src/ipc.ts                 |  8 ++-
+ 8 files changed, 78 insertions(+), 5 deletions(-)
+
+diff --git a/apps/server/src/assets/AssetAccess.ts b/apps/server/src/assets/AssetAccess.ts
+index 659413f4..3bfd4977 100644
+--- a/apps/server/src/assets/AssetAccess.ts
++++ b/apps/server/src/assets/AssetAccess.ts
+@@ -1,5 +1,10 @@
+-import type { AssetResource } from "@t3tools/contracts";
+-import { AssetAccessError } from "@t3tools/contracts";
++import Mime from "@effect/platform-node/Mime";
++import type { AssetReadImageInput, AssetResource } from "@t3tools/contracts";
++import {
++  AssetAccessError,
++  PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
++  PROVIDER_SEND_TURN_MAX_IMAGE_DATA_URL_CHARS,
++} from "@t3tools/contracts";
+ import * as Clock from "effect/Clock";
+ import * as Effect from "effect/Effect";
+ import * as FileSystem from "effect/FileSystem";
+@@ -16,6 +21,7 @@ import {
+ import { ServerSecretStore } from "../auth/ServerSecretStore.ts";
+ import { resolveAttachmentPathById } from "../attachmentStore.ts";
+ import { ServerConfig } from "../config.ts";
++import { SAFE_IMAGE_FILE_EXTENSIONS } from "../imageMime.ts";
+ import { ProjectFaviconResolver } from "../project/Services/ProjectFaviconResolver.ts";
+ import { WorkspacePaths } from "../workspace/Services/WorkspacePaths.ts";
+ 
+@@ -223,6 +229,56 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
+   };
+ });
+ 
++export const readImageAsset = Effect.fn("AssetAccess.readImageAsset")(function* (
++  input: AssetReadImageInput,
++) {
++  const fileSystem = yield* FileSystem.FileSystem;
++  const path = yield* Path.Path;
++  const config = yield* ServerConfig;
++  const rawPath = input.path.trim();
++  const candidatePath = path.isAbsolute(rawPath) ? rawPath : path.resolve(config.cwd, rawPath);
++  const resolvedPath = yield* fileSystem
++    .realPath(candidatePath)
++    .pipe(Effect.mapError((cause) => failAccess("Image file was not found.", cause)));
++  const name = path.basename(resolvedPath);
++  const extension = path.extname(name).toLowerCase();
++  if (!SAFE_IMAGE_FILE_EXTENSIONS.has(extension)) {
++    return yield* failAccess("Only image files can be attached.");
++  }
++
++  const mimeType = Mime.getType(name)?.toLowerCase() ?? "";
++  if (!mimeType.startsWith("image/")) {
++    return yield* failAccess("Only image files can be attached.");
++  }
++
++  const info = yield* fileSystem
++    .stat(resolvedPath)
++    .pipe(Effect.mapError((cause) => failAccess("Image file was not found.", cause)));
++  if (info.type !== "File") {
++    return yield* failAccess("Image path must point to a file.");
++  }
++  const sizeBytes = Number(info.size);
++  if (sizeBytes > PROVIDER_SEND_TURN_MAX_IMAGE_BYTES) {
++    return yield* failAccess("Image file is too large.");
++  }
++
++  const bytes = yield* fileSystem
++    .readFile(resolvedPath)
++    .pipe(Effect.mapError((cause) => failAccess("Failed to read image file.", cause)));
++  const dataUrl = `data:${mimeType};base64,${Buffer.from(bytes).toString("base64")}`;
++  if (dataUrl.length > PROVIDER_SEND_TURN_MAX_IMAGE_DATA_URL_CHARS) {
++    return yield* failAccess("Encoded image data is too large.");
++  }
++
++  return {
++    path: resolvedPath,
++    name,
++    mimeType,
++    sizeBytes,
++    dataUrl,
++  };
++});
++
+ export const resolveAsset = Effect.fn("AssetAccess.resolveAsset")(function* (
+   token: string,
+   relativePath: string,
+diff --git a/apps/server/src/ws.ts b/apps/server/src/ws.ts
+index 34c993de..41ea9e89 100644
+--- a/apps/server/src/ws.ts
++++ b/apps/server/src/ws.ts
+@@ -76,7 +76,7 @@ import { redactServerSettingsForClient, ServerSettingsService } from "./serverSe
+ import { TerminalManager } from "./terminal/Services/Manager.ts";
+ import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
+ import * as PreviewManager from "./preview/Manager.ts";
+-import { issueAssetUrl } from "./assets/AssetAccess.ts";
++import { issueAssetUrl, readImageAsset } from "./assets/AssetAccess.ts";
+ import * as PortScanner from "./preview/PortScanner.ts";
+ import * as WorkspaceEntries from "./workspace/WorkspaceEntries.ts";
+ import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem.ts";
+@@ -169,6 +169,7 @@ const RPC_REQUIRED_SCOPE = new Map<string, AuthEnvironmentScope>([
+   [WS_METHODS.shellOpenInEditor, AuthOrchestrationOperateScope],
+   [WS_METHODS.filesystemBrowse, AuthOrchestrationReadScope],
+   [WS_METHODS.assetsCreateUrl, AuthOrchestrationReadScope],
++  [WS_METHODS.assetsReadImage, AuthOrchestrationReadScope],
+   [WS_METHODS.subscribeVcsStatus, AuthOrchestrationReadScope],
+   [WS_METHODS.vcsRefreshStatus, AuthOrchestrationReadScope],
+   [WS_METHODS.vcsPull, AuthOrchestrationOperateScope],
+@@ -1283,6 +1284,10 @@ const makeWsRpcLayer = (currentSession: AuthenticatedSession) =>
+             }),
+             { "rpc.aggregate": "workspace" },
+           ),
++        [WS_METHODS.assetsReadImage]: (input) =>
++          observeRpcEffect(WS_METHODS.assetsReadImage, readImageAsset(input), {
++            "rpc.aggregate": "workspace",
++          }),
+         [WS_METHODS.subscribeVcsStatus]: (input) =>
+           observeRpcStream(
+             WS_METHODS.subscribeVcsStatus,
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index e81d64a5..aec056a1 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -262,6 +262,7 @@ function createMockEnvironmentApi(input: {
+         )}`,
+         expiresAt: Date.now() + 60_000,
+       })),
++      readImage: vi.fn(),
+     },
+     sourceControl: {} as EnvironmentApi["sourceControl"],
+     vcs: {} as EnvironmentApi["vcs"],
+diff --git a/apps/web/src/environmentApi.ts b/apps/web/src/environmentApi.ts
+index ae373ac9..5d39a587 100644
+--- a/apps/web/src/environmentApi.ts
++++ b/apps/web/src/environmentApi.ts
+@@ -29,6 +29,7 @@ export function createEnvironmentApi(rpcClient: WsRpcClient): EnvironmentApi {
+     },
+     assets: {
+       createUrl: rpcClient.assets.createUrl,
++      readImage: rpcClient.assets.readImage,
+     },
+     sourceControl: {
+       lookupRepository: rpcClient.sourceControl.lookupRepository,
+diff --git a/apps/web/src/environments/runtime/service.threadSubscriptions.test.ts b/apps/web/src/environments/runtime/service.threadSubscriptions.test.ts
+index 8d7cec99..466b3bf0 100644
+--- a/apps/web/src/environments/runtime/service.threadSubscriptions.test.ts
++++ b/apps/web/src/environments/runtime/service.threadSubscriptions.test.ts
+@@ -129,7 +129,7 @@ vi.mock("@t3tools/client-runtime", async (importOriginal) => {
+     filesystem: {
+       browse: vi.fn(),
+     },
+-    assets: { createUrl: vi.fn() },
++    assets: { createUrl: vi.fn(), readImage: vi.fn() },
+     sourceControl: {
+       lookupRepository: vi.fn(),
+       cloneRepository: vi.fn(),
+diff --git a/apps/web/src/localApi.test.ts b/apps/web/src/localApi.test.ts
+index 893a79da..0b5067d4 100644
+--- a/apps/web/src/localApi.test.ts
++++ b/apps/web/src/localApi.test.ts
+@@ -65,6 +65,7 @@ const rpcClientMock = {
+   },
+   assets: {
+     createUrl: vi.fn(),
++    readImage: vi.fn(),
+   },
+   preview: {
+     open: vi.fn(),
+diff --git a/packages/client-runtime/src/wsRpcClient.ts b/packages/client-runtime/src/wsRpcClient.ts
+index 18a6559f..ffe73f2d 100644
+--- a/packages/client-runtime/src/wsRpcClient.ts
++++ b/packages/client-runtime/src/wsRpcClient.ts
+@@ -106,6 +106,7 @@ export interface WsRpcClient {
+   };
+   readonly assets: {
+     readonly createUrl: RpcUnaryMethod<typeof WS_METHODS.assetsCreateUrl>;
++    readonly readImage: RpcUnaryMethod<typeof WS_METHODS.assetsReadImage>;
+   };
+   readonly sourceControl: {
+     readonly lookupRepository: RpcUnaryMethod<typeof WS_METHODS.sourceControlLookupRepository>;
+@@ -284,6 +285,8 @@ export function createWsRpcClient(
+     assets: {
+       createUrl: (input) =>
+         transport.request((client) => client[WS_METHODS.assetsCreateUrl](input)),
++      readImage: (input) =>
++        transport.request((client) => client[WS_METHODS.assetsReadImage](input)),
+     },
+     sourceControl: {
+       lookupRepository: (input) =>
+diff --git a/packages/contracts/src/ipc.ts b/packages/contracts/src/ipc.ts
+index dce7c070..44f20021 100644
+--- a/packages/contracts/src/ipc.ts
++++ b/packages/contracts/src/ipc.ts
+@@ -20,7 +20,12 @@ import type {
+ } from "./git.ts";
+ import type { ReviewDiffPreviewInput, ReviewDiffPreviewResult } from "./review.ts";
+ import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem.ts";
+-import type { AssetCreateUrlInput, AssetCreateUrlResult } from "./assets.ts";
++import type {
++  AssetCreateUrlInput,
++  AssetCreateUrlResult,
++  AssetReadImageInput,
++  AssetReadImageResult,
++} from "./assets.ts";
+ import type {
+   ProjectListEntriesInput,
+   ProjectListEntriesResult,
+@@ -1124,6 +1129,7 @@ export interface EnvironmentApi {
+   };
+   assets: {
+     createUrl: (input: AssetCreateUrlInput) => Promise<AssetCreateUrlResult>;
++    readImage: (input: AssetReadImageInput) => Promise<AssetReadImageResult>;
+   };
+   sourceControl: {
+     lookupRepository: (
+-- 
+2.50.1 (Apple Git-155)
+

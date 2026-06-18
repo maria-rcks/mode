@@ -1,0 +1,478 @@
+From b8b46c48d78320a5747dbe39b8a857d3afe6a00e Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:06:49 -0400
+Subject: [PATCH 45/48] fix(chat): animate generated thread titles
+
+---
+ .../Layers/ProviderCommandReactor.ts          | 50 +++++++++-----
+ .../src/components/AnimatedThreadTitle.tsx    | 69 +++++++++++++++++++
+ apps/web/src/components/ChatView.logic.ts     |  4 +-
+ apps/web/src/components/ChatView.tsx          | 31 +++++----
+ apps/web/src/components/chat/ChatHeader.tsx   | 43 +++++++-----
+ apps/web/src/threadTitle.test.ts              | 41 +++++++++++
+ apps/web/src/threadTitle.ts                   | 48 +++++++++++++
+ 7 files changed, 240 insertions(+), 46 deletions(-)
+ create mode 100644 apps/web/src/components/AnimatedThreadTitle.tsx
+ create mode 100644 apps/web/src/threadTitle.test.ts
+ create mode 100644 apps/web/src/threadTitle.ts
+
+diff --git a/apps/server/src/orchestration/Layers/ProviderCommandReactor.ts b/apps/server/src/orchestration/Layers/ProviderCommandReactor.ts
+index 9c7a7c94..5d3e8edb 100644
+--- a/apps/server/src/orchestration/Layers/ProviderCommandReactor.ts
++++ b/apps/server/src/orchestration/Layers/ProviderCommandReactor.ts
+@@ -708,6 +708,23 @@ const make = Effect.gen(function* () {
+       readonly titleSeed?: string;
+     }) {
+       const attachments = input.attachments ?? [];
++      const fallbackTitle = toNonEmptyProviderInput(input.titleSeed);
++      const renameThreadTitle = (title: string) =>
++        Effect.gen(function* () {
++          const thread = yield* resolveThread(input.threadId);
++          if (!thread) return;
++          if (!canReplaceThreadTitle(thread.title, input.titleSeed)) {
++            return;
++          }
++
++          yield* orchestrationEngine.dispatch({
++            type: "thread.meta.update",
++            commandId: yield* serverCommandId("thread-title-rename"),
++            threadId: input.threadId,
++            title,
++          });
++        });
++
+       yield* Effect.gen(function* () {
+         const { textGenerationModelSelection: modelSelection } =
+           yield* serverSettingsService.getSettings;
+@@ -720,24 +737,25 @@ const make = Effect.gen(function* () {
+         });
+         if (!generated) return;
+ 
+-        const thread = yield* resolveThread(input.threadId);
+-        if (!thread) return;
+-        if (!canReplaceThreadTitle(thread.title, input.titleSeed)) {
+-          return;
+-        }
+-
+-        yield* orchestrationEngine.dispatch({
+-          type: "thread.meta.update",
+-          commandId: yield* serverCommandId("thread-title-rename"),
+-          threadId: input.threadId,
+-          title: generated.title,
+-        });
++        const generatedTitle =
++          generated.title.trim() === DEFAULT_THREAD_TITLE && fallbackTitle
++            ? fallbackTitle
++            : generated.title;
++        yield* renameThreadTitle(generatedTitle);
+       }).pipe(
+         Effect.catchCause((cause) =>
+-          Effect.logWarning("provider command reactor failed to generate or rename thread title", {
+-            threadId: input.threadId,
+-            cwd: input.cwd,
+-            cause: Cause.pretty(cause),
++          Effect.gen(function* () {
++            if (fallbackTitle) {
++              yield* renameThreadTitle(fallbackTitle).pipe(Effect.ignoreCause({ log: true }));
++            }
++            yield* Effect.logWarning(
++              "provider command reactor failed to generate or rename thread title",
++              {
++                threadId: input.threadId,
++                cwd: input.cwd,
++                cause: Cause.pretty(cause),
++              },
++            );
+           }),
+         ),
+       );
+diff --git a/apps/web/src/components/AnimatedThreadTitle.tsx b/apps/web/src/components/AnimatedThreadTitle.tsx
+new file mode 100644
+index 00000000..7356fd54
+--- /dev/null
++++ b/apps/web/src/components/AnimatedThreadTitle.tsx
+@@ -0,0 +1,69 @@
++import { useEffect, useLayoutEffect, useState } from "react";
++import type { SlotOptions } from "slot-text";
++import { SlotText } from "slot-text/react";
++import { resolveVisibleThreadTitle, shouldAnimateThreadTitleAppearance } from "../threadTitle";
++
++const THREAD_TITLE_SLOT_OPTIONS = {
++  direction: "up",
++  stagger: 8,
++  duration: 240,
++  exitOffset: 12,
++  bounce: 0.05,
++  skipUnchanged: true,
++} satisfies SlotOptions;
++
++const useBrowserLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
++const HIDDEN_THREAD_TITLE_SLOT_TEXT = " ";
++
++function resolveThreadTitleSlotText(visibleTitle: string): string {
++  return visibleTitle || HIDDEN_THREAD_TITLE_SLOT_TEXT;
++}
++
++function buildHiddenThreadTitleSlotText(nextVisibleTitle: string): string {
++  return " ".repeat(Math.max(1, nextVisibleTitle.length));
++}
++
++interface AnimatedThreadTitleProps {
++  readonly titleKey: string;
++  readonly title: string;
++  readonly className?: string;
++}
++
++export function AnimatedThreadTitle({ titleKey, title, className }: AnimatedThreadTitleProps) {
++  return (
++    <AnimatedThreadTitleContent
++      key={titleKey}
++      title={title}
++      {...(className !== undefined ? { className } : {})}
++    />
++  );
++}
++
++function AnimatedThreadTitleContent({
++  title,
++  className,
++}: Omit<AnimatedThreadTitleProps, "titleKey">) {
++  const visibleTitle = resolveVisibleThreadTitle(title);
++  const nextSlotTitle = resolveThreadTitleSlotText(visibleTitle);
++  const [slotTitle, setSlotTitle] = useState(nextSlotTitle);
++
++  useBrowserLayoutEffect(() => {
++    if (slotTitle === nextSlotTitle) {
++      return;
++    }
++    if (!shouldAnimateThreadTitleAppearance({ displayedTitle: slotTitle, nextTitle: title })) {
++      setSlotTitle(nextSlotTitle);
++      return;
++    }
++    const placeholderTitle = buildHiddenThreadTitleSlotText(visibleTitle);
++    if (slotTitle !== placeholderTitle) {
++      setSlotTitle(placeholderTitle);
++    }
++    const frameId = window.requestAnimationFrame(() => {
++      setSlotTitle(nextSlotTitle);
++    });
++    return () => window.cancelAnimationFrame(frameId);
++  }, [nextSlotTitle, slotTitle, title, visibleTitle]);
++
++  return <SlotText className={className} options={THREAD_TITLE_SLOT_OPTIONS} text={slotTitle} />;
++}
+diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
+index aef594c7..efe50205 100644
+--- a/apps/web/src/components/ChatView.logic.ts
++++ b/apps/web/src/components/ChatView.logic.ts
+@@ -20,6 +20,7 @@ import {
+   type TerminalContextDraft,
+ } from "../lib/terminalContext";
+ import type { DraftThreadEnvMode } from "../composerDraftStore";
++import { DEFAULT_THREAD_TITLE } from "../threadTitle";
+ 
+ export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "mode:last-invoked-script-by-project";
+ export const LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS = [
+@@ -27,7 +28,6 @@ export const LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS = [
+ ] as const;
+ export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
+ export const MAX_HIDDEN_MOUNTED_PREVIEW_THREADS = 3;
+-
+ export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
+ 
+ export function canNormalizeRuntimeModeForProviderSelection(input: {
+@@ -55,7 +55,7 @@ export function buildLocalDraftThread(
+     environmentId: draftThread.environmentId,
+     codexThreadId: null,
+     projectId: draftThread.projectId,
+-    title: "New thread",
++    title: DEFAULT_THREAD_TITLE,
+     modelSelection: fallbackModelSelection,
+     runtimeMode: draftThread.runtimeMode,
+     interactionMode: draftThread.interactionMode,
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index eb9e3988..2afcd46e 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -228,6 +228,7 @@ import {
+ } from "~/rpc/serverState";
+ import { sanitizeThreadErrorMessage } from "~/rpc/transportError";
+ import { retainThreadDetailSubscription } from "../environments/runtime/service";
++import { DEFAULT_THREAD_TITLE, useThreadTitleFallbackStore } from "../threadTitle";
+ import { RightPanelSheet } from "./RightPanelSheet";
+ import { Button } from "./ui/button";
+ import {
+@@ -1187,6 +1188,12 @@ export default function ChatView(props: ChatViewProps) {
+   >({});
+   const [pendingServerThreadEnvMode, setPendingServerThreadEnvMode] =
+     useState<DraftThreadEnvMode | null>(null);
++  const setThreadTitleFallback = useThreadTitleFallbackStore(
++    (state) => state.setThreadTitleFallback,
++  );
++  const clearThreadTitleFallback = useThreadTitleFallbackStore(
++    (state) => state.clearThreadTitleFallback,
++  );
+   const [pendingServerThreadBranch, setPendingServerThreadBranch] = useState<string | null>();
+   const [lastInvokedScriptByProjectId, setLastInvokedScriptByProjectId] = useLocalStorage(
+     LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
+@@ -4174,26 +4181,22 @@ export default function ChatView(props: ChatViewProps) {
+         } else if (composerTerminalContextsSnapshot.length > 0) {
+           titleSeed = formatTerminalContextLabel(composerTerminalContextsSnapshot[0]!);
+         } else {
+-          titleSeed = "New thread";
++          titleSeed = DEFAULT_THREAD_TITLE;
+         }
+       }
+       const title = truncate(titleSeed);
++      const threadKeyForSend = scopedThreadKey(
++        scopeThreadRef(activeThread.environmentId, threadIdForSend),
++      );
++      if (isFirstMessage) {
++        setThreadTitleFallback(threadKeyForSend, title);
++      }
+       const threadCreateModelSelection = createModelSelection(
+         ctxSelectedModelSelection.instanceId,
+         ctxSelectedModel || activeProject.defaultModelSelection?.model || DEFAULT_MODEL,
+         ctxSelectedModelSelection.options,
+       );
+ 
+-      // Auto-title from first message
+-      if (isFirstMessage && isServerThread) {
+-        await api.orchestration.dispatchCommand({
+-          type: "thread.meta.update",
+-          commandId: newCommandId(),
+-          threadId: threadIdForSend,
+-          title,
+-        });
+-      }
+-
+       if (isServerThread) {
+         await persistThreadSettingsForNextTurn({
+           threadId: threadIdForSend,
+@@ -4212,7 +4215,7 @@ export default function ChatView(props: ChatViewProps) {
+                 ? {
+                     createThread: {
+                       projectId: activeProject.id,
+-                      title,
++                      title: DEFAULT_THREAD_TITLE,
+                       modelSelection: threadCreateModelSelection,
+                       runtimeMode,
+                       interactionMode,
+@@ -4288,6 +4291,9 @@ export default function ChatView(props: ChatViewProps) {
+     });
+     sendInFlightRef.current = false;
+     if (!turnStartSucceeded) {
++      clearThreadTitleFallback(
++        scopedThreadKey(scopeThreadRef(activeThread.environmentId, threadIdForSend)),
++      );
+       resetLocalDispatch();
+       if (shouldDockStartupDraftComposer) {
+         resetStartupDraftComposerDocking();
+@@ -5188,6 +5194,7 @@ export default function ChatView(props: ChatViewProps) {
+             keybindings={keybindings}
+             availableEditors={availableEditors}
+             gitCwd={gitCwd}
++            hideTitle={shouldUseStartupDraftLayout}
+             onRunProjectScript={runProjectScript}
+             onAddProjectScript={saveProjectScript}
+             onUpdateProjectScript={updateProjectScript}
+diff --git a/apps/web/src/components/chat/ChatHeader.tsx b/apps/web/src/components/chat/ChatHeader.tsx
+index e4d8cd18..217ab6b9 100644
+--- a/apps/web/src/components/chat/ChatHeader.tsx
++++ b/apps/web/src/components/chat/ChatHeader.tsx
+@@ -5,7 +5,7 @@ import {
+   type ResolvedKeybindingsConfig,
+   type ThreadId,
+ } from "@t3tools/contracts";
+-import { scopeThreadRef } from "@t3tools/client-runtime";
++import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime";
+ import { memo, type ReactNode } from "react";
+ import GitActionsControl from "../GitActionsControl";
+ import { type DraftId } from "~/composerDraftStore";
+@@ -14,6 +14,8 @@ import ProjectScriptsControl, { type NewProjectScriptInput } from "../ProjectScr
+ import { SidebarTrigger } from "../ui/sidebar";
+ import { OpenInPicker } from "./OpenInPicker";
+ import { usePrimaryEnvironmentId } from "../../environments/primary/context";
++import { AnimatedThreadTitle } from "../AnimatedThreadTitle";
++import { resolveVisibleThreadTitle } from "../../threadTitle";
+ 
+ interface ChatHeaderProps {
+   activeThreadEnvironmentId: EnvironmentId;
+@@ -27,6 +29,7 @@ interface ChatHeaderProps {
+   keybindings: ResolvedKeybindingsConfig;
+   availableEditors: ReadonlyArray<EditorId>;
+   gitCwd: string | null;
++  hideTitle?: boolean;
+   onRunProjectScript: (script: ProjectScript) => void;
+   onAddProjectScript: (input: NewProjectScriptInput) => Promise<void>;
+   onUpdateProjectScript: (scriptId: string, input: NewProjectScriptInput) => Promise<void>;
+@@ -58,6 +61,7 @@ export const ChatHeader = memo(function ChatHeader({
+   keybindings,
+   availableEditors,
+   gitCwd,
++  hideTitle,
+   onRunProjectScript,
+   onAddProjectScript,
+   onUpdateProjectScript,
+@@ -70,27 +74,34 @@ export const ChatHeader = memo(function ChatHeader({
+     activeThreadEnvironmentId,
+     primaryEnvironmentId,
+   });
++  const activeThreadRef = scopeThreadRef(activeThreadEnvironmentId, activeThreadId);
++  const activeThreadKey = scopedThreadKey(activeThreadRef);
++  const visibleThreadTitle = resolveVisibleThreadTitle(activeThreadTitle);
+   return (
+     <div className="@container/header-actions flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+       <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-hidden sm:flex-1 sm:flex-nowrap sm:gap-3">
+         <SidebarTrigger className="size-7 shrink-0 md:hidden" />
+-        <Tooltip>
+-          <TooltipTrigger
+-            render={
+-              <h2
+-                aria-label={activeThreadTitle}
+-                className="min-w-0 flex-1 basis-40 truncate text-sm font-medium text-foreground"
+-              >
+-                {activeThreadTitle}
+-              </h2>
+-            }
+-          />
+-          <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
+-        </Tooltip>
++        {!hideTitle && (
++          <Tooltip>
++            <TooltipTrigger
++              render={
++                <h2
++                  aria-label={visibleThreadTitle || undefined}
++                  className="min-w-0 flex-1 basis-40 truncate text-sm font-medium text-foreground"
++                >
++                  <AnimatedThreadTitle titleKey={activeThreadKey} title={activeThreadTitle} />
++                </h2>
++              }
++            />
++            {visibleThreadTitle ? (
++              <TooltipPopup side="top">{visibleThreadTitle}</TooltipPopup>
++            ) : null}
++          </Tooltip>
++        )}
+       </div>
+       <div
+         data-chat-header-actions
+-        className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:shrink-0 sm:justify-end @3xl/header-actions:gap-3"
++        className="flex min-w-0 flex-wrap items-center justify-start gap-1.5 sm:shrink-0 sm:justify-end @3xl/header-actions:gap-2"
+       >
+         {activeProjectScripts && (
+           <ProjectScriptsControl
+@@ -113,7 +124,7 @@ export const ChatHeader = memo(function ChatHeader({
+         {activeProjectName && (
+           <GitActionsControl
+             gitCwd={gitCwd}
+-            activeThreadRef={scopeThreadRef(activeThreadEnvironmentId, activeThreadId)}
++            activeThreadRef={activeThreadRef}
+             {...(draftId ? { draftId } : {})}
+           />
+         )}
+diff --git a/apps/web/src/threadTitle.test.ts b/apps/web/src/threadTitle.test.ts
+new file mode 100644
+index 00000000..3fe3781e
+--- /dev/null
++++ b/apps/web/src/threadTitle.test.ts
+@@ -0,0 +1,41 @@
++import { describe, expect, it } from "vite-plus/test";
++
++import { DEFAULT_THREAD_TITLE, shouldAnimateThreadTitleAppearance } from "./threadTitle";
++
++describe("shouldAnimateThreadTitleAppearance", () => {
++  it("animates when a hidden thread title becomes visible", () => {
++    expect(
++      shouldAnimateThreadTitleAppearance({
++        displayedTitle: "",
++        nextTitle: "Generated title",
++      }),
++    ).toBe(true);
++  });
++
++  it("animates when a whitespace placeholder becomes visible", () => {
++    expect(
++      shouldAnimateThreadTitleAppearance({
++        displayedTitle: "   ",
++        nextTitle: "Generated title",
++      }),
++    ).toBe(true);
++  });
++
++  it("does not animate title replacements that are already visible", () => {
++    expect(
++      shouldAnimateThreadTitleAppearance({
++        displayedTitle: "Existing title",
++        nextTitle: "Different title",
++      }),
++    ).toBe(false);
++  });
++
++  it("does not animate the default hidden title", () => {
++    expect(
++      shouldAnimateThreadTitleAppearance({
++        displayedTitle: "",
++        nextTitle: DEFAULT_THREAD_TITLE,
++      }),
++    ).toBe(false);
++  });
++});
+diff --git a/apps/web/src/threadTitle.ts b/apps/web/src/threadTitle.ts
+new file mode 100644
+index 00000000..c683e89c
+--- /dev/null
++++ b/apps/web/src/threadTitle.ts
+@@ -0,0 +1,48 @@
++import { create } from "zustand";
++
++export const DEFAULT_THREAD_TITLE = "New thread";
++
++export function resolveVisibleThreadTitle(title: string): string {
++  const trimmedTitle = title.trim();
++  return trimmedTitle === DEFAULT_THREAD_TITLE ? "" : title;
++}
++
++export function shouldAnimateThreadTitleAppearance(input: {
++  readonly displayedTitle: string;
++  readonly nextTitle: string;
++}): boolean {
++  return (
++    input.displayedTitle.trim().length === 0 &&
++    resolveVisibleThreadTitle(input.nextTitle).trim().length > 0
++  );
++}
++
++interface ThreadTitleFallbackState {
++  readonly titleByThreadKey: Record<string, string | undefined>;
++  readonly setThreadTitleFallback: (threadKey: string, title: string) => void;
++  readonly clearThreadTitleFallback: (threadKey: string) => void;
++}
++
++export const useThreadTitleFallbackStore = create<ThreadTitleFallbackState>((set) => ({
++  titleByThreadKey: {},
++  setThreadTitleFallback: (threadKey, title) =>
++    set((state) => ({
++      titleByThreadKey: {
++        ...state.titleByThreadKey,
++        [threadKey]: title,
++      },
++    })),
++  clearThreadTitleFallback: (threadKey) =>
++    set((state) => {
++      const { [threadKey]: _removed, ...titleByThreadKey } = state.titleByThreadKey;
++      return { titleByThreadKey };
++    }),
++}));
++
++export function resolveSidebarThreadTitle(input: {
++  readonly title: string;
++  readonly fallbackTitle: string | undefined;
++}): string {
++  const visibleTitle = resolveVisibleThreadTitle(input.title);
++  return visibleTitle || input.fallbackTitle || "";
++}
+-- 
+2.50.1 (Apple Git-155)
+

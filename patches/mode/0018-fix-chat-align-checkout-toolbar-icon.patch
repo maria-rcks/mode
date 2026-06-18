@@ -1,7 +1,7 @@
 From e6a33b814acf49aaa18697efb7e010552a21d6c7 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 02:51:47 -0400
-Subject: [PATCH 18/38] fix(chat): align checkout toolbar icon
+Subject: [PATCH 18/48] fix(chat): align checkout toolbar icon
 
 ---
  apps/web/src/components/BranchToolbar.tsx | 160 ++++++++++++++++++++--

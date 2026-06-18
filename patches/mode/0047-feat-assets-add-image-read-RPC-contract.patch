@@ -1,0 +1,125 @@
+From c5716865647434ff4955bb3f96676369944942b2 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:07:01 -0400
+Subject: [PATCH 47/48] feat(assets): add image read RPC contract
+
+---
+ packages/contracts/src/assets.ts        | 23 ++++++++++++++++++++++-
+ packages/contracts/src/orchestration.ts |  3 ++-
+ packages/contracts/src/rpc.ts           | 16 +++++++++++++++-
+ 3 files changed, 39 insertions(+), 3 deletions(-)
+
+diff --git a/packages/contracts/src/assets.ts b/packages/contracts/src/assets.ts
+index bd1ac0a5..bf36f22b 100644
+--- a/packages/contracts/src/assets.ts
++++ b/packages/contracts/src/assets.ts
+@@ -1,8 +1,13 @@
+ import * as Schema from "effect/Schema";
+ 
+-import { ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
++import { NonNegativeInt, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
++import {
++  PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
++  PROVIDER_SEND_TURN_MAX_IMAGE_DATA_URL_CHARS,
++} from "./orchestration.ts";
+ 
+ const ASSET_PATH_MAX_LENGTH = 1024;
++const ASSET_IMAGE_PATH_MAX_LENGTH = 4096;
+ 
+ export const AssetResource = Schema.Union([
+   Schema.TaggedStruct("workspace-file", {
+@@ -29,6 +34,22 @@ export const AssetCreateUrlResult = Schema.Struct({
+ });
+ export type AssetCreateUrlResult = typeof AssetCreateUrlResult.Type;
+ 
++export const AssetReadImageInput = Schema.Struct({
++  path: TrimmedNonEmptyString.check(Schema.isMaxLength(ASSET_IMAGE_PATH_MAX_LENGTH)),
++});
++export type AssetReadImageInput = typeof AssetReadImageInput.Type;
++
++export const AssetReadImageResult = Schema.Struct({
++  path: TrimmedNonEmptyString.check(Schema.isMaxLength(ASSET_IMAGE_PATH_MAX_LENGTH)),
++  name: TrimmedNonEmptyString.check(Schema.isMaxLength(255)),
++  mimeType: TrimmedNonEmptyString.check(Schema.isMaxLength(100), Schema.isPattern(/^image\//i)),
++  sizeBytes: NonNegativeInt.check(Schema.isLessThanOrEqualTo(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES)),
++  dataUrl: TrimmedNonEmptyString.check(
++    Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_IMAGE_DATA_URL_CHARS),
++  ),
++});
++export type AssetReadImageResult = typeof AssetReadImageResult.Type;
++
+ export class AssetAccessError extends Schema.TaggedErrorClass<AssetAccessError>()(
+   "AssetAccessError",
+   {
+diff --git a/packages/contracts/src/orchestration.ts b/packages/contracts/src/orchestration.ts
+index ef567300..1dc4f2ff 100644
+--- a/packages/contracts/src/orchestration.ts
++++ b/packages/contracts/src/orchestration.ts
+@@ -142,7 +142,7 @@ export type ProviderUserInputAnswers = typeof ProviderUserInputAnswers.Type;
+ export const PROVIDER_SEND_TURN_MAX_INPUT_CHARS = 120_000;
+ export const PROVIDER_SEND_TURN_MAX_ATTACHMENTS = 8;
+ export const PROVIDER_SEND_TURN_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+-const PROVIDER_SEND_TURN_MAX_IMAGE_DATA_URL_CHARS = 14_000_000;
++export const PROVIDER_SEND_TURN_MAX_IMAGE_DATA_URL_CHARS = 14_000_000;
+ const CHAT_ATTACHMENT_ID_MAX_CHARS = 128;
+ // Correlation id is command id by design in this model.
+ export const CorrelationId = CommandId;
+@@ -160,6 +160,7 @@ export const ChatImageAttachment = Schema.Struct({
+   name: TrimmedNonEmptyString.check(Schema.isMaxLength(255)),
+   mimeType: TrimmedNonEmptyString.check(Schema.isMaxLength(100), Schema.isPattern(/^image\//i)),
+   sizeBytes: NonNegativeInt.check(Schema.isLessThanOrEqualTo(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES)),
++  path: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(4096))),
+ });
+ export type ChatImageAttachment = typeof ChatImageAttachment.Type;
+ 
+diff --git a/packages/contracts/src/rpc.ts b/packages/contracts/src/rpc.ts
+index 87c5a49c..3c735136 100644
+--- a/packages/contracts/src/rpc.ts
++++ b/packages/contracts/src/rpc.ts
+@@ -13,7 +13,13 @@ import {
+   FilesystemBrowseResult,
+   FilesystemBrowseError,
+ } from "./filesystem.ts";
+-import { AssetAccessError, AssetCreateUrlInput, AssetCreateUrlResult } from "./assets.ts";
++import {
++  AssetAccessError,
++  AssetCreateUrlInput,
++  AssetCreateUrlResult,
++  AssetReadImageInput,
++  AssetReadImageResult,
++} from "./assets.ts";
+ import {
+   GitActionProgressEvent,
+   VcsSwitchRefInput,
+@@ -158,6 +164,7 @@ export const WS_METHODS = {
+   // Filesystem methods
+   filesystemBrowse: "filesystem.browse",
+   assetsCreateUrl: "assets.createUrl",
++  assetsReadImage: "assets.readImage",
+ 
+   // VCS methods
+   vcsPull: "vcs.pull",
+@@ -393,6 +400,12 @@ export const WsAssetsCreateUrlRpc = Rpc.make(WS_METHODS.assetsCreateUrl, {
+   error: Schema.Union([AssetAccessError, EnvironmentAuthorizationError]),
+ });
+ 
++export const WsAssetsReadImageRpc = Rpc.make(WS_METHODS.assetsReadImage, {
++  payload: AssetReadImageInput,
++  success: AssetReadImageResult,
++  error: Schema.Union([AssetAccessError, EnvironmentAuthorizationError]),
++});
++
+ export const WsSubscribeVcsStatusRpc = Rpc.make(WS_METHODS.subscribeVcsStatus, {
+   payload: VcsStatusInput,
+   success: VcsStatusStreamEvent,
+@@ -703,6 +716,7 @@ export const WsRpcGroup = RpcGroup.make(
+   WsShellOpenInEditorRpc,
+   WsFilesystemBrowseRpc,
+   WsAssetsCreateUrlRpc,
++  WsAssetsReadImageRpc,
+   WsSubscribeVcsStatusRpc,
+   WsVcsPullRpc,
+   WsVcsRefreshStatusRpc,
+-- 
+2.50.1 (Apple Git-155)
+

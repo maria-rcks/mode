@@ -1,7 +1,7 @@
 From a9afdbd4d19f77bcabf384359967532395467186 Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 00:55:31 +0000
-Subject: [PATCH 07/38] fix(droid): enlarge provider icon
+Subject: [PATCH 07/48] fix(droid): enlarge provider icon
 
 ---
  apps/web/src/components/Icons.tsx | 2 +-

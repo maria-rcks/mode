@@ -1,0 +1,674 @@
+From 0de709621615cb263d9f31a10766175f3660b797 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 01:04:15 -0400
+Subject: [PATCH 43/48] style(chat): refine timeline image and metadata UI
+
+---
+ .../chat/MessagesTimeline.browser.tsx         | 103 ++++++-
+ .../components/chat/MessagesTimeline.test.tsx |  98 +++++++
+ .../src/components/chat/MessagesTimeline.tsx  | 266 ++++++++++++------
+ apps/web/src/index.css                        |   1 +
+ 4 files changed, 378 insertions(+), 90 deletions(-)
+
+diff --git a/apps/web/src/components/chat/MessagesTimeline.browser.tsx b/apps/web/src/components/chat/MessagesTimeline.browser.tsx
+index 3afa0852..8f9e501c 100644
+--- a/apps/web/src/components/chat/MessagesTimeline.browser.tsx
++++ b/apps/web/src/components/chat/MessagesTimeline.browser.tsx
+@@ -7,6 +7,10 @@ import { page } from "vite-plus/test/browser";
+ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+ import { render } from "vitest-browser-react";
+ 
++const { resolveAssetUrlMock } = vi.hoisted(() => ({
++  resolveAssetUrlMock: vi.fn(),
++}));
++
+ const scrollToEndSpy = vi.fn();
+ const getStateSpy = vi.fn(() => ({ isAtEnd: true }));
+ 
+@@ -44,6 +48,10 @@ vi.mock("@legendapp/list/react", async () => {
+   return { LegendList };
+ });
+ 
++vi.mock("~/assets/assetUrls", () => ({
++  resolveAssetUrl: resolveAssetUrlMock,
++}));
++
+ import { MessagesTimeline } from "./MessagesTimeline";
+ 
+ const MESSAGE_CREATED_AT = "2026-04-13T12:00:00.000Z";
+@@ -111,6 +119,7 @@ describe("MessagesTimeline", () => {
+   afterEach(() => {
+     scrollToEndSpy.mockReset();
+     getStateSpy.mockClear();
++    resolveAssetUrlMock.mockReset();
+     vi.restoreAllMocks();
+     document.body.innerHTML = "";
+   });
+@@ -228,7 +237,7 @@ describe("MessagesTimeline", () => {
+       );
+ 
+       await expect.element(page.getByText("Inspecting repository state")).toBeVisible();
+-      expect(props.onIsAtEndChange).toHaveBeenCalledWith(true);
++      expect(props.onIsAtEndChange).toHaveBeenCalledWith(true, 0);
+       expect(scrollToEndSpy).toHaveBeenCalledWith({ animated: false });
+       expect(requestAnimationFrameSpy).toHaveBeenCalled();
+     } finally {
+@@ -346,6 +355,73 @@ describe("MessagesTimeline", () => {
+     }
+   });
+ 
++  it("resolves persisted image attachment previews from asset URLs", async () => {
++    resolveAssetUrlMock.mockResolvedValue({
++      url: "https://assets.local/thread-1-attachment.png",
++      expiresAt: Date.now() + 60_000,
++    });
++    const entry = buildUserTimelineEntry("attached image");
++
++    const screen = await render(
++      <MessagesTimeline
++        {...buildProps()}
++        timelineEntries={[
++          {
++            ...entry,
++            message: {
++              ...entry.message,
++              attachments: [
++                {
++                  type: "image" as const,
++                  id: "thread-1-attachment",
++                  name: "image.png",
++                  mimeType: "image/png",
++                  sizeBytes: 12,
++                },
++              ],
++            },
++          },
++        ]}
++      />,
++    );
++
++    try {
++      await vi.waitFor(() => {
++        expect(resolveAssetUrlMock).toHaveBeenCalledWith(EnvironmentId.make("environment-local"), {
++          _tag: "attachment",
++          attachmentId: "thread-1-attachment",
++        });
++        const image = document.querySelector('img[alt="image.png"]') as HTMLImageElement | null;
++        expect(image?.getAttribute("src")).toBe("https://assets.local/thread-1-attachment.png");
++      });
++      await expect.element(page.getByRole("button", { name: "Preview image.png" })).toBeVisible();
++
++      const attachments = document.querySelector<HTMLElement>(
++        '[data-user-message-attachments="true"]',
++      );
++      const bubble = document.querySelector<HTMLElement>('[data-user-message-bubble="true"]');
++      expect(attachments).not.toBeNull();
++      expect(bubble).not.toBeNull();
++      if (!attachments || !bubble) {
++        throw new Error("Expected user image attachments and message bubble to render.");
++      }
++
++      expect(attachments.parentElement).toBe(bubble.parentElement);
++      expect(attachments.contains(bubble)).toBe(false);
++      expect(bubble.contains(attachments)).toBe(false);
++      expect(attachments.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
++        Node.DOCUMENT_POSITION_FOLLOWING,
++      );
++
++      const attachmentsRect = attachments.getBoundingClientRect();
++      const bubbleRect = bubble.getBoundingClientRect();
++      expect(Math.abs(attachmentsRect.right - bubbleRect.right)).toBeLessThanOrEqual(1);
++      expect(attachmentsRect.width).toBeLessThanOrEqual(288);
++    } finally {
++      await screen.unmount();
++    }
++  });
++
+   it("renders markdown file tags in user and assistant messages", async () => {
+     const fileLink = "[package.json](path/to/package.json)";
+     const screen = await render(
+@@ -376,6 +452,31 @@ describe("MessagesTimeline", () => {
+     }
+   });
+ 
++  it("places assistant message timestamps before the copy action", async () => {
++    const screen = await render(
++      <MessagesTimeline
++        {...buildProps()}
++        timelineEntries={[buildAssistantTimelineEntry("Finished response.")]}
++      />,
++    );
++
++    try {
++      await expect.element(page.getByText("Finished response.")).toBeVisible();
++
++      const metaRow = document.querySelector('[data-assistant-message-meta-row="true"]');
++      const timestamp = metaRow?.querySelector('[data-assistant-message-meta-timestamp="true"]');
++      const copyButton = metaRow?.querySelector('button[aria-label="Copy link"]');
++
++      expect(timestamp).not.toBeNull();
++      expect(copyButton).not.toBeNull();
++      expect(timestamp?.compareDocumentPosition(copyButton as Node) ?? 0).toBe(
++        Node.DOCUMENT_POSITION_FOLLOWING,
++      );
++    } finally {
++      await screen.unmount();
++    }
++  });
++
+   it("uses the file path without line suffix for markdown file tag icons", async () => {
+     const fileLink = "[package.json](path/to/package.json:25)";
+     const screen = await render(
+diff --git a/apps/web/src/components/chat/MessagesTimeline.test.tsx b/apps/web/src/components/chat/MessagesTimeline.test.tsx
+index d087f99f..c2de823b 100644
+--- a/apps/web/src/components/chat/MessagesTimeline.test.tsx
++++ b/apps/web/src/components/chat/MessagesTimeline.test.tsx
+@@ -134,6 +134,21 @@ function buildUserTimelineEntry(text: string) {
+   };
+ }
+ 
++function buildAssistantTimelineEntry(text: string) {
++  return {
++    id: "entry-assistant-1",
++    kind: "message" as const,
++    createdAt: MESSAGE_CREATED_AT,
++    message: {
++      id: MessageId.make("message-assistant-1"),
++      role: "assistant" as const,
++      text,
++      createdAt: MESSAGE_CREATED_AT,
++      streaming: false,
++    },
++  };
++}
++
+ describe("MessagesTimeline", () => {
+   it("renders collapse controls for long user messages", async () => {
+     const { MessagesTimeline } = await import("./MessagesTimeline");
+@@ -163,6 +178,72 @@ describe("MessagesTimeline", () => {
+     expect(markup).toContain('data-user-message-collapsible="false"');
+   });
+ 
++  it("renders user image attachments outside the message bubble", async () => {
++    const { MessagesTimeline } = await import("./MessagesTimeline");
++    const entry = buildUserTimelineEntry("Attached image");
++    const markup = renderToStaticMarkup(
++      <MessagesTimeline
++        {...buildProps()}
++        timelineEntries={[
++          {
++            ...entry,
++            message: {
++              ...entry.message,
++              attachments: [
++                {
++                  type: "image" as const,
++                  id: "image-1",
++                  name: "image.png",
++                  mimeType: "image/png",
++                  sizeBytes: 12,
++                  previewUrl: "blob:image-1",
++                },
++              ],
++            },
++          },
++        ]}
++      />,
++    );
++
++    const attachmentsIndex = markup.indexOf('data-user-message-attachments="true"');
++    const bubbleIndex = markup.indexOf('data-user-message-bubble="true"');
++
++    expect(attachmentsIndex).toBeGreaterThanOrEqual(0);
++    expect(bubbleIndex).toBeGreaterThanOrEqual(0);
++    expect(attachmentsIndex).toBeLessThan(bubbleIndex);
++  });
++
++  it("does not render an empty user message bubble for image-only messages", async () => {
++    const { MessagesTimeline } = await import("./MessagesTimeline");
++    const entry = buildUserTimelineEntry("");
++    const markup = renderToStaticMarkup(
++      <MessagesTimeline
++        {...buildProps()}
++        timelineEntries={[
++          {
++            ...entry,
++            message: {
++              ...entry.message,
++              attachments: [
++                {
++                  type: "image" as const,
++                  id: "image-1",
++                  name: "image.png",
++                  mimeType: "image/png",
++                  sizeBytes: 12,
++                  previewUrl: "blob:image-1",
++                },
++              ],
++            },
++          },
++        ]}
++      />,
++    );
++
++    expect(markup).toContain('data-user-message-attachments="true"');
++    expect(markup).not.toContain('data-user-message-bubble="true"');
++  });
++
+   it("renders inline terminal labels with the composer chip UI", async () => {
+     const { MessagesTimeline } = await import("./MessagesTimeline");
+     const markup = renderToStaticMarkup(
+@@ -205,6 +286,23 @@ describe("MessagesTimeline", () => {
+     expect(markup).toContain('data-user-message-footer="true"');
+   });
+ 
++  it("renders assistant timestamps before the copy action", async () => {
++    const { MessagesTimeline } = await import("./MessagesTimeline");
++    const markup = renderToStaticMarkup(
++      <MessagesTimeline
++        {...buildProps()}
++        timelineEntries={[buildAssistantTimelineEntry("Finished response.")]}
++      />,
++    );
++
++    const timestampIndex = markup.indexOf('data-assistant-message-meta-timestamp="true"');
++    const copyIndex = markup.indexOf('aria-label="Copy link"');
++
++    expect(timestampIndex).toBeGreaterThanOrEqual(0);
++    expect(copyIndex).toBeGreaterThanOrEqual(0);
++    expect(timestampIndex).toBeLessThan(copyIndex);
++  });
++
+   it("renders context compaction entries in the normal work log", async () => {
+     const { MessagesTimeline } = await import("./MessagesTimeline");
+     const markup = renderToStaticMarkup(
+diff --git a/apps/web/src/components/chat/MessagesTimeline.tsx b/apps/web/src/components/chat/MessagesTimeline.tsx
+index 3dd067bb..5885405a 100644
+--- a/apps/web/src/components/chat/MessagesTimeline.tsx
++++ b/apps/web/src/components/chat/MessagesTimeline.tsx
+@@ -22,6 +22,8 @@ import {
+ } from "react";
+ import { LegendList, type LegendListRef } from "@legendapp/list/react";
+ import { FileDiff } from "@pierre/diffs/react";
++import type { SlotOptions } from "slot-text";
++import { SlotText } from "slot-text/react";
+ import {
+   deriveTimelineEntries,
+   workEntryIndicatesToolFailure,
+@@ -92,6 +94,7 @@ import { cn } from "~/lib/utils";
+ import { useUiStateStore } from "~/uiStateStore";
+ import { type TimestampFormat } from "@t3tools/contracts/settings";
+ import { formatChatTimestampTooltip, formatShortTimestamp } from "../../timestampFormat";
++import { resolveAssetUrl } from "~/assets/assetUrls";
+ 
+ import {
+   buildInlineTerminalContextText,
+@@ -136,9 +139,20 @@ interface TimelineRowActivityState {
+ 
+ const TimelineRowCtx = createContext<TimelineRowSharedState>(null!);
+ const TimelineRowActivityCtx = createContext<TimelineRowActivityState>(null!);
+-const TIMELINE_LIST_HEADER = <div className="h-3 sm:h-4" />;
++const WORKING_TIMER_SLOT_OPTIONS = {
++  direction: "up",
++  stagger: 8,
++  duration: 240,
++  exitOffset: 12,
++  bounce: 0.05,
++  skipUnchanged: true,
++} satisfies SlotOptions;
++const TIMELINE_LIST_HEADER = (
++  <div className="h-[calc(var(--workspace-topbar-height)+1.5rem)] sm:h-[calc(var(--workspace-topbar-height)+2rem)]" />
++);
+ const TIMELINE_LIST_FOOTER = <div className="h-3 sm:h-4" />;
+ const EMPTY_TIMELINE_SKILLS: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">> = [];
++const ATTACHMENT_PREVIEW_REFRESH_MARGIN_MS = 30_000;
+ 
+ // ---------------------------------------------------------------------------
+ // Props (public API)
+@@ -405,6 +419,7 @@ function keyExtractor(item: MessagesTimelineRow) {
+ 
+ type TimelineEntry = ReturnType<typeof deriveTimelineEntries>[number];
+ type TimelineMessage = Extract<TimelineEntry, { kind: "message" }>["message"];
++type TimelineImageAttachment = NonNullable<TimelineMessage["attachments"]>[number];
+ type TimelineWorkEntry = Extract<MessagesTimelineRow, { kind: "work" }>["groupedEntries"][number];
+ type TimelineRow = MessagesTimelineRow;
+ 
+@@ -454,67 +469,57 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message"
+   const previewImages = userImages.filter((image) => image.name.startsWith("preview-annotation-"));
+   const regularImages = userImages.filter((image) => !image.name.startsWith("preview-annotation-"));
+   const canRevertAgentWork = typeof row.revertTurnCount === "number";
++  const hasElementContexts = elementContextState.contexts.length > 0;
++  const hasVisibleMessageBody =
++    elementContextState.promptText.trim().length > 0 || terminalContexts.length > 0;
++  const hasMessageBubbleContent =
++    previewAnnotations.length > 0 || hasElementContexts || hasVisibleMessageBody;
+ 
+   return (
+-    <div className="group flex flex-col items-end gap-1">
+-      <div className="relative max-w-[80%] rounded-2xl border border-border bg-secondary p-3">
+-        {regularImages.length > 0 && (
+-          <div className="mb-2 grid max-w-[420px] grid-cols-2 gap-2">
+-            {regularImages.map((image: NonNullable<TimelineMessage["attachments"]>[number]) => (
+-              <div
+-                key={image.id}
+-                className="overflow-hidden rounded-lg border border-border/80 bg-background/70"
+-              >
+-                {image.previewUrl ? (
+-                  <button
+-                    type="button"
+-                    className="h-full w-full cursor-zoom-in"
+-                    aria-label={`Preview ${image.name}`}
+-                    onClick={() => {
+-                      const preview = buildExpandedImagePreview(regularImages, image.id);
+-                      if (!preview) return;
+-                      ctx.onImageExpand(preview);
+-                    }}
+-                  >
+-                    <img
+-                      src={image.previewUrl}
+-                      alt={image.name}
+-                      className="block h-auto max-h-[220px] w-full object-cover"
+-                    />
+-                  </button>
+-                ) : (
+-                  <div className="flex min-h-[72px] items-center justify-center px-2 py-3 text-center text-[11px] text-muted-foreground/70">
+-                    {image.name}
+-                  </div>
+-                )}
+-              </div>
+-            ))}
+-          </div>
+-        )}
+-        {previewAnnotations.map((annotation, index) => (
+-          <UserMessagePreviewAnnotationCard
+-            key={annotation.id}
+-            annotation={annotation}
+-            image={previewImages[index] ?? null}
++    <div className="group flex flex-col items-end gap-1.5">
++      {regularImages.length > 0 ? (
++        <div
++          className={cn(
++            "grid w-full max-w-[min(72%,18rem)] gap-2",
++            regularImages.length === 1 ? "grid-cols-1" : "grid-cols-2",
++          )}
++          data-user-message-attachments="true"
++        >
++          {regularImages.map((image) => (
++            <UserMessageImageAttachmentTile key={image.id} image={image} images={regularImages} />
++          ))}
++        </div>
++      ) : null}
++      {hasMessageBubbleContent ? (
++        <div
++          className="relative max-w-[80%] rounded-2xl border border-border bg-secondary p-3"
++          data-user-message-bubble="true"
++        >
++          {previewAnnotations.map((annotation, index) => (
++            <UserMessagePreviewAnnotationCard
++              key={annotation.id}
++              annotation={annotation}
++              image={previewImages[index] ?? null}
++            />
++          ))}
++          {hasElementContexts ? (
++            <div className="mb-2 flex flex-wrap gap-1.5">
++              {elementContextState.contexts.map((context) => (
++                <UserMessageElementContextChip
++                  key={`${context.header}:${context.body}`}
++                  context={context}
++                />
++              ))}
++            </div>
++          ) : null}
++          <CollapsibleUserMessageBody
++            text={elementContextState.promptText}
++            terminalContexts={terminalContexts}
++            skills={ctx.skills}
++            markdownCwd={ctx.markdownCwd}
+           />
+-        ))}
+-        {elementContextState.contexts.length > 0 ? (
+-          <div className="mb-2 flex flex-wrap gap-1.5">
+-            {elementContextState.contexts.map((context) => (
+-              <UserMessageElementContextChip
+-                key={`${context.header}:${context.body}`}
+-                context={context}
+-              />
+-            ))}
+-          </div>
+-        ) : null}
+-        <CollapsibleUserMessageBody
+-          text={elementContextState.promptText}
+-          terminalContexts={terminalContexts}
+-          skills={ctx.skills}
+-          markdownCwd={ctx.markdownCwd}
+-        />
+-      </div>
++        </div>
++      ) : null}
+       <div className="flex w-full max-w-[80%] items-center justify-end pe-1 text-xs tabular-nums opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100">
+         <div className="flex shrink-0 items-center gap-2">
+           <Tooltip>
+@@ -537,6 +542,95 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message"
+   );
+ }
+ 
++function UserMessageImageAttachmentTile(props: {
++  image: TimelineImageAttachment;
++  images: ReadonlyArray<TimelineImageAttachment>;
++}) {
++  const ctx = use(TimelineRowCtx);
++  const previewUrl = useTimelineAttachmentPreviewUrl(ctx.activeThreadEnvironmentId, props.image);
++  const previewImages = useMemo(
++    () =>
++      props.images.map((image) =>
++        image.id === props.image.id && previewUrl ? { ...image, previewUrl } : image,
++      ),
++    [previewUrl, props.image.id, props.images],
++  );
++
++  return (
++    <div className="overflow-hidden rounded-lg border border-border/80 bg-background/70">
++      {previewUrl ? (
++        <button
++          type="button"
++          className="h-full w-full cursor-zoom-in"
++          aria-label={`Preview ${props.image.name}`}
++          onClick={() => {
++            const preview = buildExpandedImagePreview(previewImages, props.image.id);
++            if (!preview) return;
++            ctx.onImageExpand(preview);
++          }}
++        >
++          <img
++            src={previewUrl}
++            alt={props.image.name}
++            className="block h-auto max-h-40 w-full object-cover"
++          />
++        </button>
++      ) : (
++        <div className="flex min-h-[72px] items-center justify-center px-2 py-3 text-center text-[11px] text-muted-foreground/70">
++          {props.image.name}
++        </div>
++      )}
++    </div>
++  );
++}
++
++function useTimelineAttachmentPreviewUrl(
++  environmentId: EnvironmentId,
++  image: TimelineImageAttachment | null,
++): string | null {
++  const [assetPreviewUrl, setAssetPreviewUrl] = useState<string | null>(null);
++  const attachmentId = image && !image.previewUrl ? image.id : null;
++
++  useEffect(() => {
++    if (!attachmentId) {
++      setAssetPreviewUrl(null);
++      return;
++    }
++
++    let cancelled = false;
++    let refreshTimer: number | null = null;
++    setAssetPreviewUrl(null);
++    const load = () => {
++      void resolveAssetUrl(environmentId, { _tag: "attachment", attachmentId })
++        .then((asset) => {
++          if (cancelled) {
++            return;
++          }
++          setAssetPreviewUrl(asset.url);
++          refreshTimer = window.setTimeout(
++            load,
++            Math.max(0, asset.expiresAt - Date.now() - ATTACHMENT_PREVIEW_REFRESH_MARGIN_MS),
++          );
++        })
++        .catch(() => {
++          if (!cancelled) {
++            setAssetPreviewUrl(null);
++          }
++        });
++    };
++    load();
++
++    return () => {
++      cancelled = true;
++      if (refreshTimer) {
++        window.clearTimeout(refreshTimer);
++      }
++    };
++  }, [attachmentId, environmentId]);
++
++  return image?.previewUrl ?? assetPreviewUrl;
++}
++
+ function RevertUserMessageButton({ messageId }: { messageId: MessageId }) {
+   const ctx = use(TimelineRowCtx);
+   const activity = use(TimelineRowActivityCtx);
+@@ -603,12 +697,19 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
+           onOpenTurnDiff={ctx.onOpenTurnDiff}
+         />
+         {row.showAssistantMeta ? (
+-          <div className="mt-1.5 flex items-center gap-2 text-xs tabular-nums opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover/assistant:opacity-100">
+-            <AssistantCopyButton row={row} />
++          <div
++            className="mt-1.5 flex items-center gap-2 text-xs tabular-nums opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover/assistant:opacity-100"
++            data-assistant-message-meta-row="true"
++          >
+             {!row.message.streaming && (
+               <Tooltip>
+                 <TooltipTrigger
+-                  render={<p className="text-muted-foreground text-xs tabular-nums" />}
++                  render={
++                    <p
++                      className="text-muted-foreground text-xs tabular-nums"
++                      data-assistant-message-meta-timestamp="true"
++                    />
++                  }
+                 >
+                   {formatShortTimestamp(
+                     row.message.completedAt ?? row.message.createdAt,
+@@ -623,6 +724,7 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
+                 </TooltipPopup>
+               </Tooltip>
+             )}
++            <AssistantCopyButton row={row} />
+           </div>
+         ) : null}
+       </div>
+@@ -667,12 +769,7 @@ function ProposedPlanTimelineRow({
+ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "working" }> }) {
+   return (
+     <div className="py-0.5 pl-1.5">
+-      <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground/70 tabular-nums">
+-        <span className="inline-flex items-center gap-[3px]">
+-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
+-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
+-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+-        </span>
++      <div className="flex items-center pt-1 text-[11px] text-muted-foreground/70 tabular-nums">
+         <span>
+           {row.createdAt ? (
+             <>
+@@ -688,31 +785,22 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
+ }
+ 
+ // ---------------------------------------------------------------------------
+-// Self-ticking labels — update their own text nodes so elapsed-time display
+-// does not create a React commit every second while a response is streaming.
++// Self-ticking labels — update only their small leaf components while a
++// response is streaming.
+ // ---------------------------------------------------------------------------
+ 
+ /** Live "Working for Xs" label. */
+ function WorkingTimer({ createdAt }: { createdAt: string }) {
+-  const textRef = useRef<HTMLSpanElement>(null);
+-  const initialText = formatWorkingTimerNow(createdAt);
++  const [text, setText] = useState(() => formatWorkingTimerNow(createdAt));
+ 
+   useEffect(() => {
+-    const updateText = () => {
+-      if (textRef.current) {
+-        textRef.current.textContent = formatWorkingTimerNow(createdAt);
+-      }
+-    };
++    const updateText = () => setText(formatWorkingTimerNow(createdAt));
+     updateText();
+     const id = setInterval(updateText, 1000);
+     return () => clearInterval(id);
+   }, [createdAt]);
+ 
+-  return (
+-    <span ref={textRef} className="tabular-nums">
+-      {initialText}
+-    </span>
+-  );
++  return <SlotText className="tabular-nums" options={WORKING_TIMER_SLOT_OPTIONS} text={text} />;
+ }
+ 
+ // ---------------------------------------------------------------------------
+@@ -975,24 +1063,24 @@ function UserMessagePreviewAnnotationCard(props: {
+   image: NonNullable<TimelineMessage["attachments"]>[number] | null;
+ }) {
+   const ctx = use(TimelineRowCtx);
++  const previewUrl = useTimelineAttachmentPreviewUrl(ctx.activeThreadEnvironmentId, props.image);
+   return (
+     <div className="mb-2 flex max-w-full items-center overflow-hidden rounded-lg border border-border/70 bg-background/70">
+-      {props.image?.previewUrl ? (
++      {props.image && previewUrl ? (
+         <button
+           type="button"
+           className="size-14 shrink-0 cursor-zoom-in overflow-hidden border-r border-border/70 bg-muted"
+           aria-label={`Preview ${props.image.name}`}
+           onClick={() => {
+             if (!props.image) return;
+-            const preview = buildExpandedImagePreview([props.image], props.image.id);
++            const preview = buildExpandedImagePreview(
++              [{ ...props.image, previewUrl }],
++              props.image.id,
++            );
+             if (preview) ctx.onImageExpand(preview);
+           }}
+         >
+-          <img
+-            src={props.image.previewUrl}
+-            alt="Annotated preview crop"
+-            className="size-full object-cover"
+-          />
++          <img src={previewUrl} alt="Annotated preview crop" className="size-full object-cover" />
+         </button>
+       ) : null}
+       <div className="min-w-0 px-2.5 py-2">
+diff --git a/apps/web/src/index.css b/apps/web/src/index.css
+index dbca1da0..3af4ff2e 100644
+--- a/apps/web/src/index.css
++++ b/apps/web/src/index.css
+@@ -1,4 +1,5 @@
+ @import "tailwindcss";
++@import "slot-text/style.css";
+ 
+ @custom-variant dark (&:is(.dark, .dark *));
+ /* Window Controls Overlay: active when Electron exposes native titlebar control geometry. */
+-- 
+2.50.1 (Apple Git-155)
+

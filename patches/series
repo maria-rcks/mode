@@ -39,3 +39,13 @@ mode/0035-fix-chat-frame-panel-layout-controls.patch
 mode/0036-fix-chat-match-panel-control-sizing.patch
 mode/0037-fix-chat-align-panel-controls-with-header-actions.patch
 mode/0038-fix-chat-unify-panel-control-spacing.patch
+mode/0039-web-require-120px-scroll-away-before-showing-scroll-.patch
+mode/0040-build-server-externalize-fff-node.patch
+mode/0041-style-chat-compact-header-action-menus.patch
+mode/0042-style-chat-animate-inline-right-panel-transitions.patch
+mode/0043-style-chat-refine-timeline-image-and-metadata-UI.patch
+mode/0044-fix-chat-hydrate-stored-attachment-preview-URLs.patch
+mode/0045-fix-chat-animate-generated-thread-titles.patch
+mode/0046-style-sidebar-streamline-project-chrome.patch
+mode/0047-feat-assets-add-image-read-RPC-contract.patch
+mode/0048-feat-assets-implement-image-read-RPC.patch

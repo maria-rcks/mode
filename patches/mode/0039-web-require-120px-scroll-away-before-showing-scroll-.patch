@@ -1,0 +1,77 @@
+From 342dac5de40276c3dea99cf61980d000a7c7bf15 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 22:10:59 -0400
+Subject: [PATCH 39/48] web: require 120px scroll-away before showing
+ scroll-to-bottom pill
+
+---
+ apps/web/src/components/ChatView.tsx              | 10 +++++++---
+ apps/web/src/components/chat/MessagesTimeline.tsx | 10 +++++++---
+ 2 files changed, 14 insertions(+), 6 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 8d0dc2f1..7e6573ef 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -3374,16 +3374,20 @@ export default function ChatView(props: ChatViewProps) {
+     legendListRef.current?.scrollToEnd?.({ animated });
+   }, []);
+ 
++  // Only show the scroll-to-bottom pill once the user has scrolled a meaningful
++  // distance away from the end. This avoids flickering the pill for tiny scrolls
++  // or measurement adjustments while maintainScrollAtEnd is settling.
++  const SCROLL_AWAY_THRESHOLD_PX = 120;
++
+   // Debounce *showing* the scroll-to-bottom pill so it doesn't flash during
+   // thread switches.  LegendList fires scroll events with isAtEnd=false while
+   // initialScrollAtEnd is settling; hiding is always immediate.
+   const showScrollDebouncer = useRef(
+     new Debouncer(() => setShowScrollToBottom(true), { wait: 150 }),
+   );
+-  const onIsAtEndChange = useCallback((isAtEnd: boolean) => {
+-    if (isAtEndRef.current === isAtEnd) return;
++  const onIsAtEndChange = useCallback((isAtEnd: boolean, distanceFromBottom = 0) => {
+     isAtEndRef.current = isAtEnd;
+-    if (isAtEnd) {
++    if (isAtEnd || distanceFromBottom <= SCROLL_AWAY_THRESHOLD_PX) {
+       showScrollDebouncer.current.cancel();
+       setShowScrollToBottom(false);
+     } else {
+diff --git a/apps/web/src/components/chat/MessagesTimeline.tsx b/apps/web/src/components/chat/MessagesTimeline.tsx
+index 250eee4d..3dd067bb 100644
+--- a/apps/web/src/components/chat/MessagesTimeline.tsx
++++ b/apps/web/src/components/chat/MessagesTimeline.tsx
+@@ -164,7 +164,7 @@ interface MessagesTimelineProps {
+   timestampFormat: TimestampFormat;
+   workspaceRoot: string | undefined;
+   skills?: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
+-  onIsAtEndChange: (isAtEnd: boolean) => void;
++  onIsAtEndChange: (isAtEnd: boolean, distanceFromBottom?: number) => void;
+ }
+ 
+ // ---------------------------------------------------------------------------
+@@ -287,7 +287,11 @@ export const MessagesTimeline = memo(function MessagesTimeline({
+   const handleScroll = useCallback(() => {
+     const state = listRef.current?.getState?.();
+     if (state) {
+-      onIsAtEndChange(state.isAtEnd);
++      const distanceFromBottom = Math.max(
++        0,
++        state.contentLength - state.scroll - state.scrollLength,
++      );
++      onIsAtEndChange(state.isAtEnd, distanceFromBottom);
+     }
+   }, [listRef, onIsAtEndChange]);
+ 
+@@ -300,7 +304,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
+       return;
+     }
+ 
+-    onIsAtEndChange(true);
++    onIsAtEndChange(true, 0);
+     const frameId = window.requestAnimationFrame(() => {
+       void listRef.current?.scrollToEnd?.({ animated: false });
+     });
+-- 
+2.50.1 (Apple Git-155)
+

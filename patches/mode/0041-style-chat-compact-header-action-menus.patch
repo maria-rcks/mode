@@ -1,7 +1,7 @@
-From 35fa5780435c447942a37682e7f31c39de25f004 Mon Sep 17 00:00:00 2001
+From 520c5a78738bd1a68197602305080da64ac7a34f Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:00:59 -0400
-Subject: [PATCH 41/49] style(chat): compact header action menus
+Subject: [PATCH 41/53] style(chat): compact header action menus
 
 ---
  apps/web/src/components/GitActionsControl.tsx | 321 ++++++------------

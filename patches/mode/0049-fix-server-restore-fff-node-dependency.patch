@@ -1,7 +1,7 @@
-From 59890f9ca95d992121a6188e9ac53fb83ef8b3cf Mon Sep 17 00:00:00 2001
+From 058ecd38e22dcfc393ca1d252625dae91058a4ec Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:32:06 -0400
-Subject: [PATCH 49/49] fix(server): restore fff node dependency
+Subject: [PATCH 49/53] fix(server): restore fff node dependency
 
 ---
  apps/server/package.json | 1 +

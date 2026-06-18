@@ -1,0 +1,26 @@
+From 9dbb41990906bccdfc4bdbd514792df3207bfe15 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 04:25:44 -0400
+Subject: [PATCH 53/53] style(settings): remove electron title label
+
+---
+ apps/web/src/routes/settings.tsx | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/apps/web/src/routes/settings.tsx b/apps/web/src/routes/settings.tsx
+index fa5c6a42..d349f4b2 100644
+--- a/apps/web/src/routes/settings.tsx
++++ b/apps/web/src/routes/settings.tsx
+@@ -79,9 +79,6 @@ function SettingsContentLayout() {
+ 
+         {isElectron && (
+           <div className="drag-region flex h-[52px] shrink-0 items-center border-b border-border px-5 wco:h-[env(titlebar-area-height)] wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]">
+-            <span className="text-xs font-medium tracking-wide text-muted-foreground/70">
+-              Settings
+-            </span>
+             {showRestoreDefaults ? (
+               <div className="ms-auto flex items-center gap-2">
+                 <RestoreDefaultsButton onRestored={handleRestored} />
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,7 +1,7 @@
-From 8dd8385516f43cadde181b4b33a1fa7b93fed21d Mon Sep 17 00:00:00 2001
+From 02352ef421805045b7cf8c61eba4eb59facb68dd Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:07:01 -0400
-Subject: [PATCH 47/49] feat(assets): add image read RPC contract
+Subject: [PATCH 47/53] feat(assets): add image read RPC contract
 
 ---
  packages/contracts/src/assets.ts        | 23 ++++++++++++++++++++++-

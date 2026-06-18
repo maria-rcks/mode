@@ -1,7 +1,7 @@
-From 3282ab832efc9de700f8494dfd0ea40e5728f548 Mon Sep 17 00:00:00 2001
+From 585dcdce74a181c4cd8915808bb15a47e89b556c Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:06:55 -0400
-Subject: [PATCH 46/49] style(sidebar): streamline project chrome
+Subject: [PATCH 46/53] style(sidebar): streamline project chrome
 
 ---
  apps/web/src/components/Sidebar.tsx           | 325 +++++++++---------

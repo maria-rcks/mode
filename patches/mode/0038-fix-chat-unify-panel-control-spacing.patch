@@ -1,7 +1,7 @@
-From 26b3dbd55ce46edc0391023b1b7689625738df6d Mon Sep 17 00:00:00 2001
+From e52caeb24e727c0d2a459c025f4b8cdf6eea3c65 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 20:45:37 -0400
-Subject: [PATCH 38/49] fix(chat): unify panel control spacing
+Subject: [PATCH 38/53] fix(chat): unify panel control spacing
 
 ---
  apps/web/src/components/ChatView.browser.tsx  |  93 ++++++------

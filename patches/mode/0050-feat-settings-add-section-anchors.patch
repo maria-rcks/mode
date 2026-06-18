@@ -1,0 +1,216 @@
+From 52416f2fc49c5a9186b3b4c428c5798055e9efca Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 04:25:26 -0400
+Subject: [PATCH 50/53] feat(settings): add section anchors
+
+---
+ .../src/components/settings/ConnectionsSettings.tsx |  5 +++--
+ apps/web/src/components/settings/SettingsPanels.tsx | 11 +++++++++++
+ .../components/settings/SourceControlSettings.tsx   |  7 ++++++-
+ apps/web/src/components/settings/settingsLayout.tsx | 13 +++++++++++--
+ 4 files changed, 31 insertions(+), 5 deletions(-)
+
+diff --git a/apps/web/src/components/settings/ConnectionsSettings.tsx b/apps/web/src/components/settings/ConnectionsSettings.tsx
+index 0e54ceed..d90980a1 100644
+--- a/apps/web/src/components/settings/ConnectionsSettings.tsx
++++ b/apps/web/src/components/settings/ConnectionsSettings.tsx
+@@ -2967,7 +2967,7 @@ export function ConnectionsSettings() {
+     <SettingsPageContainer>
+       {canManageLocalBackend ? (
+         <>
+-          <SettingsSection title="This environment">
++          <SettingsSection title="This environment" anchorId="this-environment">
+             {primaryVersionMismatch ? (
+               <SettingsRow
+                 title="Version drift"
+@@ -2999,6 +2999,7 @@ export function ConnectionsSettings() {
+           {isLocalBackendRemotelyReachable ? (
+             <SettingsSection
+               title="Authorized clients"
++              anchorId="authorized-clients"
+               headerAction={
+                 <AuthorizedClientsHeaderAction
+                   clientSessions={desktopClientSessions}
+@@ -3184,7 +3185,7 @@ export function ConnectionsSettings() {
+           </Dialog>
+         </>
+       ) : (
+-        <SettingsSection title="This environment">
++        <SettingsSection title="This environment" anchorId="this-environment">
+           <SettingsRow
+             title="Administrative access"
+             description="Pairing links and client-session management require the access:write scope for this backend."
+diff --git a/apps/web/src/components/settings/SettingsPanels.tsx b/apps/web/src/components/settings/SettingsPanels.tsx
+index 76d5d34c..af40915a 100644
+--- a/apps/web/src/components/settings/SettingsPanels.tsx
++++ b/apps/web/src/components/settings/SettingsPanels.tsx
+@@ -520,6 +520,7 @@ export function GeneralSettingsPanel() {
+     <SettingsPageContainer>
+       <SettingsSection title="General">
+         <SettingsRow
++          anchorId="theme"
+           title="Theme"
+           description="Choose how T3 Code looks across the app."
+           resetAction={
+@@ -553,6 +554,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="time-format"
+           title="Time format"
+           description="System default follows your browser or OS clock preference."
+           resetAction={
+@@ -595,6 +597,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="diff-word-wrap"
+           title="Diff line wrapping"
+           description="Set the default wrap state when the diff panel opens."
+           resetAction={
+@@ -619,6 +622,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="hide-whitespace"
+           title="Hide whitespace changes"
+           description="Set whether the diff panel ignores whitespace-only edits by default."
+           resetAction={
+@@ -645,6 +649,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="assistant-output"
+           title="Assistant output"
+           description="Show token-by-token output while a response is in progress."
+           resetAction={
+@@ -672,6 +677,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="auto-open-task-panel"
+           title="Auto-open task panel"
+           description="Open the right-side plan and task panel automatically when steps appear."
+           resetAction={
+@@ -698,6 +704,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="new-threads"
+           title="New threads"
+           description="Pick the default workspace mode for newly created draft threads."
+           resetAction={
+@@ -739,6 +746,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="add-project-base-directory"
+           title="Add project starts in"
+           description='Leave empty to use "~/" when the Add Project browser opens.'
+           resetAction={
+@@ -767,6 +775,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="archive-confirmation"
+           title="Archive confirmation"
+           description="Require a second click on the inline archive action before a thread is archived."
+           resetAction={
+@@ -793,6 +802,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="delete-confirmation"
+           title="Delete confirmation"
+           description="Ask before deleting a thread and its chat history."
+           resetAction={
+@@ -819,6 +829,7 @@ export function GeneralSettingsPanel() {
+         />
+ 
+         <SettingsRow
++          anchorId="text-generation-model"
+           title="Text generation model"
+           description="Configure the model used for generated commit messages, PR titles, and similar Git text."
+           resetAction={
+diff --git a/apps/web/src/components/settings/SourceControlSettings.tsx b/apps/web/src/components/settings/SourceControlSettings.tsx
+index 00656f9f..395817bf 100644
+--- a/apps/web/src/components/settings/SourceControlSettings.tsx
++++ b/apps/web/src/components/settings/SourceControlSettings.tsx
+@@ -477,7 +477,11 @@ export function SourceControlSettingsPanel() {
+       ) : hasDiscoveryItems ? (
+         <>
+           {result.versionControlSystems.length > 0 ? (
+-            <SettingsSection title="Version Control" headerAction={scanButton}>
++            <SettingsSection
++              title="Version Control"
++              headerAction={scanButton}
++              anchorId="version-control"
++            >
+               {result.versionControlSystems.map((item) => (
+                 <DiscoveryItemRow key={`vcs:${item.kind}`} item={item}>
+                   {item.kind === "git" ? <GitFetchIntervalSettings /> : undefined}
+@@ -489,6 +493,7 @@ export function SourceControlSettingsPanel() {
+           {result.sourceControlProviders.length > 0 ? (
+             <SettingsSection
+               title="Source Control Providers"
++              anchorId="source-control-providers"
+               headerAction={result.versionControlSystems.length === 0 ? scanButton : null}
+             >
+               {result.sourceControlProviders.map((item) => (
+diff --git a/apps/web/src/components/settings/settingsLayout.tsx b/apps/web/src/components/settings/settingsLayout.tsx
+index add6954f..2130e069 100644
+--- a/apps/web/src/components/settings/settingsLayout.tsx
++++ b/apps/web/src/components/settings/settingsLayout.tsx
+@@ -19,6 +19,7 @@ export function SettingsSection({
+   title,
+   icon,
+   headerAction,
++  anchorId,
+   children,
+   className,
+   ...sectionProps
+@@ -26,10 +27,15 @@ export function SettingsSection({
+   title: string;
+   icon?: ReactNode;
+   headerAction?: ReactNode;
++  anchorId?: string;
+   children: ReactNode;
+ }) {
+   return (
+-    <section {...sectionProps} className={cn("space-y-2.5", className)}>
++    <section
++      {...sectionProps}
++      {...(anchorId ? { id: anchorId } : {})}
++      className={cn("scroll-mt-6 space-y-2.5", className)}
++    >
+       <div className="flex items-center justify-between px-1">
+         <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/50">
+           <span className="inline-block h-px w-3 bg-border" aria-hidden />
+@@ -51,6 +57,7 @@ export function SettingsRow({
+   status,
+   resetAction,
+   control,
++  anchorId,
+   children,
+   className,
+   ...rowProps
+@@ -60,13 +67,15 @@ export function SettingsRow({
+   status?: ReactNode;
+   resetAction?: ReactNode;
+   control?: ReactNode;
++  anchorId?: string;
+   children?: ReactNode;
+ }) {
+   return (
+     <div
+       {...rowProps}
++      {...(anchorId ? { id: anchorId } : {})}
+       className={cn(
+-        "border-t border-border/60 px-4 first:border-t-0 sm:px-5",
++        "scroll-mt-6 border-t border-border/60 px-4 first:border-t-0 sm:px-5",
+         children ? "pt-3.5 pb-0" : "py-3.5",
+         className,
+       )}
+-- 
+2.50.1 (Apple Git-155)
+

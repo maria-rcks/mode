@@ -1,7 +1,7 @@
-From 579b87dc3e184f991b4c0b39f0cb5edf3ae1657c Mon Sep 17 00:00:00 2001
+From 27dc25710fa7c51109d068b3ba2fd8baa471c994 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:00:54 -0400
-Subject: [PATCH 40/49] build(server): externalize fff node
+Subject: [PATCH 40/53] build(server): externalize fff node
 
 ---
  apps/server/vite.config.ts | 1 +

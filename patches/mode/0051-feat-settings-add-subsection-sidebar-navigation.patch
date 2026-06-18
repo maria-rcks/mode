@@ -1,0 +1,400 @@
+From cc638881f0d53095f50debda1511da64ed1f367b Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 04:25:36 -0400
+Subject: [PATCH 51/53] feat(settings): add subsection sidebar navigation
+
+---
+ .../settings/SettingsSidebarNav.tsx           | 322 +++++++++++++++---
+ 1 file changed, 276 insertions(+), 46 deletions(-)
+
+diff --git a/apps/web/src/components/settings/SettingsSidebarNav.tsx b/apps/web/src/components/settings/SettingsSidebarNav.tsx
+index 6774b6f3..9b687b6d 100644
+--- a/apps/web/src/components/settings/SettingsSidebarNav.tsx
++++ b/apps/web/src/components/settings/SettingsSidebarNav.tsx
+@@ -1,4 +1,4 @@
+-import { useCallback, type ComponentType } from "react";
++import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+ import {
+   ArchiveIcon,
+   ArrowLeftIcon,
+@@ -8,7 +8,8 @@ import {
+   Link2Icon,
+   Settings2Icon,
+ } from "lucide-react";
+-import { useCanGoBack, useNavigate } from "@tanstack/react-router";
++import { useCanGoBack, useLocation, useNavigate } from "@tanstack/react-router";
++import { DEFAULT_SIDEBAR_THREAD_PREVIEW_COUNT } from "@t3tools/contracts/settings";
+ 
+ import {
+   SidebarContent,
+@@ -17,11 +18,17 @@ import {
+   SidebarMenu,
+   SidebarMenuButton,
+   SidebarMenuItem,
++  SidebarMenuSub,
++  SidebarMenuSubButton,
++  SidebarMenuSubItem,
+   SidebarSeparator,
+   useSidebar,
+ } from "../ui/sidebar";
++import { cn } from "../../lib/utils";
+ import { T3ConnectSidebarAvatar, T3ConnectSidebarSignIn } from "../clerk/T3ConnectSidebarSignIn";
+ 
++const SETTINGS_SUBITEM_PREVIEW_COUNT = DEFAULT_SIDEBAR_THREAD_PREVIEW_COUNT;
++
+ export type SettingsSectionPath =
+   | "/settings/general"
+   | "/settings/keybindings"
+@@ -30,16 +37,57 @@ export type SettingsSectionPath =
+   | "/settings/connections"
+   | "/settings/archived";
+ 
+-export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
+-  label: string;
+-  to: SettingsSectionPath;
+-  icon: ComponentType<{ className?: string }>;
+-}> = [
+-  { label: "General", to: "/settings/general", icon: Settings2Icon },
++type SettingsSubItem = {
++  readonly label: string;
++  readonly anchor: string;
++};
++
++type SettingsCategory = {
++  readonly label: string;
++  readonly to: SettingsSectionPath;
++  readonly icon: ComponentType<{ className?: string }>;
++  readonly subItems?: ReadonlyArray<SettingsSubItem>;
++};
++
++const SETTINGS_NAV_GROUPS: ReadonlyArray<SettingsCategory> = [
++  {
++    label: "General",
++    to: "/settings/general",
++    icon: Settings2Icon,
++    subItems: [
++      { label: "Theme", anchor: "theme" },
++      { label: "Time format", anchor: "time-format" },
++      { label: "Diff line wrapping", anchor: "diff-word-wrap" },
++      { label: "Hide whitespace changes", anchor: "hide-whitespace" },
++      { label: "Assistant output", anchor: "assistant-output" },
++      { label: "Auto-open task panel", anchor: "auto-open-task-panel" },
++      { label: "New threads", anchor: "new-threads" },
++      { label: "Add project starts in", anchor: "add-project-base-directory" },
++      { label: "Archive confirmation", anchor: "archive-confirmation" },
++      { label: "Delete confirmation", anchor: "delete-confirmation" },
++      { label: "Text generation model", anchor: "text-generation-model" },
++    ],
++  },
+   { label: "Keybindings", to: "/settings/keybindings", icon: KeyboardIcon },
+   { label: "Providers", to: "/settings/providers", icon: BotIcon },
+-  { label: "Source Control", to: "/settings/source-control", icon: GitBranchIcon },
+-  { label: "Connections", to: "/settings/connections", icon: Link2Icon },
++  {
++    label: "Source Control",
++    to: "/settings/source-control",
++    icon: GitBranchIcon,
++    subItems: [
++      { label: "Version Control", anchor: "version-control" },
++      { label: "Source Control Providers", anchor: "source-control-providers" },
++    ],
++  },
++  {
++    label: "Connections",
++    to: "/settings/connections",
++    icon: Link2Icon,
++    subItems: [
++      { label: "This environment", anchor: "this-environment" },
++      { label: "Authorized clients", anchor: "authorized-clients" },
++    ],
++  },
+   { label: "Archive", to: "/settings/archived", icon: ArchiveIcon },
+ ];
+ 
+@@ -47,12 +95,24 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+   const navigate = useNavigate();
+   const canGoBack = useCanGoBack();
+   const { isMobile, setOpenMobile } = useSidebar();
+-  const handleSectionClick = useCallback(
+-    (to: SettingsSectionPath) => {
++  const { hash } = useLocation();
++  const navContentRef = useRef<HTMLDivElement | null>(null);
++  const fullNavProbeRef = useRef<HTMLDivElement | null>(null);
++  const [shouldFoldOverflow, setShouldFoldOverflow] = useState(false);
++  const [expandedCategories, setExpandedCategories] = useState<ReadonlySet<SettingsSectionPath>>(
++    () => new Set(),
++  );
++
++  const handleNavigate = useCallback(
++    (to: SettingsSectionPath, anchor?: string) => {
+       if (isMobile) {
+         setOpenMobile(false);
+       }
+-      void navigate({ to, replace: true });
++      void navigate({
++        to,
++        replace: true,
++        ...(anchor ? { hash: anchor, hashScrollIntoView: { block: "start" } } : {}),
++      });
+     },
+     [isMobile, navigate, setOpenMobile],
+   );
+@@ -67,40 +127,73 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+     void navigate({ to: "/" });
+   }, [canGoBack, isMobile, navigate, setOpenMobile]);
+ 
++  const currentHashId = hash ? hash.replace(/^#/, "") : "";
++  const expandCategory = useCallback((categoryPath: SettingsSectionPath) => {
++    setExpandedCategories((current) => {
++      if (current.has(categoryPath)) return current;
++      const next = new Set(current);
++      next.add(categoryPath);
++      return next;
++    });
++  }, []);
++  const collapseCategory = useCallback((categoryPath: SettingsSectionPath) => {
++    setExpandedCategories((current) => {
++      if (!current.has(categoryPath)) return current;
++      const next = new Set(current);
++      next.delete(categoryPath);
++      return next;
++    });
++  }, []);
++
++  useEffect(() => {
++    const content = navContentRef.current;
++    const probe = fullNavProbeRef.current;
++    const viewport = content?.closest<HTMLElement>("[data-slot='scroll-area-viewport']") ?? null;
++    if (!content || !probe || !viewport) {
++      return;
++    }
++
++    const measure = () => {
++      setShouldFoldOverflow(probe.scrollHeight > viewport.clientHeight + 1);
++    };
++    measure();
++
++    const observer = new ResizeObserver(measure);
++    observer.observe(viewport);
++    observer.observe(probe);
++    return () => {
++      observer.disconnect();
++    };
++  }, []);
++
+   return (
+     <>
+-      <SidebarContent className="overflow-x-hidden">
+-        <SidebarGroup className="px-2 py-3">
+-          <SidebarMenu>
+-            {SETTINGS_NAV_ITEMS.map((item) => {
+-              const Icon = item.icon;
+-              const isActive = pathname === item.to;
+-              return (
+-                <SidebarMenuItem key={item.to}>
+-                  <SidebarMenuButton
+-                    size="sm"
+-                    isActive={isActive}
+-                    className={
+-                      isActive
+-                        ? "gap-2.5 px-2.5 py-2 text-left text-[13px] font-medium text-foreground"
+-                        : "gap-2.5 px-2.5 py-2 text-left text-[13px] text-muted-foreground/70 hover:text-foreground/80"
+-                    }
+-                    onClick={() => handleSectionClick(item.to)}
+-                  >
+-                    <Icon
+-                      className={
+-                        isActive
+-                          ? "size-4 shrink-0 text-foreground"
+-                          : "size-4 shrink-0 text-muted-foreground/60"
+-                      }
+-                    />
+-                    <span className="truncate">{item.label}</span>
+-                  </SidebarMenuButton>
+-                </SidebarMenuItem>
+-              );
+-            })}
+-          </SidebarMenu>
+-        </SidebarGroup>
++      <SidebarContent ref={navContentRef} className="relative overflow-x-hidden">
++        <div
++          ref={fullNavProbeRef}
++          aria-hidden
++          className="pointer-events-none invisible absolute inset-x-0 top-0"
++        >
++          <SettingsNavMenu
++            currentHashId={currentHashId}
++            expandedCategories={expandedCategories}
++            foldOverflow={false}
++            isMeasureOnly
++            pathname={pathname}
++            onCollapseCategory={collapseCategory}
++            onExpandCategory={expandCategory}
++            onNavigate={handleNavigate}
++          />
++        </div>
++        <SettingsNavMenu
++          currentHashId={currentHashId}
++          expandedCategories={expandedCategories}
++          foldOverflow={shouldFoldOverflow}
++          pathname={pathname}
++          onCollapseCategory={collapseCategory}
++          onExpandCategory={expandCategory}
++          onNavigate={handleNavigate}
++        />
+       </SidebarContent>
+ 
+       <SidebarSeparator />
+@@ -114,7 +207,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+                 className="gap-2 px-2 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                 onClick={handleBackClick}
+               >
+-                <ArrowLeftIcon className="size-4" />
++                <ArrowLeftIcon className="size-3.5" />
+                 <span>Back</span>
+               </SidebarMenuButton>
+             </SidebarMenuItem>
+@@ -125,3 +218,140 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+     </>
+   );
+ }
++
++function SettingsNavMenu({
++  currentHashId,
++  expandedCategories,
++  foldOverflow,
++  isMeasureOnly = false,
++  pathname,
++  onCollapseCategory,
++  onExpandCategory,
++  onNavigate,
++}: {
++  currentHashId: string;
++  expandedCategories: ReadonlySet<SettingsSectionPath>;
++  foldOverflow: boolean;
++  isMeasureOnly?: boolean;
++  pathname: string;
++  onCollapseCategory: (categoryPath: SettingsSectionPath) => void;
++  onExpandCategory: (categoryPath: SettingsSectionPath) => void;
++  onNavigate: (to: SettingsSectionPath, anchor?: string) => void;
++}) {
++  return (
++    <SidebarGroup className="gap-1 px-2 pt-1 pb-2">
++      <SidebarMenu>
++        {SETTINGS_NAV_GROUPS.map((category) => {
++          const Icon = category.icon;
++          const isCategoryCurrent = pathname === category.to;
++          const subItems = category.subItems ?? [];
++          const hasSubItems = subItems.length > 0;
++          const activeSubItem =
++            isCategoryCurrent && hasSubItems
++              ? subItems.find((sub) => sub.anchor === currentHashId)
++              : undefined;
++          const hasOverflowingSubItems = subItems.length > SETTINGS_SUBITEM_PREVIEW_COUNT;
++          const canFoldCategory = foldOverflow && hasOverflowingSubItems;
++          const isCategoryExpanded = expandedCategories.has(category.to);
++          const shouldFoldCategory = canFoldCategory && !isCategoryExpanded;
++          const renderedSubItems = shouldFoldCategory
++            ? [
++                ...subItems.slice(0, SETTINGS_SUBITEM_PREVIEW_COUNT),
++                ...(activeSubItem &&
++                !subItems
++                  .slice(0, SETTINGS_SUBITEM_PREVIEW_COUNT)
++                  .some((sub) => sub.anchor === activeSubItem.anchor)
++                  ? [activeSubItem]
++                  : []),
++              ]
++            : subItems;
++
++          return (
++            <SidebarMenuItem key={category.to}>
++              <SidebarMenuButton
++                size="sm"
++                isActive={isCategoryCurrent}
++                tabIndex={isMeasureOnly ? -1 : undefined}
++                className={cn(
++                  "gap-2 px-2 py-1.5 text-left text-xs font-medium data-[active=true]:bg-transparent data-[active=true]:text-foreground",
++                  isCategoryCurrent
++                    ? "text-foreground"
++                    : "text-muted-foreground/70 hover:text-foreground/80",
++                )}
++                onClick={isMeasureOnly ? undefined : () => onNavigate(category.to)}
++              >
++                <Icon
++                  className={
++                    isCategoryCurrent
++                      ? "size-3.5 shrink-0 text-foreground"
++                      : "size-3.5 shrink-0 text-muted-foreground/60"
++                  }
++                />
++                <span className="truncate">{category.label}</span>
++              </SidebarMenuButton>
++
++              {hasSubItems ? (
++                <SidebarMenuSub className="mx-0 my-0 w-full translate-x-0 gap-0.5 border-l-0 px-0 py-0">
++                  {renderedSubItems.map((sub) => {
++                    const isSubActive = activeSubItem?.anchor === sub.anchor;
++                    return (
++                      <SidebarMenuSubItem key={sub.anchor} className="w-full">
++                        <SidebarMenuSubButton
++                          size="sm"
++                          isActive={isSubActive}
++                          tabIndex={isMeasureOnly ? -1 : undefined}
++                          className={cn(
++                            "relative h-6 w-full translate-x-0 justify-start px-2 text-left text-xs data-[active=true]:bg-transparent data-[active=true]:text-foreground",
++                            isSubActive
++                              ? "text-foreground"
++                              : "text-muted-foreground/70 hover:text-foreground",
++                          )}
++                          onClick={
++                            isMeasureOnly ? undefined : () => onNavigate(category.to, sub.anchor)
++                          }
++                        >
++                          <span className="flex min-w-0 flex-1 items-center pl-[22px]">
++                            <span className="truncate">{sub.label}</span>
++                          </span>
++                        </SidebarMenuSubButton>
++                      </SidebarMenuSubItem>
++                    );
++                  })}
++
++                  {canFoldCategory && !isCategoryExpanded ? (
++                    <SidebarMenuSubItem className="w-full">
++                      <SidebarMenuSubButton
++                        size="sm"
++                        tabIndex={isMeasureOnly ? -1 : undefined}
++                        className="relative h-6 w-full translate-x-0 justify-start px-2 text-left text-[10px] text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground/80"
++                        onClick={isMeasureOnly ? undefined : () => onExpandCategory(category.to)}
++                      >
++                        <span className="flex min-w-0 flex-1 items-center pl-[22px]">
++                          <span>Show more</span>
++                        </span>
++                      </SidebarMenuSubButton>
++                    </SidebarMenuSubItem>
++                  ) : null}
++                  {canFoldCategory && isCategoryExpanded ? (
++                    <SidebarMenuSubItem className="w-full">
++                      <SidebarMenuSubButton
++                        size="sm"
++                        tabIndex={isMeasureOnly ? -1 : undefined}
++                        className="relative h-6 w-full translate-x-0 justify-start px-2 text-left text-[10px] text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground/80"
++                        onClick={isMeasureOnly ? undefined : () => onCollapseCategory(category.to)}
++                      >
++                        <span className="flex min-w-0 flex-1 items-center pl-[22px]">
++                          <span>Show less</span>
++                        </span>
++                      </SidebarMenuSubButton>
++                    </SidebarMenuSubItem>
++                  ) : null}
++                </SidebarMenuSub>
++              ) : null}
++            </SidebarMenuItem>
++          );
++        })}
++      </SidebarMenu>
++    </SidebarGroup>
++  );
++}
+-- 
+2.50.1 (Apple Git-155)
+

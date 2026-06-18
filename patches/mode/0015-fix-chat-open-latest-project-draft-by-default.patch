@@ -1,7 +1,7 @@
-From 2338f5ade2f1b6204b309e56ab1275fdae6762c6 Mon Sep 17 00:00:00 2001
+From 233a4f4967c930a5e9f71ef930f656564f18c188 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 01:49:24 -0400
-Subject: [PATCH 15/48] fix(chat): open latest project draft by default
+Subject: [PATCH 15/49] fix(chat): open latest project draft by default
 
 ---
  .../src/components/NoActiveThreadState.tsx    | 43 -------------

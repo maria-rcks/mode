@@ -1,7 +1,7 @@
-From f8f1da33f39b60ba599be2f4e0e84f217f7a7654 Mon Sep 17 00:00:00 2001
+From a61f2140766baa9e2a96123c4c941302b207ee89 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 19:22:55 -0400
-Subject: [PATCH 35/48] fix(chat): frame panel layout controls
+Subject: [PATCH 35/49] fix(chat): frame panel layout controls
 
 ---
  apps/web/src/components/ChatView.browser.tsx       | 13 +++++++++++++

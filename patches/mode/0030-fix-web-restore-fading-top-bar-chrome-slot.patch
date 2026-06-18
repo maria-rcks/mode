@@ -1,7 +1,7 @@
-From d5e042cf89e78375dca8fbe8d4a1a79a3de6cde9 Mon Sep 17 00:00:00 2001
+From 496ad146e88a9c1da2cf26011de47f60d5231e01 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 14:13:39 -0400
-Subject: [PATCH 30/48] fix(web): restore fading top bar chrome slot
+Subject: [PATCH 30/49] fix(web): restore fading top bar chrome slot
 
 ---
  apps/server/src/assets/AssetAccess.test.ts | 9 ++++++---

@@ -1,7 +1,7 @@
-From 98a4e777b78b104066154176782541692c52b22c Mon Sep 17 00:00:00 2001
+From 0c95a86f2d2f2ffa4fd44a578d93b721265150c9 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 20:04:19 -0400
-Subject: [PATCH 37/48] fix(chat): align panel controls with header actions
+Subject: [PATCH 37/49] fix(chat): align panel controls with header actions
 
 ---
  apps/web/src/components/ChatView.browser.tsx       | 14 +++++++++++++-

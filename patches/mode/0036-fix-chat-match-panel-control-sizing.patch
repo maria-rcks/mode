@@ -1,7 +1,7 @@
-From 14188462e19e1435c903f37a1b3dae2a737becb9 Mon Sep 17 00:00:00 2001
+From e80e94c5120449f28d3f94f7385a081d389bff50 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 19:38:34 -0400
-Subject: [PATCH 36/48] fix(chat): match panel control sizing
+Subject: [PATCH 36/49] fix(chat): match panel control sizing
 
 ---
  apps/web/src/components/ChatView.browser.tsx         | 6 +++---

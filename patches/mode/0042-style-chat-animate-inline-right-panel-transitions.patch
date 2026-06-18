@@ -1,7 +1,7 @@
-From 99fa7000ff090d3de256e1d76435a9decb2cbb19 Mon Sep 17 00:00:00 2001
+From cf135aa8feb03f6f201a520785c43ad39da86d3c Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:04:04 -0400
-Subject: [PATCH 42/48] style(chat): animate inline right panel transitions
+Subject: [PATCH 42/49] style(chat): animate inline right panel transitions
 
 ---
  apps/web/src/components/ChatView.browser.tsx  |  19 +--

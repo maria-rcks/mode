@@ -1,7 +1,7 @@
-From b8b46c48d78320a5747dbe39b8a857d3afe6a00e Mon Sep 17 00:00:00 2001
+From 1c38f30886b59d6ae9916066278d54b734ccee5a Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:06:49 -0400
-Subject: [PATCH 45/48] fix(chat): animate generated thread titles
+Subject: [PATCH 45/49] fix(chat): animate generated thread titles
 
 ---
  .../Layers/ProviderCommandReactor.ts          | 50 +++++++++-----

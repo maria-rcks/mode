@@ -49,3 +49,4 @@ mode/0045-fix-chat-animate-generated-thread-titles.patch
 mode/0046-style-sidebar-streamline-project-chrome.patch
 mode/0047-feat-assets-add-image-read-RPC-contract.patch
 mode/0048-feat-assets-implement-image-read-RPC.patch
+mode/0049-fix-server-restore-fff-node-dependency.patch

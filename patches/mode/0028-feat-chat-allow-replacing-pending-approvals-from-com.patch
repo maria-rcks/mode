@@ -1,7 +1,7 @@
-From cc0ff1c3292c0fb444b02fcd3369602b97be8ab7 Mon Sep 17 00:00:00 2001
+From 78017bd574201d16f916c938a4012bbc3418cb3f Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Mon, 15 Jun 2026 23:40:10 -0400
-Subject: [PATCH 28/48] feat(chat): allow replacing pending approvals from
+Subject: [PATCH 28/49] feat(chat): allow replacing pending approvals from
  composer
 
 ---

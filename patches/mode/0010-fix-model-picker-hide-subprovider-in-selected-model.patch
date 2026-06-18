@@ -1,7 +1,7 @@
-From 20992af2000c82fb082a3e488ab4ba3e1ff6e5ad Mon Sep 17 00:00:00 2001
+From 9ad28e4fae2fab977c38cb4763b40d1f1911f2de Mon Sep 17 00:00:00 2001
 From: Devin AI <158243242+devin-ai-integration[bot]@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 03:02:24 +0000
-Subject: [PATCH 10/48] fix(model-picker): hide subprovider in selected model
+Subject: [PATCH 10/49] fix(model-picker): hide subprovider in selected model
 
 ---
  apps/web/src/components/chat/ProviderModelPicker.tsx | 9 ++-------

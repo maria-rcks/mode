@@ -1,7 +1,7 @@
-From cc638881f0d53095f50debda1511da64ed1f367b Mon Sep 17 00:00:00 2001
+From 6a83665912ef8dca62936f16ce444c06d05fb1a4 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 04:25:36 -0400
-Subject: [PATCH 51/53] feat(settings): add subsection sidebar navigation
+Subject: [PATCH 51/58] feat(settings): add subsection sidebar navigation
 
 ---
  .../settings/SettingsSidebarNav.tsx           | 322 +++++++++++++++---

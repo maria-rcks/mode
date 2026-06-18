@@ -1,7 +1,7 @@
-From 8bf9ee3986524cec5f1d2da8a1b45afe1c825b0a Mon Sep 17 00:00:00 2001
+From 049b06e8f045397efdbb2e0d139b689e8b7e3b17 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 17:14:49 -0400
-Subject: [PATCH 32/53] fix(chat): keep panel controls clickable
+Subject: [PATCH 32/58] fix(chat): keep panel controls clickable
 
 ---
  apps/web/src/components/ChatView.browser.tsx         | 2 ++

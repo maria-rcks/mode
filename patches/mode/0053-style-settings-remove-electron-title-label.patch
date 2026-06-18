@@ -1,7 +1,7 @@
-From 9dbb41990906bccdfc4bdbd514792df3207bfe15 Mon Sep 17 00:00:00 2001
+From cc2433ff870452b88f65a81ade58cf3102f70941 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 04:25:44 -0400
-Subject: [PATCH 53/53] style(settings): remove electron title label
+Subject: [PATCH 53/58] style(settings): remove electron title label
 
 ---
  apps/web/src/routes/settings.tsx | 3 ---

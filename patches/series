@@ -54,3 +54,8 @@ mode/0050-feat-settings-add-section-anchors.patch
 mode/0051-feat-settings-add-subsection-sidebar-navigation.patch
 mode/0052-style-settings-flatten-settings-panel-chrome.patch
 mode/0053-style-settings-remove-electron-title-label.patch
+mode/0054-style-sidebar-share-primary-row-styles.patch
+mode/0055-feat-settings-add-sidebar-search.patch
+mode/0056-feat-git-add-pull-menu-action.patch
+mode/0057-style-chat-delay-panel-maximize-control.patch
+mode/0058-chore-lockfile-sort-droid-sdk-entries.patch

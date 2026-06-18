@@ -1,7 +1,7 @@
-From 3ee88403ba0c9202844b65bd7a246f7e80ca050f Mon Sep 17 00:00:00 2001
+From 8714ce282fe19095cfda234d70fbff892cbf944f Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 17:35:08 -0400
-Subject: [PATCH 33/53] fix(chat): keep topbar actions clear of panel controls
+Subject: [PATCH 33/58] fix(chat): keep topbar actions clear of panel controls
 
 ---
  apps/web/src/components/ChatView.browser.tsx | 21 ++++++++++++++++++++

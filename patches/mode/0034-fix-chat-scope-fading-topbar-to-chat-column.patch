@@ -1,7 +1,7 @@
-From e7cdd66bb2e9f3fb4db554e7a7101fb341a6fe73 Mon Sep 17 00:00:00 2001
+From 0080abb72f3050816149b69b5df77647537bb5a1 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 17:45:00 -0400
-Subject: [PATCH 34/53] fix(chat): scope fading topbar to chat column
+Subject: [PATCH 34/58] fix(chat): scope fading topbar to chat column
 
 ---
  apps/web/src/components/ChatView.browser.tsx | 22 ++++++++++++++++++++

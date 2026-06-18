@@ -1,0 +1,121 @@
+From 0e625233fde89402a22ee7d3b659804813e47940 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 15:51:38 -0400
+Subject: [PATCH 54/58] style(sidebar): share primary row styles
+
+---
+ apps/web/src/components/ProjectFavicon.tsx    |  8 +++++--
+ apps/web/src/components/Sidebar.tsx           | 22 ++++++++++++-------
+ .../components/sidebar/sidebarSearchStyles.ts | 16 ++++++++++++++
+ 3 files changed, 36 insertions(+), 10 deletions(-)
+ create mode 100644 apps/web/src/components/sidebar/sidebarSearchStyles.ts
+
+diff --git a/apps/web/src/components/ProjectFavicon.tsx b/apps/web/src/components/ProjectFavicon.tsx
+index d826b841..84ee5107 100644
+--- a/apps/web/src/components/ProjectFavicon.tsx
++++ b/apps/web/src/components/ProjectFavicon.tsx
+@@ -2,6 +2,10 @@ import type { EnvironmentId } from "@t3tools/contracts";
+ import { FolderIcon, FolderOpenIcon } from "lucide-react";
+ import { useState } from "react";
+ import { resolveEnvironmentHttpUrl } from "../environments/runtime";
++import {
++  SIDEBAR_PRIMARY_ICON_BASE_CLASS_NAME,
++  SIDEBAR_PRIMARY_ICON_CLASS_NAME,
++} from "./sidebar/sidebarSearchStyles";
+ 
+ const loadedProjectFaviconSrcs = new Set<string>();
+ 
+@@ -14,8 +18,8 @@ export function ProjectFavicon(input: {
+ }) {
+   const FallbackIcon = input.open ? FolderOpenIcon : FolderIcon;
+   const fallbackClassName = input.className
+-    ? `size-3.5 shrink-0 ${input.className}`
+-    : "size-3.5 shrink-0 text-muted-foreground/50";
++    ? `${SIDEBAR_PRIMARY_ICON_BASE_CLASS_NAME} ${input.className}`
++    : SIDEBAR_PRIMARY_ICON_CLASS_NAME;
+   const fallbackIcon = <FallbackIcon className={fallbackClassName} />;
+   if (input.folderStateIcon) {
+     return fallbackIcon;
+diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
+index 0a09296f..0a9ec6d9 100644
+--- a/apps/web/src/components/Sidebar.tsx
++++ b/apps/web/src/components/Sidebar.tsx
+@@ -100,6 +100,14 @@ import {
+ } from "../threadRoutes";
+ import { stackedThreadToast, toastManager } from "./ui/toast";
+ import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
++import {
++  SIDEBAR_PRIMARY_ROW_CLASS_NAME,
++  SIDEBAR_PRIMARY_TEXT_CLASS_NAME,
++  SIDEBAR_PRIMARY_TEXT_WRAPPER_CLASS_NAME,
++  SIDEBAR_SEARCH_ICON_CLASS_NAME,
++  SIDEBAR_SEARCH_ROW_CLASS_NAME,
++  SIDEBAR_SEARCH_TEXT_CLASS_NAME,
++} from "./sidebar/sidebarSearchStyles";
+ import { Kbd } from "./ui/kbd";
+ import {
+   getArm64IntelBuildWarningDescription,
+@@ -2091,7 +2099,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+         <SidebarMenuButton
+           ref={isManualProjectSorting ? dragHandleProps?.setActivatorNodeRef : undefined}
+           size="sm"
+-          className={`gap-2 px-2 py-1.5 pr-8 text-left hover:bg-accent group-hover/project-header:bg-accent group-hover/project-header:text-sidebar-accent-foreground max-sm:pr-14 ${
++          className={`${SIDEBAR_PRIMARY_ROW_CLASS_NAME} pr-8 group-hover/project-header:bg-accent group-hover/project-header:text-sidebar-accent-foreground max-sm:pr-14 ${
+             isManualProjectSorting ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+           }`}
+           {...(isManualProjectSorting && dragHandleProps ? dragHandleProps.attributes : {})}
+@@ -2131,10 +2139,8 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
+               open={projectExpanded}
+             />
+           )}
+-          <span className="flex min-w-0 flex-1 items-center gap-2">
+-            <span className="truncate text-xs font-medium text-foreground/90">
+-              {project.displayName}
+-            </span>
++          <span className={SIDEBAR_PRIMARY_TEXT_WRAPPER_CLASS_NAME}>
++            <span className={SIDEBAR_PRIMARY_TEXT_CLASS_NAME}>{project.displayName}</span>
+             {project.groupedProjectCount > 1 ? (
+               <span className="shrink-0 text-[10px] text-muted-foreground/60">
+                 {project.groupedProjectCount} projects
+@@ -2749,13 +2755,13 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+               render={
+                 <SidebarMenuButton
+                   size="sm"
+-                  className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground focus-visible:ring-0"
++                  className={SIDEBAR_SEARCH_ROW_CLASS_NAME}
+                   data-testid="command-palette-trigger"
+                 />
+               }
+             >
+-              <SearchIcon className="size-3.5 text-muted-foreground/70" />
+-              <span className="flex-1 truncate text-left text-xs">Search</span>
++              <SearchIcon className={SIDEBAR_SEARCH_ICON_CLASS_NAME} />
++              <span className={SIDEBAR_SEARCH_TEXT_CLASS_NAME}>Search</span>
+               {commandPaletteShortcutLabel ? (
+                 <Kbd className="h-4 min-w-0 rounded-sm px-1.5 text-[10px]">
+                   {commandPaletteShortcutLabel}
+diff --git a/apps/web/src/components/sidebar/sidebarSearchStyles.ts b/apps/web/src/components/sidebar/sidebarSearchStyles.ts
+new file mode 100644
+index 00000000..4388958b
+--- /dev/null
++++ b/apps/web/src/components/sidebar/sidebarSearchStyles.ts
+@@ -0,0 +1,16 @@
++export const SIDEBAR_SEARCH_ROW_CLASS_NAME =
++  "gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground focus-visible:ring-0";
++
++export const SIDEBAR_SEARCH_ICON_CLASS_NAME = "size-3.5 text-muted-foreground/70";
++
++export const SIDEBAR_SEARCH_TEXT_CLASS_NAME = "flex-1 truncate text-left text-xs";
++
++export const SIDEBAR_PRIMARY_ROW_CLASS_NAME = "gap-2 px-2 py-1.5 text-left hover:bg-accent";
++
++export const SIDEBAR_PRIMARY_ICON_BASE_CLASS_NAME = "size-3.5 shrink-0";
++
++export const SIDEBAR_PRIMARY_ICON_CLASS_NAME = `${SIDEBAR_PRIMARY_ICON_BASE_CLASS_NAME} text-muted-foreground/50`;
++
++export const SIDEBAR_PRIMARY_TEXT_WRAPPER_CLASS_NAME = "flex min-w-0 flex-1 items-center gap-2";
++
++export const SIDEBAR_PRIMARY_TEXT_CLASS_NAME = "truncate text-xs font-medium text-foreground/90";
+-- 
+2.50.1 (Apple Git-155)
+

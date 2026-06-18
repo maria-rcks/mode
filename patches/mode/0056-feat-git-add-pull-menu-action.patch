@@ -1,0 +1,253 @@
+From 3b7cbb2ac83d25610ef8ea1bfd8be4f35c03fa85 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 15:52:00 -0400
+Subject: [PATCH 56/58] feat(git): add pull menu action
+
+---
+ .../GitActionsControl.logic.test.ts           | 18 ++++-
+ .../src/components/GitActionsControl.logic.ts | 27 ++++++--
+ apps/web/src/components/GitActionsControl.tsx | 66 +++++++++++++++++++
+ 3 files changed, 103 insertions(+), 8 deletions(-)
+
+diff --git a/apps/web/src/components/GitActionsControl.logic.test.ts b/apps/web/src/components/GitActionsControl.logic.test.ts
+index 3781fad8..5aaf1646 100644
+--- a/apps/web/src/components/GitActionsControl.logic.test.ts
++++ b/apps/web/src/components/GitActionsControl.logic.test.ts
+@@ -345,7 +345,7 @@ describe("when: ref is behind upstream", () => {
+     assert.deepInclude(quick, { kind: "run_pull", label: "Pull", disabled: false });
+   });
+ 
+-  it("buildMenuItems disables push and create PR", () => {
++  it("buildMenuItems enables pull and disables push and create PR", () => {
+     const items = buildMenuItems(status({ behindCount: 1, pr: null }), false);
+     assert.deepEqual(items, [
+       {
+@@ -356,6 +356,13 @@ describe("when: ref is behind upstream", () => {
+         kind: "open_dialog",
+         dialogAction: "commit",
+       },
++      {
++        id: "pull",
++        label: "Pull",
++        disabled: false,
++        icon: "pull",
++        kind: "run_pull",
++      },
+       {
+         id: "push",
+         label: "Push",
+@@ -551,7 +558,7 @@ describe("when: working tree has local changes and ref is behind upstream", () =
+     });
+   });
+ 
+-  it("buildMenuItems enables commit and keeps push and PR disabled", () => {
++  it("buildMenuItems enables commit and keeps pull, push, and PR disabled", () => {
+     const items = buildMenuItems(status({ hasWorkingTreeChanges: true, behindCount: 2 }), false);
+     assert.deepEqual(items, [
+       {
+@@ -562,6 +569,13 @@ describe("when: working tree has local changes and ref is behind upstream", () =
+         kind: "open_dialog",
+         dialogAction: "commit",
+       },
++      {
++        id: "pull",
++        label: "Pull",
++        disabled: true,
++        icon: "pull",
++        kind: "run_pull",
++      },
+       {
+         id: "push",
+         label: "Push",
+diff --git a/apps/web/src/components/GitActionsControl.logic.ts b/apps/web/src/components/GitActionsControl.logic.ts
+index 3f6bae61..37f156b5 100644
+--- a/apps/web/src/components/GitActionsControl.logic.ts
++++ b/apps/web/src/components/GitActionsControl.logic.ts
+@@ -10,16 +10,16 @@ import {
+   type ChangeRequestTerminology,
+ } from "../sourceControlPresentation";
+ 
+-export type GitActionIconName = "commit" | "push" | "pr";
++export type GitActionIconName = "commit" | "pull" | "push" | "pr";
+ 
+ export type GitDialogAction = "commit" | "push" | "create_pr";
+ 
+ export interface GitActionMenuItem {
+-  id: "commit" | "push" | "pr";
++  id: "commit" | "pull" | "push" | "pr";
+   label: string;
+   disabled: boolean;
+   icon: GitActionIconName;
+-  kind: "open_dialog" | "open_pr";
++  kind: "open_dialog" | "open_pr" | "run_pull";
+   dialogAction?: GitDialogAction;
+ }
+ 
+@@ -102,10 +102,12 @@ export function buildMenuItems(
+   const hasBranch = gitStatus.refName !== null;
+   const hasChanges = gitStatus.hasWorkingTreeChanges;
+   const hasOpenPr = gitStatus.pr?.state === "open";
++  const isAhead = gitStatus.aheadCount > 0;
+   const isBehind = gitStatus.behindCount > 0;
+   const hasDefaultBranchDelta = (gitStatus.aheadOfDefaultCount ?? gitStatus.aheadCount) > 0;
+   const canPushWithoutUpstream = hasPrimaryRemote && !gitStatus.hasUpstream;
+   const canCommit = !isBusy && hasChanges;
++  const canPull = !isBusy && hasBranch && !hasChanges && isBehind && !isAhead;
+   const canPush =
+     !isBusy &&
+     hasBranch &&
+@@ -135,8 +137,19 @@ export function buildMenuItems(
+     return [commitItem];
+   }
+ 
+-  return [
+-    commitItem,
++  const items: GitActionMenuItem[] = [commitItem];
++
++  if (isBehind && gitStatus.hasUpstream) {
++    items.push({
++      id: "pull",
++      label: "Pull",
++      disabled: !canPull,
++      icon: "pull",
++      kind: "run_pull",
++    });
++  }
++
++  items.push(
+     {
+       id: "push",
+       label: "Push",
+@@ -161,7 +174,9 @@ export function buildMenuItems(
+           kind: "open_dialog",
+           dialogAction: "create_pr",
+         },
+-  ];
++  );
++
++  return items;
+ }
+ 
+ export function resolveQuickAction(
+diff --git a/apps/web/src/components/GitActionsControl.tsx b/apps/web/src/components/GitActionsControl.tsx
+index 419bbe2d..45d2e613 100644
+--- a/apps/web/src/components/GitActionsControl.tsx
++++ b/apps/web/src/components/GitActionsControl.tsx
+@@ -18,6 +18,7 @@ import {
+   CheckIcon,
+   ChevronDownIcon,
+   CloudUploadIcon,
++  DownloadIcon,
+   ExternalLinkIcon,
+   GitBranchPlusIcon,
+   GitCommitIcon,
+@@ -65,6 +66,7 @@ import {
+   useSourceControlActionRunning,
+   useSourceControlPublishRepositoryAction,
+   useVcsInitAction,
++  useVcsPullAction,
+ } from "~/lib/sourceControlActions";
+ import { getVcsStatusDataForTarget, refreshVcsStatus, useVcsStatus } from "~/lib/vcsStatusState";
+ import { useSourceControlDiscovery } from "~/lib/sourceControlDiscoveryState";
+@@ -256,6 +258,25 @@ function getMenuActionDisabledReason({
+     return "Commit is currently unavailable.";
+   }
+ 
++  if (item.id === "pull") {
++    if (!hasBranch) {
++      return "Detached HEAD: checkout a refName before pulling.";
++    }
++    if (hasChanges) {
++      return "Commit or stash local changes before pulling.";
++    }
++    if (isAhead && isBehind) {
++      return "Branch has diverged from upstream. Rebase/merge first.";
++    }
++    if (!gitStatus.hasUpstream) {
++      return "Current refName has no upstream configured.";
++    }
++    if (!isBehind) {
++      return "Branch is already up to date.";
++    }
++    return "Pull is currently unavailable.";
++  }
++
+   if (item.id === "push") {
+     if (!hasBranch) {
+       return "Detached HEAD: checkout a refName before pushing.";
+@@ -308,6 +329,7 @@ function GitActionItemIcon({
+   SourceControlIcon: ReturnType<typeof getSourceControlPresentation>["Icon"];
+ }) {
+   if (icon === "commit") return <GitCommitIcon />;
++  if (icon === "pull") return <DownloadIcon />;
+   if (icon === "push") return <CloudUploadIcon />;
+   return <SourceControlIcon />;
+ }
+@@ -1056,6 +1078,7 @@ export default function GitActionsControl({
+ 
+   const initAction = useVcsInitAction(sourceControlScope);
+   const runImmediateGitAction = useGitStackedAction(sourceControlScope);
++  const pullAction = useVcsPullAction(sourceControlScope);
+   const isGitActionRunning = useSourceControlActionRunning(
+     sourceControlScope,
+     RUNNING_SOURCE_CONTROL_ACTIONS,
+@@ -1184,6 +1207,45 @@ export default function GitActionsControl({
+     });
+   }, [gitStatusForActions, threadToastData]);
+ 
++  const runPullWithToast = useCallback(async () => {
++    const toastId = toastManager.add({
++      type: "loading",
++      title: "Pulling latest changes...",
++      description: "Waiting for Git...",
++      timeout: 0,
++      data: threadToastData,
++    });
++
++    try {
++      const result = await pullAction.run();
++      toastManager.update(toastId, {
++        type: "success",
++        title:
++          result.status === "skipped_up_to_date"
++            ? "Branch already up to date"
++            : "Pulled latest changes",
++        description: result.upstreamRef
++          ? `${result.refName} is synced with ${result.upstreamRef}.`
++          : `${result.refName} is synced with upstream.`,
++        timeout: 0,
++        data: {
++          ...threadToastData,
++          dismissAfterVisibleMs: 10_000,
++        },
++      });
++    } catch (err) {
++      toastManager.update(
++        toastId,
++        stackedThreadToast({
++          type: "error",
++          title: "Pull failed",
++          description: err instanceof Error ? err.message : "An error occurred.",
++          ...(threadToastData !== undefined ? { data: threadToastData } : {}),
++        }),
++      );
++    }
++  }, [pullAction, threadToastData]);
++
+   runGitActionWithToast = useEffectEvent(
+     async ({
+       action,
+@@ -1460,6 +1522,10 @@ export default function GitActionsControl({
+ 
+   const openDialogForMenuItem = (item: GitActionMenuItem) => {
+     if (item.disabled) return;
++    if (item.kind === "run_pull") {
++      void runPullWithToast();
++      return;
++    }
+     if (item.kind === "open_pr") {
+       void openExistingPr();
+       return;
+-- 
+2.50.1 (Apple Git-155)
+

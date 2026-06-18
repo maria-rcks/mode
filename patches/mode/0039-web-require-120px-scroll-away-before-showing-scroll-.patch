@@ -1,7 +1,7 @@
-From 5ebe15f69de0eac70482143e0adb2753bec257e9 Mon Sep 17 00:00:00 2001
+From 3b9e0e271fca4f470f9ef07dd815a2b0394ad86b Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 22:10:59 -0400
-Subject: [PATCH 39/53] web: require 120px scroll-away before showing
+Subject: [PATCH 39/58] web: require 120px scroll-away before showing
  scroll-to-bottom pill
 
 ---

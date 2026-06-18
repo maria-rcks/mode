@@ -1,7 +1,7 @@
-From 984b6bc81b2b0a00804c3aa8f46ca0dd8885a947 Mon Sep 17 00:00:00 2001
+From a2cec815d92b26dcd421a2ddd21f69682c7a2f53 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:06:27 -0400
-Subject: [PATCH 44/53] fix(chat): hydrate stored attachment preview URLs
+Subject: [PATCH 44/58] fix(chat): hydrate stored attachment preview URLs
 
 ---
  .../web/src/components/ChatView.logic.test.ts | 130 +++++++++++++++++-

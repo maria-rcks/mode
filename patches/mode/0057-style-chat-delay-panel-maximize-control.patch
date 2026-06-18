@@ -1,0 +1,157 @@
+From 0a087db1ca14be03fa12817706c116965a9f4202 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 15:52:13 -0400
+Subject: [PATCH 57/58] style(chat): delay panel maximize control
+
+---
+ apps/web/src/components/ChatView.browser.tsx  |  2 ++
+ apps/web/src/components/ChatView.tsx          | 23 ++++++++++++++++++-
+ .../components/chat/PanelLayoutControls.tsx   |  5 ++--
+ apps/web/src/index.css                        | 22 ++++++++++++++++++
+ 4 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index aec056a1..6fe88537 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -2216,6 +2216,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       document.documentElement.classList.remove("wco");
+ 
+       rightPanelToggle.click();
++      expect(document.querySelector('button[aria-label="Maximize panel"]')).toBeNull();
+ 
+       const maximizeButton = await waitForElement(
+         () => document.querySelector<HTMLButtonElement>('button[aria-label="Maximize panel"]'),
+@@ -2231,6 +2232,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       );
+       const maximizeRect = maximizeButton.getBoundingClientRect();
+       const rightPanelTabbarRect = rightPanelTabbar.getBoundingClientRect();
++      expect(maximizeButton.classList.contains("panel-layout-maximize-control")).toBe(true);
+       const inlineRightPanel = await waitForElement(
+         () => document.querySelector<HTMLElement>('[data-preview-panel-mode="inline"]'),
+         "Unable to find inline right panel.",
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 2afcd46e..f5bf3027 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -440,6 +440,7 @@ const SCRIPT_TERMINAL_ROWS = 30;
+ const STARTUP_DRAFT_COMPOSER_DOCK_MS = 220;
+ const STARTUP_DRAFT_COMPOSER_TRANSITION_RESET_MS = 320;
+ const RIGHT_PANEL_INLINE_TRANSITION_MS = 260;
++const RIGHT_PANEL_MAXIMIZE_CONTROL_DELAY_MS = RIGHT_PANEL_INLINE_TRANSITION_MS / 2;
+ 
+ type StartupDraftComposerAnimation = {
+   y: number;
+@@ -1366,6 +1367,7 @@ export default function ChatView(props: ChatViewProps) {
+   const inlineRightPanelOwnsTitleBar =
+     !shouldUsePlanSidebarSheet &&
+     (inlineRightPanelMounted || (rightPanelOpen && activeThreadKey !== null));
++  const [rightPanelMaximizeControlVisible, setRightPanelMaximizeControlVisible] = useState(false);
+ 
+   useEffect(() => {
+     if (shouldUsePlanSidebarSheet || activeThreadKey === null) {
+@@ -1433,6 +1435,25 @@ export default function ChatView(props: ChatViewProps) {
+     };
+   }, [activeThreadKey, inlineRightPanelMounted, rightPanelOpen, shouldUsePlanSidebarSheet]);
+ 
++  useEffect(() => {
++    if (!inlineRightPanelOwnsTitleBar || !inlineRightPanelOpen) {
++      setRightPanelMaximizeControlVisible(false);
++      return;
++    }
++
++    if (prefersReducedMotion()) {
++      setRightPanelMaximizeControlVisible(true);
++      return;
++    }
++
++    const timeout = window.setTimeout(() => {
++      setRightPanelMaximizeControlVisible(true);
++    }, RIGHT_PANEL_MAXIMIZE_CONTROL_DELAY_MS);
++    return () => {
++      window.clearTimeout(timeout);
++    };
++  }, [inlineRightPanelOpen, inlineRightPanelOwnsTitleBar]);
++
+   useEffect(() => {
+     if (!activeThreadRef) {
+       return;
+@@ -5081,7 +5102,7 @@ export default function ChatView(props: ChatViewProps) {
+   const inlinePanelLayoutControls = renderPanelLayoutControls("inline", false);
+   const titlebarPanelLayoutControls = renderPanelLayoutControls(
+     "titlebar",
+-    inlineRightPanelOwnsTitleBar && rightPanelOpen,
++    inlineRightPanelOwnsTitleBar && rightPanelMaximizeControlVisible,
+     inlineRightPanelOwnsTitleBar && !rightPanelOpen,
+   );
+   const inlinePanelLayoutControlsPlaceholder = inlineRightPanelOwnsTitleBar ? (
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index eb6fd72a..b102c19f 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -68,13 +68,14 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+               <TooltipTrigger
+                 render={
+                   <Toggle
+-                    className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+                     pressed={rightPanelMaximized}
+                     onPressedChange={onToggleRightPanelMaximized}
+                     aria-label={rightPanelMaximized ? "Restore panel size" : "Maximize panel"}
+                     variant="outline"
+                     size="xs"
++                    data-panel-maximize-control
+                     disabled={!canMaximizeRightPanel}
++                    className={cn(PANEL_LAYOUT_TOGGLE_CLASS_NAME, "panel-layout-maximize-control")}
+                   >
+                     {rightPanelMaximized ? (
+                       <Minimize2Icon className="size-3.5" />
+@@ -92,7 +93,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+                   : "Panel maximization is unavailable at this width"}
+               </TooltipPopup>
+             </Tooltip>
+-            <GroupSeparator />
++            <GroupSeparator className="panel-layout-maximize-control" />
+           </>
+         ) : null}
+         <Tooltip>
+diff --git a/apps/web/src/index.css b/apps/web/src/index.css
+index 3af4ff2e..4a671288 100644
+--- a/apps/web/src/index.css
++++ b/apps/web/src/index.css
+@@ -110,11 +110,33 @@
+     -webkit-app-region: no-drag;
+   }
+ 
++  .panel-layout-maximize-control {
++    animation: panel-layout-maximize-control-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
++  }
++
+   .surface-subheader {
+     @apply flex h-10 min-h-10 shrink-0 items-center border-b border-border/60 bg-background;
+   }
+ }
+ 
++@keyframes panel-layout-maximize-control-in {
++  from {
++    opacity: 0;
++    transform: translate3d(6px, 0, 0) scale(0.94);
++  }
++
++  to {
++    opacity: 1;
++    transform: translate3d(0, 0, 0) scale(1);
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .panel-layout-maximize-control {
++    animation: none;
++  }
++}
++
+ /* Safe-area inset utilities for surfaces that opt into edge-to-edge rendering.
+    Insets resolve to 0 when the browser already constrains the layout viewport
+    to the safe area. */
+-- 
+2.50.1 (Apple Git-155)
+

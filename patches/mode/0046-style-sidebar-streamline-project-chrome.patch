@@ -1,15 +1,15 @@
-From 585dcdce74a181c4cd8915808bb15a47e89b556c Mon Sep 17 00:00:00 2001
+From 5e6aea47966072e42ab4df2d394116d9f0576f43 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:06:55 -0400
-Subject: [PATCH 46/53] style(sidebar): streamline project chrome
+Subject: [PATCH 46/58] style(sidebar): streamline project chrome
 
 ---
- apps/web/src/components/Sidebar.tsx           | 325 +++++++++---------
- .../src/components/ThreadStatusIndicators.tsx |  35 +-
- 2 files changed, 158 insertions(+), 202 deletions(-)
+ apps/web/src/components/Sidebar.tsx           | 279 +++++++++---------
+ .../src/components/ThreadStatusIndicators.tsx |  35 +--
+ 2 files changed, 137 insertions(+), 177 deletions(-)
 
 diff --git a/apps/web/src/components/Sidebar.tsx b/apps/web/src/components/Sidebar.tsx
-index bb2751b0..f01bd39b 100644
+index bb2751b0..0a09296f 100644
 --- a/apps/web/src/components/Sidebar.tsx
 +++ b/apps/web/src/components/Sidebar.tsx
 @@ -51,7 +51,7 @@ import {
@@ -203,7 +203,7 @@ index bb2751b0..f01bd39b 100644
          <MenuGroup>
            <div className="px-2 py-1 sm:text-xs font-medium text-muted-foreground">
              Sort projects
-@@ -2547,45 +2550,118 @@ function SortableProjectItem({
+@@ -2547,45 +2550,97 @@ function SortableProjectItem({
  }
  
  const SidebarChromeHeader = memo(function SidebarChromeHeader({
@@ -234,7 +234,6 @@ index bb2751b0..f01bd39b 100644
 +  threadPreviewCount: SidebarThreadPreviewCount;
 +  updateSettings: ReturnType<typeof useUpdateSettings>["updateSettings"];
 +  openAddProject: () => void;
-+  commandPaletteShortcutLabel: string | null;
 +}
 +
 +const SidebarProjectHeaderActions = memo(function SidebarProjectHeaderActions({
@@ -244,7 +243,6 @@ index bb2751b0..f01bd39b 100644
 +  threadPreviewCount,
 +  updateSettings,
 +  openAddProject,
-+  commandPaletteShortcutLabel,
 +}: SidebarProjectHeaderActionsProps) {
 +  const handleProjectSortOrderChange = useCallback(
 +    (sortOrder: SidebarProjectSortOrder) => {
@@ -270,28 +268,9 @@ index bb2751b0..f01bd39b 100644
 +    },
 +    [updateSettings],
 +  );
-+  const searchLabel = commandPaletteShortcutLabel
-+    ? `Search (${commandPaletteShortcutLabel})`
-+    : "Search";
 +
 +  return (
 +    <div className="ml-auto flex items-center gap-1 [-webkit-app-region:no-drag]">
-+      <CommandDialogTrigger
-+        render={
-+          <button
-+            type="button"
-+            aria-label={searchLabel}
-+            title={searchLabel}
-+            className={SIDEBAR_HEADER_ACTION_BUTTON_CLASS}
-+            data-testid="command-palette-trigger"
-+          />
-+        }
-+      >
-+        <SearchIcon className="size-3.5" />
-+        {commandPaletteShortcutLabel ? (
-+          <Kbd className="sr-only">{commandPaletteShortcutLabel}</Kbd>
-+        ) : null}
-+      </CommandDialogTrigger>
 +      <ProjectSortMenu
 +        projectSortOrder={projectSortOrder}
 +        threadSortOrder={threadSortOrder}
@@ -350,7 +329,7 @@ index bb2751b0..f01bd39b 100644
  });
  
  const SidebarChromeFooter = memo(function SidebarChromeFooter() {
-@@ -2624,12 +2700,6 @@ interface SidebarProjectsContentProps {
+@@ -2624,12 +2679,6 @@ interface SidebarProjectsContentProps {
    desktopUpdateButtonAction: "download" | "install" | "none";
    desktopUpdateButtonDisabled: boolean;
    handleDesktopUpdateButtonClick: () => void;
@@ -363,15 +342,7 @@ index bb2751b0..f01bd39b 100644
    isManualProjectSorting: boolean;
    projectDnDSensors: ReturnType<typeof useSensors>;
    projectCollisionDetection: CollisionDetection;
-@@ -2644,7 +2714,6 @@ interface SidebarProjectsContentProps {
-   activeRouteProjectKey: string | null;
-   routeThreadKey: string | null;
-   newThreadShortcutLabel: string | null;
--  commandPaletteShortcutLabel: string | null;
-   threadJumpLabelByKey: ReadonlyMap<string, string>;
-   attachThreadListAutoAnimateRef: (node: HTMLElement | null) => void;
-   expandThreadListForProject: (projectKey: string) => void;
-@@ -2665,12 +2734,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+@@ -2665,12 +2714,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
      desktopUpdateButtonAction,
      desktopUpdateButtonDisabled,
      handleDesktopUpdateButtonClick,
@@ -384,15 +355,7 @@ index bb2751b0..f01bd39b 100644
      isManualProjectSorting,
      projectDnDSensors,
      projectCollisionDetection,
-@@ -2685,7 +2748,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
-     activeRouteProjectKey,
-     routeThreadKey,
-     newThreadShortcutLabel,
--    commandPaletteShortcutLabel,
-     threadJumpLabelByKey,
-     attachThreadListAutoAnimateRef,
-     expandThreadListForProject,
-@@ -2697,56 +2759,8 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
+@@ -2697,34 +2740,9 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
      projectsLength,
    } = props;
  
@@ -424,32 +387,11 @@ index bb2751b0..f01bd39b 100644
    return (
      <SidebarContent className="gap-0">
 -      <SidebarGroup className="px-2 pt-2 pb-1">
--        <SidebarMenu>
--          <SidebarMenuItem>
--            <CommandDialogTrigger
--              render={
--                <SidebarMenuButton
--                  size="sm"
--                  className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground focus-visible:ring-0"
--                  data-testid="command-palette-trigger"
--                />
--              }
--            >
--              <SearchIcon className="size-3.5 text-muted-foreground/70" />
--              <span className="flex-1 truncate text-left text-xs">Search</span>
--              {commandPaletteShortcutLabel ? (
--                <Kbd className="h-4 min-w-0 rounded-sm px-1.5 text-[10px]">
--                  {commandPaletteShortcutLabel}
--                </Kbd>
--              ) : null}
--            </CommandDialogTrigger>
--          </SidebarMenuItem>
--        </SidebarMenu>
--      </SidebarGroup>
-       {showArm64IntelBuildWarning && arm64IntelBuildWarningDescription ? (
-         <SidebarGroup className="px-2 pt-2 pb-0">
-           <Alert variant="warning" className="rounded-2xl border-warning/40 bg-warning/8">
-@@ -2770,41 +2784,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
++      <SidebarGroup className="px-2 pt-1 pb-1">
+         <SidebarMenu>
+           <SidebarMenuItem>
+             <CommandDialogTrigger
+@@ -2770,41 +2788,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
            </Alert>
          </SidebarGroup>
        ) : null}
@@ -492,7 +434,7 @@ index bb2751b0..f01bd39b 100644
          {isManualProjectSorting ? (
            <DndContext
              sensors={projectDnDSensors}
-@@ -3505,24 +3485,30 @@ export default function Sidebar() {
+@@ -3505,24 +3489,29 @@ export default function Sidebar() {
  
    return (
      <>
@@ -514,7 +456,6 @@ index bb2751b0..f01bd39b 100644
 +              threadPreviewCount={sidebarThreadPreviewCount}
 +              updateSettings={updateSettings}
 +              openAddProject={openAddProjectCommandPalette}
-+              commandPaletteShortcutLabel={commandPaletteShortcutLabel}
 +            />
 +          </SidebarChromeHeader>
            <SidebarProjectsContent
@@ -532,14 +473,6 @@ index bb2751b0..f01bd39b 100644
              isManualProjectSorting={isManualProjectSorting}
              projectDnDSensors={projectDnDSensors}
              projectCollisionDetection={projectCollisionDetection}
-@@ -3537,7 +3523,6 @@ export default function Sidebar() {
-             activeRouteProjectKey={activeRouteProjectKey}
-             routeThreadKey={routeThreadKey}
-             newThreadShortcutLabel={newThreadShortcutLabel}
--            commandPaletteShortcutLabel={commandPaletteShortcutLabel}
-             threadJumpLabelByKey={visibleThreadJumpLabelByKey}
-             attachThreadListAutoAnimateRef={attachThreadListAutoAnimateRef}
-             expandThreadListForProject={expandThreadListForProject}
 diff --git a/apps/web/src/components/ThreadStatusIndicators.tsx b/apps/web/src/components/ThreadStatusIndicators.tsx
 index ed2df1c7..57156b54 100644
 --- a/apps/web/src/components/ThreadStatusIndicators.tsx

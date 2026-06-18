@@ -1,7 +1,7 @@
-From 7bf0d6394213f48781c84065daf23cf15d2c5521 Mon Sep 17 00:00:00 2001
+From 5a2a5e472144a1535d421678f70302bbaaa1b30a Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Wed, 17 Jun 2026 14:18:43 -0400
-Subject: [PATCH 31/53] fix(chat): keep wide composer footer expanded
+Subject: [PATCH 31/58] fix(chat): keep wide composer footer expanded
 
 ---
  apps/web/src/components/composerFooterLayout.ts | 2 +-

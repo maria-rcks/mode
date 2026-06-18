@@ -1,7 +1,7 @@
-From dc17a04a9cc97c8483e2556a2a33da746b569073 Mon Sep 17 00:00:00 2001
+From 0093ab44a9fd175fbb133ae308a73faa1ef97856 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 01:10:51 -0400
-Subject: [PATCH 48/53] feat(assets): implement image read RPC
+Subject: [PATCH 48/58] feat(assets): implement image read RPC
 
 ---
  apps/server/src/assets/AssetAccess.ts         | 60 ++++++++++++++++++-

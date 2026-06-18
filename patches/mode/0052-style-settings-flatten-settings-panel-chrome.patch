@@ -1,7 +1,7 @@
-From d663b30cb6d9eaf68b82005b4d623f28fb24b147 Mon Sep 17 00:00:00 2001
+From f60c4d5f57ee738642768db45923b43f6c5862e6 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 04:25:40 -0400
-Subject: [PATCH 52/53] style(settings): flatten settings panel chrome
+Subject: [PATCH 52/58] style(settings): flatten settings panel chrome
 
 ---
  .../src/components/settings/settingsLayout.tsx    | 15 ++++++---------

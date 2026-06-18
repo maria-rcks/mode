@@ -1,7 +1,7 @@
-From 4a6de71ec8a0190839ebee2f94d8fcafe2b03dae Mon Sep 17 00:00:00 2001
+From b5a8c61021769be9bd81fb52f5f5c73c5c4ff65c Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sat, 13 Jun 2026 21:48:50 -0400
-Subject: [PATCH 14/53] fix(sidebar): remove project tree chrome
+Subject: [PATCH 14/58] fix(sidebar): remove project tree chrome
 
 ---
  .../src/components/ProjectFavicon.test.tsx    | 35 +++++++++

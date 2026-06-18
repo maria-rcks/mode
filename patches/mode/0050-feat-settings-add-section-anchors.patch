@@ -1,7 +1,7 @@
-From 52416f2fc49c5a9186b3b4c428c5798055e9efca Mon Sep 17 00:00:00 2001
+From 7bbba5f70a0538792b47f6fe350f814e59fc03c4 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Thu, 18 Jun 2026 04:25:26 -0400
-Subject: [PATCH 50/53] feat(settings): add section anchors
+Subject: [PATCH 50/58] feat(settings): add section anchors
 
 ---
  .../src/components/settings/ConnectionsSettings.tsx |  5 +++--

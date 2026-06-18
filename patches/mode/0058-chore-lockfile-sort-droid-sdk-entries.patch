@@ -1,0 +1,68 @@
+From 58550d9625dc156d1aa073d2cef3c470589e5961 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 15:52:34 -0400
+Subject: [PATCH 58/58] chore(lockfile): sort droid sdk entries
+
+---
+ pnpm-lock.yaml | 24 +++++++++++++-----------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 0ce68ad4..aee779bb 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -2400,6 +2400,10 @@ packages:
+     resolution: {integrity: sha512-4aQzz9vgxcNXFfo/iyNgDDYfsU5XGKKxWxZopw0cVotHiW+U8IJbIxMaxsINs6bHhtkG3StKNPcOrn3eBuxKPw==}
+     hasBin: true
+ 
++  '@factory/droid-sdk@0.2.0':
++    resolution: {integrity: sha512-m8Srp98pTvu5jAZtZpX6/Ojut6KV3CiqUGh0MXBUcsuKzsDw8hODZEbPTocxP6MrT0rsoKpqCS9SRTt0m+9cqw==}
++    engines: {node: '>=18.0.0'}
++
+   '@ff-labs/fff-bin-darwin-arm64@0.9.4':
+     resolution: {integrity: sha512-xyivu2xB++O5xXDx5Qm50JsU2aXt8YgXlGVhH/HE7UMYDrE6L6f1RYdYs8Y0bn0D3D0+bFBrN5ELPszK9E4Wbw==}
+     cpu: [arm64]
+@@ -2445,9 +2449,6 @@ packages:
+     engines: {node: '>=18.0.0'}
+     cpu: [x64, arm64]
+     os: [darwin, linux, win32]
+-  '@factory/droid-sdk@0.2.0':
+-    resolution: {integrity: sha512-m8Srp98pTvu5jAZtZpX6/Ojut6KV3CiqUGh0MXBUcsuKzsDw8hODZEbPTocxP6MrT0rsoKpqCS9SRTt0m+9cqw==}
+-    engines: {node: '>=18.0.0'}
+ 
+   '@floating-ui/core@1.7.5':
+     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
+@@ -11891,6 +11892,15 @@ snapshots:
+       chalk: 4.1.2
+       js-yaml: 4.2.0
+ 
++  '@factory/droid-sdk@0.2.0':
++    dependencies:
++      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
++      uuid: 11.1.0
++      zod: 3.25.76
++    transitivePeerDependencies:
++      - '@cfworker/json-schema'
++      - supports-color
++
+   '@ff-labs/fff-bin-darwin-arm64@0.9.4':
+     optional: true
+ 
+@@ -11927,14 +11937,6 @@ snapshots:
+       '@ff-labs/fff-bin-linux-x64-musl': 0.9.4
+       '@ff-labs/fff-bin-win32-arm64': 0.9.4
+       '@ff-labs/fff-bin-win32-x64': 0.9.4
+-  '@factory/droid-sdk@0.2.0':
+-    dependencies:
+-      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
+-      uuid: 11.1.0
+-      zod: 3.25.76
+-    transitivePeerDependencies:
+-      - '@cfworker/json-schema'
+-      - supports-color
+ 
+   '@floating-ui/core@1.7.5':
+     dependencies:
+-- 
+2.50.1 (Apple Git-155)
+

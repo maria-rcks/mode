@@ -1,0 +1,439 @@
+From 417104639822a6ed3e733db7be4d94227ff4bcd4 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Thu, 18 Jun 2026 15:51:49 -0400
+Subject: [PATCH 55/58] feat(settings): add sidebar search
+
+---
+ .../settings/SettingsSidebarNav.logic.test.ts |  73 ++++++++++
+ .../settings/SettingsSidebarNav.logic.ts      |  92 ++++++++++++
+ .../settings/SettingsSidebarNav.tsx           | 132 +++++++++++++++---
+ 3 files changed, 276 insertions(+), 21 deletions(-)
+ create mode 100644 apps/web/src/components/settings/SettingsSidebarNav.logic.test.ts
+ create mode 100644 apps/web/src/components/settings/SettingsSidebarNav.logic.ts
+
+diff --git a/apps/web/src/components/settings/SettingsSidebarNav.logic.test.ts b/apps/web/src/components/settings/SettingsSidebarNav.logic.test.ts
+new file mode 100644
+index 00000000..43b23e36
+--- /dev/null
++++ b/apps/web/src/components/settings/SettingsSidebarNav.logic.test.ts
+@@ -0,0 +1,73 @@
++import { describe, expect, it } from "vite-plus/test";
++
++import {
++  filterSettingsNavCategories,
++  getFirstSettingsNavSearchTarget,
++  normalizeSettingsSearchQuery,
++} from "./SettingsSidebarNav.logic";
++
++const categories = [
++  {
++    label: "General",
++    to: "/settings/general",
++    subItems: [
++      { label: "Theme", anchor: "theme" },
++      { label: "Time format", anchor: "time-format" },
++    ],
++  },
++  {
++    label: "Source Control",
++    to: "/settings/source-control",
++    subItems: [
++      { label: "Version Control", anchor: "version-control" },
++      { label: "Source Control Providers", anchor: "source-control-providers" },
++    ],
++  },
++  { label: "Providers", to: "/settings/providers" },
++] as const;
++
++describe("SettingsSidebarNav logic", () => {
++  it("normalizes repeated whitespace and casing", () => {
++    expect(normalizeSettingsSearchQuery("  Source   Control  ")).toBe("source control");
++  });
++
++  it("returns all categories when the query is empty", () => {
++    expect(filterSettingsNavCategories(categories, " ")).toEqual(categories);
++  });
++
++  it("keeps only matching sub-items when the category label does not match", () => {
++    expect(filterSettingsNavCategories(categories, "theme")).toEqual([
++      {
++        label: "General",
++        to: "/settings/general",
++        subItems: [{ label: "Theme", anchor: "theme" }],
++      },
++    ]);
++  });
++
++  it("keeps all sub-items when the category label matches", () => {
++    expect(filterSettingsNavCategories(categories, "source")).toEqual([
++      {
++        label: "Source Control",
++        to: "/settings/source-control",
++        subItems: [
++          { label: "Version Control", anchor: "version-control" },
++          { label: "Source Control Providers", anchor: "source-control-providers" },
++        ],
++      },
++    ]);
++  });
++
++  it("targets the first matching category for Enter navigation", () => {
++    expect(getFirstSettingsNavSearchTarget(categories, "source")).toEqual({
++      to: "/settings/source-control",
++    });
++  });
++
++  it("targets the first matching sub-item when the category label does not match", () => {
++    expect(getFirstSettingsNavSearchTarget(categories, "version control")).toEqual({
++      to: "/settings/source-control",
++      anchor: "version-control",
++    });
++  });
++});
+diff --git a/apps/web/src/components/settings/SettingsSidebarNav.logic.ts b/apps/web/src/components/settings/SettingsSidebarNav.logic.ts
+new file mode 100644
+index 00000000..0fbab7a3
+--- /dev/null
++++ b/apps/web/src/components/settings/SettingsSidebarNav.logic.ts
+@@ -0,0 +1,92 @@
++export type SearchableSettingsSubItem = {
++  readonly label: string;
++};
++
++export type SearchableSettingsCategory<TSubItem extends SearchableSettingsSubItem> = {
++  readonly label: string;
++  readonly subItems?: ReadonlyArray<TSubItem>;
++};
++
++export type SearchableSettingsNavSubItem = SearchableSettingsSubItem & {
++  readonly anchor: string;
++};
++
++export type SearchableSettingsNavCategory<TSubItem extends SearchableSettingsNavSubItem> =
++  SearchableSettingsCategory<TSubItem> & {
++    readonly to: string;
++  };
++
++export type FilteredSettingsCategory<
++  TCategory,
++  TSubItem extends SearchableSettingsSubItem,
++> = TCategory & {
++  readonly subItems?: ReadonlyArray<TSubItem>;
++};
++
++export function normalizeSettingsSearchQuery(query: string): string {
++  return query.trim().toLowerCase().replace(/\s+/g, " ");
++}
++
++function settingLabelMatchesQuery(label: string, normalizedQuery: string): boolean {
++  return normalizeSettingsSearchQuery(label).includes(normalizedQuery);
++}
++
++export function filterSettingsNavCategories<
++  TSubItem extends SearchableSettingsSubItem,
++  TCategory extends SearchableSettingsCategory<TSubItem>,
++>(
++  categories: ReadonlyArray<TCategory>,
++  query: string,
++): Array<FilteredSettingsCategory<TCategory, TSubItem>> {
++  const normalizedQuery = normalizeSettingsSearchQuery(query);
++  if (normalizedQuery.length === 0) {
++    return [...categories];
++  }
++
++  return categories.flatMap((category) => {
++    const subItems = category.subItems ?? [];
++    const categoryMatches = settingLabelMatchesQuery(category.label, normalizedQuery);
++    const matchingSubItems = subItems.filter((subItem) =>
++      settingLabelMatchesQuery(subItem.label, normalizedQuery),
++    );
++
++    if (!categoryMatches && matchingSubItems.length === 0) {
++      return [];
++    }
++
++    return [
++      {
++        ...category,
++        subItems: categoryMatches ? subItems : matchingSubItems,
++      },
++    ];
++  });
++}
++
++export function getFirstSettingsNavSearchTarget<
++  TSubItem extends SearchableSettingsNavSubItem,
++  TCategory extends SearchableSettingsNavCategory<TSubItem>,
++>(
++  categories: ReadonlyArray<TCategory>,
++  query: string,
++): { to: TCategory["to"]; anchor?: TSubItem["anchor"] } | null {
++  const normalizedQuery = normalizeSettingsSearchQuery(query);
++  if (normalizedQuery.length === 0) {
++    return null;
++  }
++
++  for (const category of categories) {
++    if (settingLabelMatchesQuery(category.label, normalizedQuery)) {
++      return { to: category.to };
++    }
++
++    const matchingSubItem = category.subItems?.find((subItem) =>
++      settingLabelMatchesQuery(subItem.label, normalizedQuery),
++    );
++    if (matchingSubItem) {
++      return { to: category.to, anchor: matchingSubItem.anchor };
++    }
++  }
++
++  return null;
++}
+diff --git a/apps/web/src/components/settings/SettingsSidebarNav.tsx b/apps/web/src/components/settings/SettingsSidebarNav.tsx
+index 9b687b6d..5b17cbd6 100644
+--- a/apps/web/src/components/settings/SettingsSidebarNav.tsx
++++ b/apps/web/src/components/settings/SettingsSidebarNav.tsx
+@@ -1,4 +1,4 @@
+-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
++import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+ import {
+   ArchiveIcon,
+   ArrowLeftIcon,
+@@ -6,7 +6,9 @@ import {
+   GitBranchIcon,
+   KeyboardIcon,
+   Link2Icon,
++  SearchIcon,
+   Settings2Icon,
++  XIcon,
+ } from "lucide-react";
+ import { useCanGoBack, useLocation, useNavigate } from "@tanstack/react-router";
+ import { DEFAULT_SIDEBAR_THREAD_PREVIEW_COUNT } from "@t3tools/contracts/settings";
+@@ -26,6 +28,21 @@ import {
+ } from "../ui/sidebar";
+ import { cn } from "../../lib/utils";
+ import { T3ConnectSidebarAvatar, T3ConnectSidebarSignIn } from "../clerk/T3ConnectSidebarSignIn";
++import { Button } from "../ui/button";
++import {
++  SIDEBAR_PRIMARY_ICON_CLASS_NAME,
++  SIDEBAR_PRIMARY_ROW_CLASS_NAME,
++  SIDEBAR_PRIMARY_TEXT_CLASS_NAME,
++  SIDEBAR_PRIMARY_TEXT_WRAPPER_CLASS_NAME,
++  SIDEBAR_SEARCH_ICON_CLASS_NAME,
++  SIDEBAR_SEARCH_ROW_CLASS_NAME,
++  SIDEBAR_SEARCH_TEXT_CLASS_NAME,
++} from "../sidebar/sidebarSearchStyles";
++import {
++  filterSettingsNavCategories,
++  getFirstSettingsNavSearchTarget,
++  normalizeSettingsSearchQuery,
++} from "./SettingsSidebarNav.logic";
+ 
+ const SETTINGS_SUBITEM_PREVIEW_COUNT = DEFAULT_SIDEBAR_THREAD_PREVIEW_COUNT;
+ 
+@@ -98,10 +115,22 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+   const { hash } = useLocation();
+   const navContentRef = useRef<HTMLDivElement | null>(null);
+   const fullNavProbeRef = useRef<HTMLDivElement | null>(null);
++  const searchGroupRef = useRef<HTMLDivElement | null>(null);
++  const [searchQuery, setSearchQuery] = useState("");
+   const [shouldFoldOverflow, setShouldFoldOverflow] = useState(false);
+   const [expandedCategories, setExpandedCategories] = useState<ReadonlySet<SettingsSectionPath>>(
+     () => new Set(),
+   );
++  const normalizedSearchQuery = normalizeSettingsSearchQuery(searchQuery);
++  const isSearching = normalizedSearchQuery.length > 0;
++  const filteredNavGroups = useMemo(
++    () => filterSettingsNavCategories(SETTINGS_NAV_GROUPS, searchQuery),
++    [searchQuery],
++  );
++  const firstSearchTarget = useMemo(
++    () => getFirstSettingsNavSearchTarget(SETTINGS_NAV_GROUPS, searchQuery),
++    [searchQuery],
++  );
+ 
+   const handleNavigate = useCallback(
+     (to: SettingsSectionPath, anchor?: string) => {
+@@ -148,19 +177,23 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+   useEffect(() => {
+     const content = navContentRef.current;
+     const probe = fullNavProbeRef.current;
++    const searchGroup = searchGroupRef.current;
+     const viewport = content?.closest<HTMLElement>("[data-slot='scroll-area-viewport']") ?? null;
+-    if (!content || !probe || !viewport) {
++    if (!content || !probe || !searchGroup || !viewport) {
+       return;
+     }
+ 
+     const measure = () => {
+-      setShouldFoldOverflow(probe.scrollHeight > viewport.clientHeight + 1);
++      setShouldFoldOverflow(
++        probe.scrollHeight + searchGroup.offsetHeight > viewport.clientHeight + 1,
++      );
+     };
+     measure();
+ 
+     const observer = new ResizeObserver(measure);
+     observer.observe(viewport);
+     observer.observe(probe);
++    observer.observe(searchGroup);
+     return () => {
+       observer.disconnect();
+     };
+@@ -168,7 +201,61 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+ 
+   return (
+     <>
+-      <SidebarContent ref={navContentRef} className="relative overflow-x-hidden">
++      <SidebarContent ref={navContentRef} className="relative gap-0 overflow-x-hidden">
++        <SidebarGroup ref={searchGroupRef} className="px-2 pt-1 pb-1">
++          <SidebarMenu>
++            <SidebarMenuItem>
++              <SidebarMenuButton
++                size="sm"
++                render={<div />}
++                className={SIDEBAR_SEARCH_ROW_CLASS_NAME}
++              >
++                <SearchIcon className={SIDEBAR_SEARCH_ICON_CLASS_NAME} />
++                <input
++                  aria-label="Search settings"
++                  className={cn(
++                    SIDEBAR_SEARCH_TEXT_CLASS_NAME,
++                    "h-full min-w-0 bg-transparent p-0 text-inherit outline-none placeholder:text-inherit",
++                  )}
++                  onChange={(event) => setSearchQuery(event.currentTarget.value)}
++                  onKeyDown={(event) => {
++                    if (event.key === "Escape") {
++                      if (searchQuery.length === 0) return;
++                      event.preventDefault();
++                      event.stopPropagation();
++                      setSearchQuery("");
++                      return;
++                    }
++
++                    if (event.key === "Enter" && firstSearchTarget) {
++                      event.preventDefault();
++                      event.stopPropagation();
++                      handleNavigate(
++                        firstSearchTarget.to as SettingsSectionPath,
++                        firstSearchTarget.anchor,
++                      );
++                    }
++                  }}
++                  placeholder="Search"
++                  type="text"
++                  value={searchQuery}
++                />
++                {searchQuery.length > 0 ? (
++                  <Button
++                    type="button"
++                    size="icon-xs"
++                    variant="ghost"
++                    aria-label="Clear settings search"
++                    className="size-5 rounded-sm p-0 text-inherit hover:bg-transparent hover:text-foreground"
++                    onClick={() => setSearchQuery("")}
++                  >
++                    <XIcon className="size-3" />
++                  </Button>
++                ) : null}
++              </SidebarMenuButton>
++            </SidebarMenuItem>
++          </SidebarMenu>
++        </SidebarGroup>
+         <div
+           ref={fullNavProbeRef}
+           aria-hidden
+@@ -178,7 +265,9 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+             currentHashId={currentHashId}
+             expandedCategories={expandedCategories}
+             foldOverflow={false}
++            isSearching={isSearching}
+             isMeasureOnly
++            navGroups={filteredNavGroups}
+             pathname={pathname}
+             onCollapseCategory={collapseCategory}
+             onExpandCategory={expandCategory}
+@@ -188,7 +277,9 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
+         <SettingsNavMenu
+           currentHashId={currentHashId}
+           expandedCategories={expandedCategories}
+-          foldOverflow={shouldFoldOverflow}
++          foldOverflow={!isSearching && shouldFoldOverflow}
++          isSearching={isSearching}
++          navGroups={filteredNavGroups}
+           pathname={pathname}
+           onCollapseCategory={collapseCategory}
+           onExpandCategory={expandCategory}
+@@ -223,7 +314,9 @@ function SettingsNavMenu({
+   currentHashId,
+   expandedCategories,
+   foldOverflow,
++  isSearching,
+   isMeasureOnly = false,
++  navGroups,
+   pathname,
+   onCollapseCategory,
+   onExpandCategory,
+@@ -232,7 +325,9 @@ function SettingsNavMenu({
+   currentHashId: string;
+   expandedCategories: ReadonlySet<SettingsSectionPath>;
+   foldOverflow: boolean;
++  isSearching: boolean;
+   isMeasureOnly?: boolean;
++  navGroups: ReadonlyArray<SettingsCategory>;
+   pathname: string;
+   onCollapseCategory: (categoryPath: SettingsSectionPath) => void;
+   onExpandCategory: (categoryPath: SettingsSectionPath) => void;
+@@ -241,7 +336,7 @@ function SettingsNavMenu({
+   return (
+     <SidebarGroup className="gap-1 px-2 pt-1 pb-2">
+       <SidebarMenu>
+-        {SETTINGS_NAV_GROUPS.map((category) => {
++        {navGroups.map((category) => {
+           const Icon = category.icon;
+           const isCategoryCurrent = pathname === category.to;
+           const subItems = category.subItems ?? [];
+@@ -270,24 +365,14 @@ function SettingsNavMenu({
+             <SidebarMenuItem key={category.to}>
+               <SidebarMenuButton
+                 size="sm"
+-                isActive={isCategoryCurrent}
+                 tabIndex={isMeasureOnly ? -1 : undefined}
+-                className={cn(
+-                  "gap-2 px-2 py-1.5 text-left text-xs font-medium data-[active=true]:bg-transparent data-[active=true]:text-foreground",
+-                  isCategoryCurrent
+-                    ? "text-foreground"
+-                    : "text-muted-foreground/70 hover:text-foreground/80",
+-                )}
++                className={SIDEBAR_PRIMARY_ROW_CLASS_NAME}
+                 onClick={isMeasureOnly ? undefined : () => onNavigate(category.to)}
+               >
+-                <Icon
+-                  className={
+-                    isCategoryCurrent
+-                      ? "size-3.5 shrink-0 text-foreground"
+-                      : "size-3.5 shrink-0 text-muted-foreground/60"
+-                  }
+-                />
+-                <span className="truncate">{category.label}</span>
++                <Icon className={SIDEBAR_PRIMARY_ICON_CLASS_NAME} />
++                <span className={SIDEBAR_PRIMARY_TEXT_WRAPPER_CLASS_NAME}>
++                  <span className={SIDEBAR_PRIMARY_TEXT_CLASS_NAME}>{category.label}</span>
++                </span>
+               </SidebarMenuButton>
+ 
+               {hasSubItems ? (
+@@ -351,6 +436,11 @@ function SettingsNavMenu({
+             </SidebarMenuItem>
+           );
+         })}
++        {isSearching && navGroups.length === 0 ? (
++          <SidebarMenuItem>
++            <div className="px-2 py-2 text-xs text-muted-foreground/70">No settings found</div>
++          </SidebarMenuItem>
++        ) : null}
+       </SidebarMenu>
+     </SidebarGroup>
+   );
+-- 
+2.50.1 (Apple Git-155)
+

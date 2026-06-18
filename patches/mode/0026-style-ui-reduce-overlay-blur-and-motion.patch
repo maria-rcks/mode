@@ -1,7 +1,7 @@
-From a20b74775da16a663be209483f48e64ea127c90e Mon Sep 17 00:00:00 2001
+From 9d582801b6504dc4f16992de5715c0fc56346a39 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:34:24 -0400
-Subject: [PATCH 26/34] style(ui): reduce overlay blur and motion
+Subject: [PATCH 26/38] style(ui): reduce overlay blur and motion
 
 ---
  apps/web/src/components/ui/alert-dialog.tsx | 4 ++--

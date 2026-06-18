@@ -1,0 +1,106 @@
+From d5e042cf89e78375dca8fbe8d4a1a79a3de6cde9 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 14:13:39 -0400
+Subject: [PATCH 30/38] fix(web): restore fading top bar chrome slot
+
+---
+ apps/server/src/assets/AssetAccess.test.ts | 9 ++++++---
+ apps/web/src/components/ChatView.tsx       | 2 +-
+ apps/web/src/components/FadingTopBar.tsx   | 5 ++++-
+ 3 files changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/apps/server/src/assets/AssetAccess.test.ts b/apps/server/src/assets/AssetAccess.test.ts
+index 6abd8f48..7abb6d66 100644
+--- a/apps/server/src/assets/AssetAccess.test.ts
++++ b/apps/server/src/assets/AssetAccess.test.ts
+@@ -47,14 +47,16 @@ describe("AssetAccess", () => {
+       const suffix = result.relativeUrl.slice(`${ASSET_ROUTE_PREFIX}/`.length);
+       const separatorIndex = suffix.indexOf("/");
+       const token = suffix.slice(0, separatorIndex);
++      const canonicalHtmlPath = yield* fileSystem.realPath(htmlPath);
++      const canonicalCssPath = yield* fileSystem.realPath(cssPath);
+ 
+       expect(yield* resolveAsset(token, "report.html")).toEqual({
+         kind: "file",
+-        path: htmlPath,
++        path: canonicalHtmlPath,
+       });
+       expect(yield* resolveAsset(token, "report.css")).toEqual({
+         kind: "file",
+-        path: cssPath,
++        path: canonicalCssPath,
+       });
+       expect(yield* resolveAsset(token, "../secret.txt")).toBeNull();
+       expect(yield* resolveAsset(token, ".env")).toBeNull();
+@@ -126,12 +128,13 @@ describe("AssetAccess", () => {
+       });
+       const faviconSuffix = faviconResult.relativeUrl.slice(`${ASSET_ROUTE_PREFIX}/`.length);
+       const faviconSeparatorIndex = faviconSuffix.indexOf("/");
++      const canonicalFaviconPath = yield* fileSystem.realPath(faviconPath);
+       expect(
+         yield* resolveAsset(
+           faviconSuffix.slice(0, faviconSeparatorIndex),
+           faviconSuffix.slice(faviconSeparatorIndex + 1),
+         ),
+-      ).toEqual({ kind: "file", path: faviconPath });
++      ).toEqual({ kind: "file", path: canonicalFaviconPath });
+ 
+       yield* fileSystem.remove(faviconPath);
+       const fallbackResult = yield* issueAssetUrl({
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index d92f2994..8389a289 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -4934,6 +4934,7 @@ export default function ChatView(props: ChatViewProps) {
+       >
+         {/* Top bar */}
+         <FadingTopBar
++          chrome={!inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
+           data-chat-header
+           reserveTitleBarControlInset={reserveTitleBarControlInset && !inlineRightPanelOwnsTitleBar}
+           viewportFixed={topBarViewportFixed}
+@@ -4958,7 +4959,6 @@ export default function ChatView(props: ChatViewProps) {
+             onDeleteProjectScript={deleteProjectScript}
+             rightPanelOpen={rightPanelOpen}
+           />
+-          {!inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
+         </FadingTopBar>
+ 
+         {/* Error banner */}
+diff --git a/apps/web/src/components/FadingTopBar.tsx b/apps/web/src/components/FadingTopBar.tsx
+index d04d9071..0e375b72 100644
+--- a/apps/web/src/components/FadingTopBar.tsx
++++ b/apps/web/src/components/FadingTopBar.tsx
+@@ -1,4 +1,4 @@
+-import { type ComponentPropsWithoutRef } from "react";
++import { type ComponentPropsWithoutRef, type ReactNode } from "react";
+ 
+ import { isElectron } from "../env";
+ import { cn } from "../lib/utils";
+@@ -9,6 +9,7 @@ export function FadingTopBar({
+   surface = "fade",
+   viewportFixed = false,
+   className,
++  chrome,
+   contentClassName,
+   style,
+   ...headerProps
+@@ -16,6 +17,7 @@ export function FadingTopBar({
+   reserveTitleBarControlInset?: boolean;
+   surface?: "fade" | "transparent";
+   viewportFixed?: boolean;
++  chrome?: ReactNode;
+   contentClassName?: string;
+ }) {
+   const fadeBackgroundImage =
+@@ -45,6 +47,7 @@ export function FadingTopBar({
+           style={{ backgroundImage: fadeBackgroundImage }}
+         />
+       ) : null}
++      {chrome}
+       <div className={cn("pointer-events-auto relative w-full", contentClassName)}>{children}</div>
+     </header>
+   );
+-- 
+2.50.1 (Apple Git-155)
+

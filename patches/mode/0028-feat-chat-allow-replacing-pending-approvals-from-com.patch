@@ -1,60 +1,24 @@
-From bf3d9dcbb6490430ccea0e94a579842298afbd73 Mon Sep 17 00:00:00 2001
+From cc0ff1c3292c0fb444b02fcd3369602b97be8ab7 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Mon, 15 Jun 2026 23:40:10 -0400
-Subject: [PATCH 32/34] feat(chat): allow replacing pending approvals from
+Subject: [PATCH 28/38] feat(chat): allow replacing pending approvals from
  composer
 
 ---
- apps/web/src/components/ChatView.tsx          |  24 ++
  apps/web/src/components/chat/ChatComposer.tsx | 401 ++++++++----------
  .../components/chat/ComposerAttachedCard.tsx  |  38 ++
  .../chat/ComposerPendingApprovalActions.tsx   |  80 +++-
  .../chat/ComposerPendingApprovalPanel.tsx     |  78 +++-
  .../chat/runtimeModePresentation.test.ts      |   5 +
  .../chat/runtimeModePresentation.ts           |  11 +
- 7 files changed, 388 insertions(+), 249 deletions(-)
+ 6 files changed, 364 insertions(+), 249 deletions(-)
  create mode 100644 apps/web/src/components/chat/ComposerAttachedCard.tsx
 
-diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index 8f3c730a..bd2e747b 100644
---- a/apps/web/src/components/ChatView.tsx
-+++ b/apps/web/src/components/ChatView.tsx
-@@ -3155,6 +3155,30 @@ export default function ChatView(props: ChatViewProps) {
-       setThreadError(threadIdForSend, "Select a base branch before sending in New worktree mode.");
-       return;
-     }
-+    if (activePendingApproval) {
-+      const requestId = activePendingApproval.requestId;
-+      setRespondingRequestIds((existing) =>
-+        existing.includes(requestId) ? existing : [...existing, requestId],
-+      );
-+      try {
-+        await api.orchestration.dispatchCommand({
-+          type: "thread.approval.respond",
-+          commandId: newCommandId(),
-+          threadId: threadIdForSend,
-+          requestId,
-+          decision: "cancel",
-+          createdAt: new Date().toISOString(),
-+        });
-+      } catch (err: unknown) {
-+        setThreadError(
-+          threadIdForSend,
-+          err instanceof Error ? err.message : "Failed to cancel approval before sending.",
-+        );
-+        setRespondingRequestIds((existing) => existing.filter((id) => id !== requestId));
-+        return;
-+      }
-+      setRespondingRequestIds((existing) => existing.filter((id) => id !== requestId));
-+    }
- 
-     const shouldDockStartupDraftComposer =
-       isLocalDraftThread &&
 diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
-index 9293d43f..9bdf08fc 100644
+index 74d68bde..8ba7fd5c 100644
 --- a/apps/web/src/components/chat/ChatComposer.tsx
 +++ b/apps/web/src/components/chat/ChatComposer.tsx
-@@ -60,7 +60,6 @@ import {
+@@ -64,7 +64,6 @@ import {
  import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
  import { ProviderModelPicker } from "./ProviderModelPicker";
  import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
@@ -62,7 +26,7 @@ index 9293d43f..9bdf08fc 100644
  import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
  import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
  import { ComposerPendingApprovalPanel } from "./ComposerPendingApprovalPanel";
-@@ -836,7 +835,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -852,7 +851,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
    const [isComposerModelPickerOpen, setIsComposerModelPickerOpen] = useState(false);
    const [isComposerFocused, setIsComposerFocused] = useState(false);
    const isMobileViewport = useMediaQuery("max-sm");
@@ -72,7 +36,7 @@ index 9293d43f..9bdf08fc 100644
  
    // ------------------------------------------------------------------
    // Refs
-@@ -981,12 +981,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -1004,12 +1004,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
  
    const isComposerApprovalState = activePendingApproval !== null;
    const activePendingUserInput = pendingUserInputs[0] ?? null;
@@ -86,7 +50,7 @@ index 9293d43f..9bdf08fc 100644
  
    const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
    const showPlanSidebarToggle = Boolean(activePlan || sidebarProposedPlan || planSidebarOpen);
-@@ -994,7 +989,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -1017,7 +1012,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
      if (activePendingProgress) {
        return `pending:${activePendingProgress.questionIndex}:${activePendingProgress.isLastQuestion}:${activePendingIsResponding}`;
      }
@@ -95,7 +59,7 @@ index 9293d43f..9bdf08fc 100644
        return "running";
      }
      if (showPlanFollowUpPrompt) {
-@@ -1004,6 +999,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -1027,6 +1022,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
    }, [
      activePendingIsResponding,
      activePendingProgress,
@@ -103,7 +67,7 @@ index 9293d43f..9bdf08fc 100644
      composerSendState.hasSendableContent,
      isConnecting,
      isPreparingWorktree,
-@@ -1877,7 +1873,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -1904,7 +1900,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
          if (
            text.length === 0 ||
            isConnecting ||
@@ -111,15 +75,15 @@ index 9293d43f..9bdf08fc 100644
            pendingUserInputs.length > 0 ||
            (environmentUnavailable !== null && activePendingProgress === null)
          ) {
-@@ -1971,7 +1966,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
-       composerImagesRef,
-       composerTerminalContextsRef,
+@@ -2002,7 +1997,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+       composerElementContextsRef,
+       composerPreviewAnnotations,
        isConnecting,
 -      isComposerApprovalState,
        pendingUserInputs.length,
        environmentUnavailable,
        activePendingProgress,
-@@ -1996,6 +1990,28 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2027,6 +2021,28 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
        className="mx-auto w-full min-w-0 max-w-3xl"
        data-chat-composer-form="true"
      >
@@ -148,7 +112,7 @@ index 9293d43f..9bdf08fc 100644
        <div
          className={cn(
            "group rounded-[22px] p-px transition-colors duration-200",
-@@ -2034,106 +2050,48 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2065,106 +2081,48 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
              scheduleComposerCollapseCheck();
            }}
          >
@@ -294,7 +258,7 @@ index 9293d43f..9bdf08fc 100644
                </div>
              </div>
            ) : null}
-@@ -2183,12 +2141,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2214,12 +2172,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
  
            <div
              className={cn(
@@ -309,15 +273,15 @@ index 9293d43f..9bdf08fc 100644
                <div className="absolute inset-x-0 bottom-full z-20 mb-2">
                  <ComposerCommandMenu
                    items={composerMenuItems}
-@@ -2208,7 +2165,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2239,7 +2196,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
              )}
  
              {!isComposerCollapsedMobile &&
 -              !isComposerApprovalState &&
                pendingUserInputs.length === 0 &&
-               composerImages.length > 0 && (
-                 <div className="mb-3 flex flex-wrap gap-2">
-@@ -2278,19 +2234,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+               composerPreviewAnnotations.length > 0 && (
+                 <ComposerPreviewAnnotationCards
+@@ -2350,19 +2306,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
              <div className="relative">
                <ComposerPromptEditor
                  editorRef={composerEditorRef}
@@ -339,7 +303,7 @@ index 9293d43f..9bdf08fc 100644
                  skills={selectedProviderStatus?.skills ?? []}
                  {...(showMobilePendingAnswerActions ? { className: "max-sm:pb-11" } : {})}
                  onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
-@@ -2299,7 +2245,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2371,7 +2317,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                  onPaste={onComposerPaste}
                  placeholder={
                    isComposerApprovalState
@@ -348,7 +312,7 @@ index 9293d43f..9bdf08fc 100644
                      : activePendingProgress
                        ? "Type your own answer, or leave this blank to use the selected option"
                        : showPlanFollowUpPrompt && activeProposedPlan
-@@ -2314,7 +2260,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2386,7 +2332,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                  }
                  disabled={
                    isConnecting ||
@@ -356,7 +320,7 @@ index 9293d43f..9bdf08fc 100644
                    (environmentUnavailable !== null && activePendingProgress === null)
                  }
                />
-@@ -2345,116 +2290,118 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2417,116 +2362,118 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
            </div>
  
            {/* Bottom toolbar */}

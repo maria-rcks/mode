@@ -1,0 +1,68 @@
+From 14188462e19e1435c903f37a1b3dae2a737becb9 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 19:38:34 -0400
+Subject: [PATCH 36/38] fix(chat): match panel control sizing
+
+---
+ apps/web/src/components/ChatView.browser.tsx         | 6 +++---
+ apps/web/src/components/chat/PanelLayoutControls.tsx | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index 5166ecdd..66437190 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -2178,7 +2178,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       const initialRightPanelRect = rightPanelToggle.getBoundingClientRect();
+       const initialControlRects = [initialTerminalRect, initialRightPanelRect];
+       expect(document.querySelector('button[aria-label="Maximize panel"]')).toBeNull();
+-      expect(initialControlRects.every((rect) => rect.width === 28 && rect.height === 28)).toBe(
++      expect(initialControlRects.every((rect) => rect.width === 24 && rect.height === 24)).toBe(
+         true,
+       );
+       expect(initialControlRects.every((rect) => rect.top === initialControlRects[0]?.top)).toBe(
+@@ -2272,8 +2272,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expectFramedControl(maximizeButton);
+       expectFramedControl(openTerminalToggle);
+       expectFramedControl(openRightPanelToggle);
+-      expect(maximizeRect.width).toBe(28);
+-      expect(maximizeRect.height).toBe(28);
++      expect(maximizeRect.width).toBe(24);
++      expect(maximizeRect.height).toBe(24);
+       expect(maximizeRect.top).toBe(initialTerminalRect.top);
+       expect(initialTerminalRect.left - maximizeRect.right).toBe(4);
+       expect(openTerminalToggle.getBoundingClientRect().left).toBeCloseTo(
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index 515d81f1..398d9e75 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -52,7 +52,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+                 onPressedChange={onToggleRightPanelMaximized}
+                 aria-label={rightPanelMaximized ? "Restore panel size" : "Maximize panel"}
+                 variant="outline"
+-                size="sm"
++                size="xs"
+                 disabled={!canMaximizeRightPanel}
+               >
+                 {rightPanelMaximized ? (
+@@ -81,7 +81,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+               onPressedChange={onToggleTerminal}
+               aria-label="Toggle terminal drawer"
+               variant="outline"
+-              size="sm"
++              size="xs"
+               disabled={!terminalAvailable}
+             >
+               <PanelBottomIcon className="size-3.5" />
+@@ -103,7 +103,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+               onPressedChange={onToggleRightPanel}
+               aria-label="Toggle right panel"
+               variant="outline"
+-              size="sm"
++              size="xs"
+               disabled={!rightPanelAvailable}
+             >
+               <PanelRightIcon className="size-3.5" />
+-- 
+2.50.1 (Apple Git-155)
+

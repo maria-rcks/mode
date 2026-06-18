@@ -39,8 +39,33 @@ function git(args, options = {}) {
   return run("git", args, options);
 }
 
+function shellEscape(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function runInLoginShell(command, args, options = {}) {
+  const shell = process.env.SHELL || "/bin/zsh";
+  const shellCommand = `exec ${[command, ...args].map(shellEscape).join(" ")}`;
+  const result = spawnSync(shell, ["-lc", shellCommand], {
+    cwd: options.cwd ?? root,
+    encoding: "utf8",
+    stdio: options.quiet ? "pipe" : "inherit",
+  });
+
+  if (result.status !== 0) {
+    if (options.quiet) {
+      if (result.stdout) process.stdout.write(result.stdout);
+      if (result.stderr) process.stderr.write(result.stderr);
+    }
+    throw new Error(`${command} ${args.join(" ")} failed`);
+  }
+
+  if (typeof result.stdout !== "string") return "";
+  return options.trim === false ? result.stdout : result.stdout.trim();
+}
+
 function pnpm(args, options = {}) {
-  return run("pnpm", args, options);
+  return runInLoginShell("pnpm", args, options);
 }
 
 function checkoutExists() {

@@ -1,0 +1,68 @@
+From 9aa3ec96b1bad0b04ad1d12c3faa418ab5d6a767 Mon Sep 17 00:00:00 2001
+From: Mode Bot <mode-bot@example.invalid>
+Date: Mon, 15 Jun 2026 20:39:57 -0400
+Subject: [PATCH 27/38] feat(chat): animate startup draft composer docking
+
+---
+ apps/web/src/index.css | 25 +++++++++++++++++++++++++
+ apps/web/src/main.tsx  |  1 +
+ 2 files changed, 26 insertions(+)
+
+diff --git a/apps/web/src/index.css b/apps/web/src/index.css
+index 9048e207..dbca1da0 100644
+--- a/apps/web/src/index.css
++++ b/apps/web/src/index.css
+@@ -29,6 +29,7 @@
+     sans-serif;
+   --font-mono:
+     "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
++  --font-tiny5: "Tiny5", var(--font-mono);
+   --color-warning-foreground: var(--warning-foreground);
+   --color-warning: var(--warning);
+   --color-success-foreground: var(--success-foreground);
+@@ -138,6 +139,30 @@
+   animation-duration: 0s !important;
+ }
+ 
++.chat-startup-composer-transition {
++  transform-origin: top left;
++}
++
++.chat-startup-composer-transition[data-startup-composer-animating="true"] {
++  animation: chat-startup-composer-dock 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
++  will-change: transform;
++}
++
++@keyframes chat-startup-composer-dock {
++  from {
++    transform: translate3d(0, var(--chat-startup-composer-from-y, 0), 0);
++  }
++  to {
++    transform: translate3d(0, 0, 0);
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .chat-startup-composer-transition[data-startup-composer-animating="true"] {
++    animation: none;
++  }
++}
++
+ :root {
+   color-scheme: light;
+   --radius: 0.625rem;
+diff --git a/apps/web/src/main.tsx b/apps/web/src/main.tsx
+index 8d56b687..d0e0a1bb 100644
+--- a/apps/web/src/main.tsx
++++ b/apps/web/src/main.tsx
+@@ -7,6 +7,7 @@ import { createHashHistory, createBrowserHistory } from "@tanstack/react-router"
+ import "@fontsource-variable/dm-sans/index.css";
+ import "@fontsource/jetbrains-mono/400.css";
+ import "@fontsource/jetbrains-mono/500.css";
++import "@fontsource/tiny5/400.css";
+ import "@xterm/xterm/css/xterm.css";
+ import "./index.css";
+ 
+-- 
+2.50.1 (Apple Git-155)
+

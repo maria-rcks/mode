@@ -1,0 +1,106 @@
+From f8f1da33f39b60ba599be2f4e0e84f217f7a7654 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 19:22:55 -0400
+Subject: [PATCH 35/38] fix(chat): frame panel layout controls
+
+---
+ apps/web/src/components/ChatView.browser.tsx       | 13 +++++++++++++
+ .../src/components/chat/PanelLayoutControls.tsx    | 14 ++++++++------
+ 2 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index 8491461c..5166ecdd 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -1236,6 +1236,14 @@ function visibleChildrenRightEdge(element: Element): number {
+   return Math.max(...rightEdges);
+ }
+ 
++function expectFramedControl(element: HTMLElement): void {
++  const styles = window.getComputedStyle(element);
++  expect(styles.borderTopStyle).toBe("solid");
++  expect(styles.borderTopWidth).toBe("1px");
++  expect(styles.borderTopColor).not.toBe("rgba(0, 0, 0, 0)");
++  expect(styles.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
++}
++
+ async function waitForURL(
+   router: ReturnType<typeof getRouter>,
+   predicate: (pathname: string) => boolean,
+@@ -2176,6 +2184,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expect(initialControlRects.every((rect) => rect.top === initialControlRects[0]?.top)).toBe(
+         true,
+       );
++      expectFramedControl(terminalToggle);
++      expectFramedControl(rightPanelToggle);
+       expect(initialRightPanelRect.left - initialTerminalRect.right).toBe(4);
+ 
+       document.documentElement.classList.add("wco");
+@@ -2259,6 +2269,9 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         openPanelLayoutControls.getBoundingClientRect().left -
+           visibleChildrenRightEdge(rightPanelTabList),
+       ).toBeGreaterThanOrEqual(8);
++      expectFramedControl(maximizeButton);
++      expectFramedControl(openTerminalToggle);
++      expectFramedControl(openRightPanelToggle);
+       expect(maximizeRect.width).toBe(28);
+       expect(maximizeRect.height).toBe(28);
+       expect(maximizeRect.top).toBe(initialTerminalRect.top);
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index 94d49037..515d81f1 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -6,6 +6,8 @@ import { cn } from "~/lib/utils";
+ import { Toggle } from "../ui/toggle";
+ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+ 
++const PANEL_LAYOUT_TOGGLE_CLASS_NAME = "shrink-0 [-webkit-app-region:no-drag]";
++
+ interface PanelLayoutControlsProps {
+   terminalAvailable: boolean;
+   terminalOpen: boolean;
+@@ -45,11 +47,11 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+           <TooltipTrigger
+             render={
+               <Toggle
+-                className="shrink-0 [-webkit-app-region:no-drag]"
++                className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+                 pressed={rightPanelMaximized}
+                 onPressedChange={onToggleRightPanelMaximized}
+                 aria-label={rightPanelMaximized ? "Restore panel size" : "Maximize panel"}
+-                variant="ghost"
++                variant="outline"
+                 size="sm"
+                 disabled={!canMaximizeRightPanel}
+               >
+@@ -74,11 +76,11 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+         <TooltipTrigger
+           render={
+             <Toggle
+-              className="shrink-0 [-webkit-app-region:no-drag]"
++              className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+               pressed={terminalOpen}
+               onPressedChange={onToggleTerminal}
+               aria-label="Toggle terminal drawer"
+-              variant="ghost"
++              variant="outline"
+               size="sm"
+               disabled={!terminalAvailable}
+             >
+@@ -96,11 +98,11 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+         <TooltipTrigger
+           render={
+             <Toggle
+-              className="shrink-0 [-webkit-app-region:no-drag]"
++              className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+               pressed={rightPanelOpen}
+               onPressedChange={onToggleRightPanel}
+               aria-label="Toggle right panel"
+-              variant="ghost"
++              variant="outline"
+               size="sm"
+               disabled={!rightPanelAvailable}
+             >
+-- 
+2.50.1 (Apple Git-155)
+

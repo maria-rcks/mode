@@ -1,0 +1,2672 @@
+From d766082614f438b5b3451a4a07949d3b1963a60b Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 14:00:47 -0400
+Subject: [PATCH 29/38] fix(rebase): restore mode product checks
+
+---
+ apps/desktop/scripts/dev-electron.mjs         |    7 +-
+ apps/desktop/scripts/electron-launcher.mjs    |    5 +-
+ apps/server/src/keybindings.test.ts           |    2 -
+ .../src/provider/Drivers/DroidDriver.ts       |    2 +
+ .../src/provider/Layers/DroidProvider.ts      |    4 +-
+ .../src/terminal/Layers/Manager.test.ts       |   32 +-
+ apps/web/src/clientPersistenceStorage.ts      |    1 -
+ apps/web/src/components/ChatView.tsx          | 1203 ++++++++++++++---
+ apps/web/src/components/FadingTopBar.tsx      |   51 +
+ .../src/components/ThreadTerminalDrawer.tsx   |    1 -
+ apps/web/src/composerDraftStore.ts            |  337 ++++-
+ packages/contracts/src/keybindings.test.ts    |   14 +-
+ packages/contracts/src/keybindings.ts         |    7 +
+ scripts/build-desktop-artifact.test.ts        |    2 +-
+ scripts/build-desktop-artifact.ts             |  127 +-
+ 15 files changed, 1543 insertions(+), 252 deletions(-)
+ create mode 100644 apps/web/src/components/FadingTopBar.tsx
+
+diff --git a/apps/desktop/scripts/dev-electron.mjs b/apps/desktop/scripts/dev-electron.mjs
+index 47525907..64675337 100644
+--- a/apps/desktop/scripts/dev-electron.mjs
++++ b/apps/desktop/scripts/dev-electron.mjs
+@@ -1,6 +1,7 @@
+ import { spawn, spawnSync } from "node:child_process";
+ import { watch } from "node:fs";
+ import { join } from "node:path";
++import { platform as hostPlatform } from "node:process";
+ 
+ import { desktopDir, resolveDevProtocolClient, resolveElectronPath } from "./electron-launcher.mjs";
+ import { waitForResources } from "./wait-for-resources.mjs";
+@@ -53,7 +54,7 @@ const expectedExits = new WeakSet();
+ const watchers = [];
+ 
+ function killChildTreeByPid(pid, signal) {
+-  if (process.platform === "win32" || typeof pid !== "number") {
++  if (hostPlatform === "win32" || typeof pid !== "number") {
+     return;
+   }
+ 
+@@ -61,7 +62,7 @@ function killChildTreeByPid(pid, signal) {
+ }
+ 
+ function cleanupStaleDevApps() {
+-  if (process.platform === "win32") {
++  if (hostPlatform === "win32") {
+     return;
+   }
+ 
+@@ -189,7 +190,7 @@ function startWatchers() {
+ }
+ 
+ function killChildTree(signal) {
+-  if (process.platform === "win32") {
++  if (hostPlatform === "win32") {
+     return;
+   }
+ 
+diff --git a/apps/desktop/scripts/electron-launcher.mjs b/apps/desktop/scripts/electron-launcher.mjs
+index c055cfcc..5eccc15d 100644
+--- a/apps/desktop/scripts/electron-launcher.mjs
++++ b/apps/desktop/scripts/electron-launcher.mjs
+@@ -15,6 +15,7 @@ import {
+ } from "node:fs";
+ import { createRequire } from "node:module";
+ import { basename, dirname, join, resolve } from "node:path";
++import { platform as hostPlatform } from "node:process";
+ import { fileURLToPath } from "node:url";
+ import { ensureElectronRuntime } from "./ensure-electron-runtime.mjs";
+ 
+@@ -313,7 +314,7 @@ export function resolveElectronPath() {
+   const require = createRequire(import.meta.url);
+   const electronBinaryPath = require("electron");
+ 
+-  if (process.platform !== "darwin") {
++  if (hostPlatform !== "darwin") {
+     return electronBinaryPath;
+   }
+ 
+@@ -321,7 +322,7 @@ export function resolveElectronPath() {
+ }
+ 
+ export function resolveDevProtocolClient() {
+-  if (process.platform !== "darwin" || !isDevelopment) {
++  if (hostPlatform !== "darwin" || !isDevelopment) {
+     return null;
+   }
+ 
+diff --git a/apps/server/src/keybindings.test.ts b/apps/server/src/keybindings.test.ts
+index c39f8dae..2df93ec2 100644
+--- a/apps/server/src/keybindings.test.ts
++++ b/apps/server/src/keybindings.test.ts
+@@ -206,8 +206,6 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
+       assert.equal(defaultsByCommand.get("thread.jump.1"), "mod+1");
+       assert.equal(defaultsByCommand.get("thread.jump.9"), "mod+9");
+       assert.equal(defaultsByCommand.get("modelPicker.toggle"), "mod+shift+m");
+-      assert.equal(defaultsByCommand.get("rightPanel.toggle"), "mod+alt+b");
+-      assert.equal(defaultsByCommand.get("terminal.splitVertical"), "mod+shift+d");
+       assert.equal(defaultsByCommand.get("modelPicker.jump.1"), "mod+1");
+       assert.equal(defaultsByCommand.get("modelPicker.jump.9"), "mod+9");
+     }),
+diff --git a/apps/server/src/provider/Drivers/DroidDriver.ts b/apps/server/src/provider/Drivers/DroidDriver.ts
+index 0fab3b30..f060dca3 100644
+--- a/apps/server/src/provider/Drivers/DroidDriver.ts
++++ b/apps/server/src/provider/Drivers/DroidDriver.ts
+@@ -7,6 +7,7 @@ import {
+ import * as Duration from "effect/Duration";
+ import * as Effect from "effect/Effect";
+ import * as FileSystem from "effect/FileSystem";
++import * as Path from "effect/Path";
+ import * as Schema from "effect/Schema";
+ import * as Stream from "effect/Stream";
+ import { HttpClient } from "effect/unstable/http";
+@@ -45,6 +46,7 @@ export type DroidDriverEnv =
+   | ChildProcessSpawner.ChildProcessSpawner
+   | FileSystem.FileSystem
+   | HttpClient.HttpClient
++  | Path.Path
+   | ServerConfig;
+ 
+ const withInstanceIdentity =
+diff --git a/apps/server/src/provider/Layers/DroidProvider.ts b/apps/server/src/provider/Layers/DroidProvider.ts
+index ae6f2eca..fdc8bed1 100644
+--- a/apps/server/src/provider/Layers/DroidProvider.ts
++++ b/apps/server/src/provider/Layers/DroidProvider.ts
+@@ -21,6 +21,7 @@ import * as Option from "effect/Option";
+ import * as Result from "effect/Result";
+ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+ import { createModelCapabilities } from "@t3tools/shared/model";
++import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+ 
+ import { compactDroidEnvironment } from "../droid/DroidEnvironment.ts";
+ import { DROID_MODEL_VARIANT_OPTION_ID } from "../droid/DroidModelOptions.ts";
+@@ -507,6 +508,7 @@ export function checkDroidProviderStatus(
+   return Effect.gen(function* () {
+     const checkedAt = yield* Effect.map(DateTime.now, DateTime.formatIso);
+     const fallbackModels = modelsWithSettingsFallback([], settings);
++    const hostPlatform = yield* HostProcessPlatform;
+ 
+     if (!settings.enabled) {
+       return yield* makePendingDroidProvider(settings);
+@@ -514,7 +516,7 @@ export function checkDroidProviderStatus(
+ 
+     const command = ChildProcess.make(settings.binaryPath, ["--version"], {
+       env: environment,
+-      shell: process.platform === "win32",
++      shell: hostPlatform === "win32",
+     });
+     const result = yield* spawnAndCollect(settings.binaryPath, command).pipe(
+       Effect.timeoutOption(DROID_CLI_TIMEOUT_MS),
+diff --git a/apps/server/src/terminal/Layers/Manager.test.ts b/apps/server/src/terminal/Layers/Manager.test.ts
+index 4e403059..3a6db004 100644
+--- a/apps/server/src/terminal/Layers/Manager.test.ts
++++ b/apps/server/src/terminal/Layers/Manager.test.ts
+@@ -1,5 +1,6 @@
+ import * as NodeServices from "@effect/platform-node/NodeServices";
+ import { assert, it } from "@effect/vitest";
++import { platform as hostPlatform } from "node:process";
+ import {
+   DEFAULT_TERMINAL_ID,
+   type TerminalAttachStreamEvent,
+@@ -8,6 +9,7 @@ import {
+   type TerminalOpenInput,
+   type TerminalRestartInput,
+ } from "@t3tools/contracts";
++import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+ import * as Data from "effect/Data";
+ import * as Duration from "effect/Duration";
+ import * as Effect from "effect/Effect";
+@@ -204,6 +206,7 @@ interface CreateManagerOptions {
+   subprocessInspector?: (terminalPid: number) => Effect.Effect<{
+     readonly hasRunningSubprocess: boolean;
+     readonly childCommand: string | null;
++    readonly processIds: ReadonlyArray<number>;
+   }>;
+   subprocessPollIntervalMs?: number;
+   processKillGraceMs?: number;
+@@ -234,12 +237,11 @@ const createManager = (
+       const logsDir = join(baseDir, "userdata", "logs", "terminals");
+       const ptyAdapter = options.ptyAdapter ?? new FakePtyAdapter();
+ 
+-      const manager = yield* makeTerminalManagerWithOptions({
++      const managerEffect = makeTerminalManagerWithOptions({
+         logsDir,
+         historyLineLimit,
+         ptyAdapter,
+         ...(options.shellResolver !== undefined ? { shellResolver: options.shellResolver } : {}),
+-        ...(options.platform !== undefined ? { platform: options.platform } : {}),
+         ...(options.env !== undefined ? { env: options.env } : {}),
+         ...(options.subprocessInspector !== undefined
+           ? { subprocessInspector: options.subprocessInspector }
+@@ -252,6 +254,9 @@ const createManager = (
+           ? { maxRetainedInactiveSessions: options.maxRetainedInactiveSessions }
+           : {}),
+       });
++      const manager = yield* options.platform !== undefined
++        ? managerEffect.pipe(Effect.provideService(HostProcessPlatform, options.platform))
++        : managerEffect;
+       const eventsRef = yield* Ref.make<ReadonlyArray<TerminalEvent>>([]);
+       const unsubscribe = yield* manager.subscribe((event) =>
+         Ref.update(eventsRef, (events) => [...events, event]),
+@@ -273,7 +278,7 @@ it.layer(
+   Layer.merge(NodeServices.layer, ProcessRunner.layer.pipe(Layer.provide(NodeServices.layer))),
+   { excludeTestServices: true },
+ )("TerminalManager", (it) => {
+-  const itEffectSkipOnWindows = process.platform === "win32" ? it.effect.skip : it.effect;
++  const itEffectSkipOnWindows = hostPlatform === "win32" ? it.effect.skip : it.effect;
+ 
+   it.effect("spawns lazily and reuses running terminal per thread", () =>
+     Effect.gen(function* () {
+@@ -745,7 +750,8 @@ it.layer(
+       let inspect: {
+         readonly hasRunningSubprocess: boolean;
+         readonly childCommand: string | null;
+-      } = { hasRunningSubprocess: false, childCommand: null };
++        readonly processIds: ReadonlyArray<number>;
++      } = { hasRunningSubprocess: false, childCommand: null, processIds: [] };
+       const { manager, getEvents } = yield* createManager(5, {
+         subprocessInspector: () => Effect.succeed(inspect),
+         subprocessPollIntervalMs: 20,
+@@ -754,7 +760,7 @@ it.layer(
+       yield* manager.open(openInput());
+       expect((yield* getEvents).some((event) => event.type === "activity")).toBe(false);
+ 
+-      inspect = { hasRunningSubprocess: true, childCommand: "vim" };
++      inspect = { hasRunningSubprocess: true, childCommand: "vim", processIds: [1234] };
+       yield* waitFor(
+         Effect.map(getEvents, (events) =>
+           events.some(
+@@ -767,7 +773,7 @@ it.layer(
+         "1200 millis",
+       );
+ 
+-      inspect = { hasRunningSubprocess: false, childCommand: null };
++      inspect = { hasRunningSubprocess: false, childCommand: null, processIds: [] };
+       yield* waitFor(
+         Effect.map(getEvents, (events) =>
+           events.some(
+@@ -788,7 +794,11 @@ it.layer(
+       const { manager } = yield* createManager(5, {
+         subprocessInspector: () => {
+           checks += 1;
+-          return Effect.succeed({ hasRunningSubprocess: false, childCommand: null });
++          return Effect.succeed({
++            hasRunningSubprocess: false,
++            childCommand: null,
++            processIds: [],
++          });
+         },
+         subprocessPollIntervalMs: 20,
+       });
+@@ -1077,7 +1087,7 @@ it.layer(
+   it.effect("retries with fallback shells when preferred shell spawn fails", () =>
+     Effect.gen(function* () {
+       const missingShell =
+-        process.platform === "win32"
++        hostPlatform === "win32"
+           ? "C:\\definitely\\missing-shell.exe"
+           : "/definitely/missing-shell -l";
+       const { manager, ptyAdapter } = yield* createManager(5, {
+@@ -1090,10 +1100,10 @@ it.layer(
+       assert.equal(snapshot.status, "running");
+       expect(ptyAdapter.spawnInputs.length).toBeGreaterThanOrEqual(2);
+       expect(ptyAdapter.spawnInputs[0]?.shell).toBe(
+-        process.platform === "win32" ? missingShell : "/definitely/missing-shell",
++        hostPlatform === "win32" ? missingShell : "/definitely/missing-shell",
+       );
+ 
+-      if (process.platform === "win32") {
++      if (hostPlatform === "win32") {
+         expect(
+           ptyAdapter.spawnInputs.some(
+             (input) =>
+@@ -1231,7 +1241,7 @@ it.layer(
+ 
+   it.effect("starts zsh with prompt spacer disabled to avoid `%` end markers", () =>
+     Effect.gen(function* () {
+-      if (process.platform === "win32") return;
++      if (hostPlatform === "win32") return;
+       const { manager, ptyAdapter } = yield* createManager(5, {
+         shellResolver: () => "/bin/zsh",
+       });
+diff --git a/apps/web/src/clientPersistenceStorage.ts b/apps/web/src/clientPersistenceStorage.ts
+index 869444b4..bc7ea7c0 100644
+--- a/apps/web/src/clientPersistenceStorage.ts
++++ b/apps/web/src/clientPersistenceStorage.ts
+@@ -187,7 +187,6 @@ export function writeBrowserSavedEnvironmentSecret(
+   writeBrowserSavedEnvironmentRegistryDocument({
+     version: document.version ?? 1,
+     // The persistence update is copy-on-write so storage subscribers observe a new document.
+-    // oxlint-disable-next-line oxc/no-map-spread
+     records: records.map((record) => {
+       if (record.environmentId !== environmentId) {
+         return record;
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index bd2e747b..d92f2994 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -36,7 +36,16 @@ import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/proje
+ import { truncate } from "@t3tools/shared/String";
+ import { nextTerminalId, resolveTerminalSessionLabel } from "@t3tools/shared/terminalLabels";
+ import { Debouncer } from "@tanstack/react-pacer";
+-import { type CSSProperties, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
++import {
++  type CSSProperties,
++  type ReactNode,
++  memo,
++  useCallback,
++  useEffect,
++  useMemo,
++  useRef,
++  useState,
++} from "react";
+ import { flushSync } from "react-dom";
+ import { useNavigate, useSearch } from "@tanstack/react-router";
+ import { useShallow } from "zustand/react/shallow";
+@@ -124,6 +133,18 @@ import {
+ import { useSettings } from "../hooks/useSettings";
+ import { resolveAppModelSelectionForInstance } from "../modelSelection";
+ import { isTerminalFocused } from "../lib/terminalFocus";
++import {
++  isPreviewSupportedInRuntime,
++  selectThreadPreviewState,
++  usePreviewStateStore,
++} from "../previewStateStore";
++import {
++  selectActiveRightPanelKindWithUrl,
++  selectActiveRightPanelSurface,
++  selectThreadRightPanelState,
++  type RightPanelSurface,
++  useRightPanelStore,
++} from "../rightPanelStore";
+ import {
+   deriveLogicalProjectKeyFromSettings,
+   getProjectOrderKey,
+@@ -147,15 +168,22 @@ import {
+   type TerminalContextDraft,
+   type TerminalContextSelection,
+ } from "../lib/terminalContext";
++import { type ElementContextDraft } from "../lib/elementContext";
+ import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
+ import { useKnownTerminalSessions, useThreadRunningTerminalIds } from "../terminalSessionState";
+ import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
+ import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
+ import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
+ import { MessagesTimeline } from "./chat/MessagesTimeline";
++import DiffPanel from "./DiffPanel";
++import FilePreviewPanel from "./files/FilePreviewPanel";
+ import { ChatHeader } from "./chat/ChatHeader";
++import { PanelLayoutControls } from "./chat/PanelLayoutControls";
+ import { normalizeRuntimeModeForProvider } from "./chat/runtimeModePresentation";
+ import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
++import { PreviewAutomationOwner } from "./preview/PreviewAutomationOwner";
++import { PreviewPanel } from "./preview/PreviewPanel";
++import { RightPanelTabs } from "./RightPanelTabs";
+ import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
+ import { orderItemsByPreferredIds } from "./Sidebar.logic";
+ import { ProviderStatusBanner } from "./chat/ProviderStatusBanner";
+@@ -211,6 +239,7 @@ const EMPTY_PROPOSED_PLANS: Thread["proposedPlans"] = [];
+ const EMPTY_PROVIDERS: ServerProvider[] = [];
+ const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
+ const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
++const EMPTY_PENDING_FILE_SURFACE_IDS: ReadonlySet<string> = new Set();
+ const TYPE_TO_FOCUS_EDITABLE_SELECTOR = [
+   "input",
+   "textarea",
+@@ -259,6 +288,13 @@ function shouldTypeToFocusComposer(event: KeyboardEvent): boolean {
+   if (event.metaKey || event.ctrlKey || event.altKey) return false;
+   if (event.key.length !== 1) return false;
+ 
++  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
++  for (const pathEntry of path) {
++    const pathElement = eventTargetElement(pathEntry);
++    if (pathElement?.closest(TYPE_TO_FOCUS_EDITABLE_SELECTOR)) return false;
++    if (pathElement?.closest(TYPE_TO_FOCUS_INTERACTIVE_SELECTOR)) return false;
++  }
++
+   const target = eventTargetElement(event.target);
+   if (target?.closest(TYPE_TO_FOCUS_EDITABLE_SELECTOR)) return false;
+   if (target?.closest(TYPE_TO_FOCUS_INTERACTIVE_SELECTOR)) return false;
+@@ -829,6 +865,7 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
+         activeTerminalGroupId={terminalUiState.activeTerminalGroupId}
+         focusRequestId={focusRequestId + localFocusRequestId + (visible ? 1 : 0)}
+         onSplitTerminal={splitTerminal}
++        onSplitTerminalVertical={splitTerminal}
+         onNewTerminal={createNewTerminal}
+         splitShortcutLabel={visible ? splitShortcutLabel : undefined}
+         newShortcutLabel={visible ? newShortcutLabel : undefined}
+@@ -845,6 +882,177 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
+   );
+ });
+ 
++interface PersistentThreadTerminalPanelProps {
++  threadRef: { environmentId: EnvironmentId; threadId: ThreadId };
++  surface: Extract<RightPanelSurface, { kind: "terminal" }>;
++  launchContext: PersistentTerminalLaunchContext | null;
++  focusRequestId: number;
++  keybindings: ResolvedKeybindingsConfig;
++  onAddTerminalContext: (selection: TerminalContextSelection) => void;
++  onSplitTerminal: () => void;
++  onSplitTerminalVertical: () => void;
++  onNewTerminal: () => void;
++  onActiveTerminalChange: (terminalId: string) => void;
++  onCloseTerminal: (terminalId: string) => void;
++  splitShortcutLabel?: string | undefined;
++  splitVerticalShortcutLabel?: string | undefined;
++  newShortcutLabel?: string | undefined;
++  closeShortcutLabel?: string | undefined;
++}
++
++const PersistentThreadTerminalPanel = memo(function PersistentThreadTerminalPanel({
++  threadRef,
++  surface,
++  launchContext,
++  focusRequestId,
++  keybindings,
++  onAddTerminalContext,
++  onSplitTerminal,
++  onSplitTerminalVertical,
++  onNewTerminal,
++  onActiveTerminalChange,
++  onCloseTerminal,
++  splitShortcutLabel,
++  splitVerticalShortcutLabel,
++  newShortcutLabel,
++  closeShortcutLabel,
++}: PersistentThreadTerminalPanelProps) {
++  const serverThread = useStore(useMemo(() => createThreadSelectorByRef(threadRef), [threadRef]));
++  const draftThread = useComposerDraftStore((store) => store.getDraftThreadByRef(threadRef));
++  const projectRef = serverThread
++    ? scopeProjectRef(serverThread.environmentId, serverThread.projectId)
++    : draftThread
++      ? scopeProjectRef(draftThread.environmentId, draftThread.projectId)
++      : null;
++  const project = useStore(useMemo(() => createProjectSelectorByRef(projectRef), [projectRef]));
++  const knownTerminalSessions = useKnownTerminalSessions({
++    environmentId: threadRef.environmentId,
++    threadId: threadRef.threadId,
++  });
++  const terminalSummary =
++    knownTerminalSessions.find((session) => session.target.terminalId === surface.activeTerminalId)
++      ?.state.summary ?? null;
++  const threadWorktreePath = serverThread?.worktreePath ?? draftThread?.worktreePath ?? null;
++  const worktreePath =
++    launchContext?.worktreePath ?? terminalSummary?.worktreePath ?? threadWorktreePath;
++  const cwd = useMemo(
++    () =>
++      launchContext?.cwd ??
++      terminalSummary?.cwd ??
++      (project
++        ? projectScriptCwd({
++            project: { cwd: project.cwd },
++            worktreePath,
++          })
++        : null),
++    [launchContext?.cwd, project, terminalSummary?.cwd, worktreePath],
++  );
++  const runtimeEnv = useMemo(
++    () =>
++      project
++        ? projectScriptRuntimeEnv({
++            project: { cwd: project.cwd },
++            worktreePath,
++          })
++        : {},
++    [project, worktreePath],
++  );
++  const terminalLabelsById = useMemo(() => {
++    const labels = new Map<string, string>();
++    for (const terminalId of surface.terminalIds) {
++      const summary =
++        knownTerminalSessions.find((session) => session.target.terminalId === terminalId)?.state
++          .summary ?? null;
++      labels.set(terminalId, resolveTerminalSessionLabel(terminalId, summary));
++    }
++    return labels;
++  }, [knownTerminalSessions, surface.terminalIds]);
++  const terminalLaunchLocationsById = useMemo(() => {
++    const locations = new Map<
++      string,
++      {
++        readonly cwd: string;
++        readonly worktreePath: string | null;
++        readonly runtimeEnv: Record<string, string>;
++      }
++    >();
++    for (const terminalId of surface.terminalIds) {
++      const summary =
++        knownTerminalSessions.find((session) => session.target.terminalId === terminalId)?.state
++          .summary ?? null;
++      const terminalWorktreePath =
++        launchContext?.worktreePath ?? summary?.worktreePath ?? threadWorktreePath;
++      const terminalCwd =
++        launchContext?.cwd ??
++        summary?.cwd ??
++        (project
++          ? projectScriptCwd({
++              project: { cwd: project.cwd },
++              worktreePath: terminalWorktreePath,
++            })
++          : null);
++      if (!terminalCwd || !project) continue;
++      locations.set(terminalId, {
++        cwd: terminalCwd,
++        worktreePath: terminalWorktreePath,
++        runtimeEnv: projectScriptRuntimeEnv({
++          project: { cwd: project.cwd },
++          worktreePath: terminalWorktreePath,
++        }),
++      });
++    }
++    return locations;
++  }, [
++    knownTerminalSessions,
++    launchContext?.cwd,
++    launchContext?.worktreePath,
++    project,
++    surface.terminalIds,
++    threadWorktreePath,
++  ]);
++
++  if (!project || !cwd) {
++    return null;
++  }
++
++  return (
++    <ThreadTerminalDrawer
++      mode="panel"
++      threadRef={threadRef}
++      threadId={threadRef.threadId}
++      cwd={cwd}
++      worktreePath={worktreePath}
++      runtimeEnv={runtimeEnv}
++      height={0}
++      terminalIds={surface.terminalIds}
++      activeTerminalId={surface.activeTerminalId}
++      terminalGroups={[
++        {
++          id: surface.id,
++          terminalIds: surface.terminalIds,
++          ...(surface.splitDirection === "vertical" ? { splitDirection: "vertical" as const } : {}),
++        },
++      ]}
++      activeTerminalGroupId={surface.id}
++      focusRequestId={focusRequestId}
++      onSplitTerminal={onSplitTerminal}
++      onSplitTerminalVertical={onSplitTerminalVertical}
++      onNewTerminal={onNewTerminal}
++      splitShortcutLabel={splitShortcutLabel}
++      splitVerticalShortcutLabel={splitVerticalShortcutLabel}
++      newShortcutLabel={newShortcutLabel}
++      closeShortcutLabel={closeShortcutLabel}
++      onActiveTerminalChange={onActiveTerminalChange}
++      onCloseTerminal={onCloseTerminal}
++      onHeightChange={() => undefined}
++      onAddTerminalContext={onAddTerminalContext}
++      terminalLabelsById={terminalLabelsById}
++      terminalLaunchLocationsById={terminalLaunchLocationsById}
++      keybindings={keybindings}
++    />
++  );
++});
++
+ export default function ChatView(props: ChatViewProps) {
+   const {
+     environmentId,
+@@ -924,6 +1132,7 @@ export default function ChatView(props: ChatViewProps) {
+   const promptRef = useRef("");
+   const composerImagesRef = useRef<ComposerImageAttachment[]>([]);
+   const composerTerminalContextsRef = useRef<TerminalContextDraft[]>([]);
++  const composerElementContextsRef = useRef<ElementContextDraft[]>([]);
+   const localComposerRef = useRef<ChatComposerHandle | null>(null);
+   const composerRef = useComposerHandleContext() ?? localComposerRef;
+   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+@@ -980,6 +1189,7 @@ export default function ChatView(props: ChatViewProps) {
+   const attachmentPreviewPromotionInFlightByMessageIdRef = useRef<Record<string, true>>({});
+   const sendInFlightRef = useRef(false);
+   const terminalUiOpenByThreadRef = useRef<Record<string, boolean>>({});
++  const pendingDiffRouteTargetRef = useRef<boolean | null>(null);
+ 
+   const terminalUiState = useTerminalUiStateStore((state) =>
+     selectThreadTerminalUiState(state.terminalUiStateByThreadKey, routeThreadRef),
+@@ -994,6 +1204,7 @@ export default function ChatView(props: ChatViewProps) {
+   );
+   const storeSetTerminalOpen = useTerminalUiStateStore((s) => s.setTerminalOpen);
+   const storeSplitTerminal = useTerminalUiStateStore((s) => s.splitTerminal);
++  const storeSplitTerminalVertical = useTerminalUiStateStore((s) => s.splitTerminalVertical);
+   const storeNewTerminal = useTerminalUiStateStore((s) => s.newTerminal);
+   const storeSetActiveTerminal = useTerminalUiStateStore((s) => s.setActiveTerminal);
+   const storeCloseTerminal = useTerminalUiStateStore((s) => s.closeTerminal);
+@@ -1080,17 +1291,51 @@ export default function ChatView(props: ChatViewProps) {
+     () => [...new Set([...activeServerOrderedTerminalIds, ...terminalUiState.terminalIds])],
+     [activeServerOrderedTerminalIds, terminalUiState.terminalIds],
+   );
++  const activeTerminalLabelsById = useMemo(() => {
++    const next = new Map<string, string>();
++    for (const session of activeThreadKnownSessions) {
++      next.set(
++        session.target.terminalId,
++        resolveTerminalSessionLabel(session.target.terminalId, session.state.summary),
++      );
++    }
++    return next;
++  }, [activeThreadKnownSessions]);
+   const reconcileTerminalIds = useTerminalUiStateStore((state) => state.reconcileTerminalIds);
+   const activeThreadRef = useMemo(
+     () => (activeThread ? scopeThreadRef(activeThread.environmentId, activeThread.id) : null),
+     [activeThread],
+   );
+   const activeThreadKey = activeThreadRef ? scopedThreadKey(activeThreadRef) : null;
++  const activeRightPanelKind = useRightPanelStore((store) =>
++    selectActiveRightPanelKindWithUrl(store.byThreadKey, activeThreadRef, diffOpen),
++  );
++  const rightPanelState = useRightPanelStore((store) =>
++    selectThreadRightPanelState(store.byThreadKey, activeThreadRef),
++  );
++  const activeRightPanelSurface = useRightPanelStore((store) =>
++    selectActiveRightPanelSurface(store.byThreadKey, activeThreadRef),
++  );
++  const activePreviewState = usePreviewStateStore((state) =>
++    selectThreadPreviewState(state.byThreadKey, activeThreadRef),
++  );
++  const previewPanelOpen = activeRightPanelKind === "preview" && isPreviewSupportedInRuntime();
++  const rightPanelOpen = rightPanelState.isOpen;
++  const [maximizedRightPanelThreadKey, setMaximizedRightPanelThreadKey] = useState<string | null>(
++    null,
++  );
++  const canMaximizeRightPanel = rightPanelOpen && !shouldUsePlanSidebarSheet;
++  const rightPanelMaximized =
++    canMaximizeRightPanel && maximizedRightPanelThreadKey === routeThreadKey;
++  const inlineRightPanelOwnsTitleBar = rightPanelOpen && !shouldUsePlanSidebarSheet;
+ 
+   useEffect(() => {
+     if (!activeThreadRef) {
+       return;
+     }
++    if (!terminalUiState.terminalOpen && terminalUiState.terminalIds.length === 0) {
++      return;
++    }
+     if (terminalIdListsEqual(activeServerOrderedTerminalIds, terminalUiState.terminalIds)) {
+       return;
+     }
+@@ -1107,9 +1352,23 @@ export default function ChatView(props: ChatViewProps) {
+     activeThreadRef,
+     activeServerOrderedTerminalIds,
+     reconcileTerminalIds,
++    terminalUiState.terminalOpen,
+     terminalUiState.terminalIds,
+   ]);
+ 
++  useEffect(() => {
++    const pendingTarget = pendingDiffRouteTargetRef.current;
++    if (pendingTarget !== null && diffOpen === pendingTarget) {
++      pendingDiffRouteTargetRef.current = null;
++    }
++  }, [diffOpen]);
++
++  useEffect(() => {
++    if (!activeThreadRef || !diffOpen) return;
++    if (pendingDiffRouteTargetRef.current !== null) return;
++    useRightPanelStore.getState().open(activeThreadRef, "diff");
++  }, [activeThreadRef, diffOpen]);
++
+   const dockStartupDraftComposer = useCallback(async () => {
+     if (startupDraftComposerDockingRef.current || prefersReducedMotion()) {
+       return;
+@@ -1187,6 +1446,46 @@ export default function ChatView(props: ChatViewProps) {
+   const activeProject = useStore(
+     useMemo(() => createProjectSelectorByRef(activeProjectRef), [activeProjectRef]),
+   );
++  const activeProjectKey = activeProject
++    ? `${activeProject.environmentId}:${activeProject.cwd}`
++    : null;
++  const [pendingFileSurfaceIdsByProject, setPendingFileSurfaceIdsByProject] = useState<
++    ReadonlyMap<string, ReadonlySet<string>>
++  >(() => new Map());
++  const pendingFileSurfaceIds = activeProjectKey
++    ? (pendingFileSurfaceIdsByProject.get(activeProjectKey) ?? EMPTY_PENDING_FILE_SURFACE_IDS)
++    : EMPTY_PENDING_FILE_SURFACE_IDS;
++  const handleFilePendingChange = useCallback(
++    (relativePath: string, pending: boolean) => {
++      if (!activeProjectKey) return;
++      setPendingFileSurfaceIdsByProject((currentByProject) => {
++        const current = currentByProject.get(activeProjectKey) ?? EMPTY_PENDING_FILE_SURFACE_IDS;
++        const surfaceId = `file:${relativePath}`;
++        if (current.has(surfaceId) === pending) return currentByProject;
++
++        const next = new Set(current);
++        if (pending) {
++          next.add(surfaceId);
++        } else {
++          next.delete(surfaceId);
++        }
++
++        const nextByProject = new Map(currentByProject);
++        if (next.size === 0) {
++          nextByProject.delete(activeProjectKey);
++        } else {
++          nextByProject.set(activeProjectKey, next);
++        }
++        return nextByProject;
++      });
++    },
++    [activeProjectKey],
++  );
++
++  useEffect(() => {
++    if (!activeThreadRef) return;
++    useRightPanelStore.getState().reconcileFileSurfaces(activeThreadRef, Boolean(activeProject));
++  }, [activeProject, activeThreadRef]);
+ 
+   useEffect(() => {
+     if (routeKind !== "server") {
+@@ -1884,7 +2183,6 @@ export default function ChatView(props: ChatViewProps) {
+         : // Spread only fires for the few messages that actually changed;
+           // unchanged ones early-return their original reference.
+           // In-place mutation would break React's immutable state contract.
+-          // oxlint-disable-next-line no-map-spread
+           messages.map((message) => {
+             if (
+               message.role !== "user" ||
+@@ -2004,18 +2302,6 @@ export default function ChatView(props: ChatViewProps) {
+       })
+     : null;
+   const gitStatusQuery = useVcsStatus({ environmentId, cwd: gitCwd });
+-  const gitWorkingTreeInsertions = gitStatusQuery.data?.workingTree.insertions ?? null;
+-  const gitWorkingTreeDeletions = gitStatusQuery.data?.workingTree.deletions ?? null;
+-  const gitDiffStats = useMemo(
+-    () =>
+-      gitWorkingTreeInsertions !== null && gitWorkingTreeDeletions !== null
+-        ? {
+-            insertions: gitWorkingTreeInsertions,
+-            deletions: gitWorkingTreeDeletions,
+-          }
+-        : null,
+-    [gitWorkingTreeDeletions, gitWorkingTreeInsertions],
+-  );
+   const keybindings = useServerKeybindings();
+   const availableEditors = useServerAvailableEditors();
+   // Prefer an instance-id match so a custom Codex instance (e.g.
+@@ -2066,13 +2352,18 @@ export default function ChatView(props: ChatViewProps) {
+     [terminalUiState.terminalOpen],
+   );
+   const terminalToggleShortcutLabel = useMemo(
+-    () => shortcutLabelForCommand(keybindings, "terminal.toggle"),
+-    [keybindings],
++    () => shortcutLabelForCommand(keybindings, "terminal.toggle", nonTerminalShortcutLabelOptions),
++    [keybindings, nonTerminalShortcutLabelOptions],
+   );
+   const splitTerminalShortcutLabel = useMemo(
+     () => shortcutLabelForCommand(keybindings, "terminal.split", terminalShortcutLabelOptions),
+     [keybindings, terminalShortcutLabelOptions],
+   );
++  const splitTerminalVerticalShortcutLabel = useMemo(
++    () =>
++      shortcutLabelForCommand(keybindings, "terminal.splitVertical", terminalShortcutLabelOptions),
++    [keybindings, terminalShortcutLabelOptions],
++  );
+   const newTerminalShortcutLabel = useMemo(
+     () => shortcutLabelForCommand(keybindings, "terminal.new", terminalShortcutLabelOptions),
+     [keybindings, terminalShortcutLabelOptions],
+@@ -2085,13 +2376,93 @@ export default function ChatView(props: ChatViewProps) {
+     () => shortcutLabelForCommand(keybindings, "diff.toggle", nonTerminalShortcutLabelOptions),
+     [keybindings, nonTerminalShortcutLabelOptions],
+   );
++  const createBrowserSurface = useCallback(() => {
++    if (!activeThreadRef) return;
++    const api = readEnvironmentApi(activeThreadRef.environmentId);
++    if (!api) return;
++    setPlanSidebarOpen(false);
++    if (diffOpen) {
++      pendingDiffRouteTargetRef.current = false;
++      void navigate({
++        to: "/$environmentId/$threadId",
++        params: { environmentId, threadId },
++        replace: true,
++        search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++      });
++    }
++    void api.preview
++      .open({ threadId: activeThreadRef.threadId })
++      .then((snapshot) => {
++        usePreviewStateStore.getState().applyServerSnapshot(activeThreadRef, snapshot);
++        useRightPanelStore.getState().openBrowser(activeThreadRef, snapshot.tabId);
++      })
++      .catch(() => undefined);
++  }, [activeThreadRef, diffOpen, environmentId, navigate, threadId]);
++  const addDiffSurface = useCallback(() => {
++    if (!activeThreadRef || !isServerThread || !isGitRepo) return;
++    setPlanSidebarOpen(false);
++    useRightPanelStore.getState().open(activeThreadRef, "diff");
++    onDiffPanelOpen?.();
++    pendingDiffRouteTargetRef.current = true;
++    void navigate({
++      to: "/$environmentId/$threadId",
++      params: { environmentId, threadId },
++      replace: true,
++      search: (previous) => ({ ...stripDiffSearchParams(previous), diff: "1" }),
++    });
++  }, [
++    activeThreadRef,
++    environmentId,
++    isGitRepo,
++    isServerThread,
++    navigate,
++    onDiffPanelOpen,
++    threadId,
++  ]);
++  const addFilesSurface = useCallback(() => {
++    if (!activeThreadRef || !activeProject) return;
++    setPlanSidebarOpen(false);
++    if (diffOpen) {
++      pendingDiffRouteTargetRef.current = false;
++      void navigate({
++        to: "/$environmentId/$threadId",
++        params: { environmentId, threadId },
++        replace: true,
++        search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++      });
++    }
++    useRightPanelStore.getState().open(activeThreadRef, "files");
++  }, [activeProject, activeThreadRef, diffOpen, environmentId, navigate, threadId]);
++  const openFileSurface = useCallback(
++    (relativePath: string) => {
++      if (!activeThreadRef || !activeProject) return;
++      setPlanSidebarOpen(false);
++      if (diffOpen) {
++        pendingDiffRouteTargetRef.current = false;
++        void navigate({
++          to: "/$environmentId/$threadId",
++          params: { environmentId, threadId },
++          replace: true,
++          search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++        });
++      }
++      useRightPanelStore.getState().openFile(activeThreadRef, relativePath);
++    },
++    [activeProject, activeThreadRef, diffOpen, environmentId, navigate, threadId],
++  );
+   const onToggleDiff = useCallback(() => {
+     if (!isServerThread) {
+       return;
+     }
+-    if (!diffOpen) {
++    const diffPanelOpen = activeRightPanelKind === "diff";
++    if (!diffPanelOpen) {
+       onDiffPanelOpen?.();
+     }
++    setPlanSidebarOpen(false);
++    if (activeThreadRef) {
++      useRightPanelStore.getState().toggle(activeThreadRef, "diff");
++    }
++    pendingDiffRouteTargetRef.current = !diffPanelOpen;
+     void navigate({
+       to: "/$environmentId/$threadId",
+       params: {
+@@ -2101,10 +2472,18 @@ export default function ChatView(props: ChatViewProps) {
+       replace: true,
+       search: (previous) => {
+         const rest = stripDiffSearchParams(previous);
+-        return diffOpen ? { ...rest, diff: undefined } : { ...rest, diff: "1" };
++        return diffPanelOpen ? { ...rest, diff: undefined } : { ...rest, diff: "1" };
+       },
+     });
+-  }, [diffOpen, environmentId, isServerThread, navigate, onDiffPanelOpen, threadId]);
++  }, [
++    activeRightPanelKind,
++    activeThreadRef,
++    environmentId,
++    isServerThread,
++    navigate,
++    onDiffPanelOpen,
++    threadId,
++  ]);
+ 
+   const envLocked = Boolean(
+     activeThread &&
+@@ -2215,10 +2594,100 @@ export default function ChatView(props: ChatViewProps) {
+     },
+     [activeThreadRef, storeSetTerminalOpen],
+   );
++  const addTerminalSurface = useCallback(() => {
++    if (!activeThreadRef || !activeThreadId || !activeProject) return;
++    const api = readEnvironmentApi(activeThreadRef.environmentId);
++    const cwdForOpen = gitCwd ?? activeProject.cwd;
++    if (!api || !cwdForOpen) return;
++    setPlanSidebarOpen(false);
++    if (diffOpen) {
++      pendingDiffRouteTargetRef.current = false;
++      void navigate({
++        to: "/$environmentId/$threadId",
++        params: { environmentId, threadId },
++        replace: true,
++        search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++      });
++    }
++    const panelIds = selectThreadRightPanelState(
++      useRightPanelStore.getState().byThreadKey,
++      activeThreadRef,
++    ).surfaces.flatMap((surface) => (surface.kind === "terminal" ? surface.terminalIds : []));
++    const terminalId = nextTerminalId([...activeKnownTerminalIds, ...panelIds]);
++    useRightPanelStore.getState().openTerminal(activeThreadRef, terminalId);
++    setTerminalFocusRequestId((value) => value + 1);
++    void api.terminal
++      .open({
++        threadId: activeThreadId,
++        terminalId,
++        cwd: cwdForOpen,
++        ...(activeThreadWorktreePath != null ? { worktreePath: activeThreadWorktreePath } : {}),
++        env: projectScriptRuntimeEnv({
++          project: { cwd: activeProject.cwd },
++          worktreePath: activeThreadWorktreePath,
++        }),
++      })
++      .catch(() => undefined);
++  }, [
++    activeKnownTerminalIds,
++    activeProject,
++    activeThreadId,
++    activeThreadRef,
++    activeThreadWorktreePath,
++    diffOpen,
++    environmentId,
++    gitCwd,
++    navigate,
++    threadId,
++  ]);
+   const toggleTerminalVisibility = useCallback(() => {
+     if (!activeThreadRef) return;
++    if (!terminalUiState.terminalOpen && terminalUiState.terminalIds.length === 0) {
++      if (!activeThreadId || !activeProject) {
++        setTerminalOpen(true);
++        return;
++      }
++      const cwdForOpen = gitCwd ?? activeProject.cwd;
++      const api = readEnvironmentApi(environmentId);
++      if (!api || !cwdForOpen) {
++        setTerminalOpen(true);
++        return;
++      }
++      const panelIds = selectThreadRightPanelState(
++        useRightPanelStore.getState().byThreadKey,
++        activeThreadRef,
++      ).surfaces.flatMap((surface) => (surface.kind === "terminal" ? surface.terminalIds : []));
++      const terminalId = nextTerminalId([...activeKnownTerminalIds, ...panelIds]);
++      storeNewTerminal(activeThreadRef, terminalId);
++      setTerminalFocusRequestId((value) => value + 1);
++      void api.terminal
++        .open({
++          threadId: activeThreadId,
++          terminalId,
++          cwd: cwdForOpen,
++          ...(activeThreadWorktreePath != null ? { worktreePath: activeThreadWorktreePath } : {}),
++          env: projectScriptRuntimeEnv({
++            project: { cwd: activeProject.cwd },
++            worktreePath: activeThreadWorktreePath,
++          }),
++        })
++        .catch(() => undefined);
++      return;
++    }
+     setTerminalOpen(!terminalUiState.terminalOpen);
+-  }, [activeThreadRef, setTerminalOpen, terminalUiState.terminalOpen]);
++  }, [
++    activeKnownTerminalIds,
++    activeProject,
++    activeThreadId,
++    activeThreadRef,
++    activeThreadWorktreePath,
++    environmentId,
++    gitCwd,
++    setTerminalOpen,
++    storeNewTerminal,
++    terminalUiState.terminalIds,
++    terminalUiState.terminalOpen,
++  ]);
+   const splitTerminal = useCallback(() => {
+     if (!activeThreadRef || hasReachedSplitLimit || !activeThreadId || !activeProject) {
+       return;
+@@ -2261,6 +2730,44 @@ export default function ChatView(props: ChatViewProps) {
+     hasReachedSplitLimit,
+     storeSplitTerminal,
+   ]);
++  const splitTerminalVertical = useCallback(() => {
++    if (!activeThreadRef || hasReachedSplitLimit || !activeThreadId || !activeProject) {
++      return;
++    }
++    const cwdForOpen = gitCwd ?? activeProject.cwd;
++    if (!cwdForOpen) {
++      return;
++    }
++    const api = readEnvironmentApi(environmentId);
++    if (!api) {
++      return;
++    }
++    const terminalId = nextTerminalId(activeKnownTerminalIds);
++    storeSplitTerminalVertical(activeThreadRef, terminalId);
++    setTerminalFocusRequestId((value) => value + 1);
++    void api.terminal
++      .open({
++        threadId: activeThreadId,
++        terminalId,
++        cwd: cwdForOpen,
++        ...(activeThreadWorktreePath != null ? { worktreePath: activeThreadWorktreePath } : {}),
++        env: projectScriptRuntimeEnv({
++          project: { cwd: activeProject.cwd },
++          worktreePath: activeThreadWorktreePath,
++        }),
++      })
++      .catch(() => undefined);
++  }, [
++    activeKnownTerminalIds,
++    activeProject,
++    activeThreadId,
++    activeThreadRef,
++    activeThreadWorktreePath,
++    environmentId,
++    gitCwd,
++    hasReachedSplitLimit,
++    storeSplitTerminalVertical,
++  ]);
+   const createNewTerminal = useCallback(() => {
+     if (!activeThreadRef || !activeThreadId || !activeProject) {
+       return;
+@@ -2332,6 +2839,83 @@ export default function ChatView(props: ChatViewProps) {
+     },
+     [activeThreadId, activeThreadRef, activeKnownTerminalIds, environmentId, storeCloseTerminal],
+   );
++  const splitPanelTerminal = useCallback(
++    (direction: "horizontal" | "vertical" = "horizontal") => {
++      if (
++        !activeThreadRef ||
++        !activeThreadId ||
++        !activeProject ||
++        activeRightPanelSurface?.kind !== "terminal" ||
++        activeRightPanelSurface.terminalIds.length >= MAX_TERMINALS_PER_GROUP
++      ) {
++        return;
++      }
++      const api = readEnvironmentApi(activeThreadRef.environmentId);
++      const cwdForOpen = gitCwd ?? activeProject.cwd;
++      if (!api || !cwdForOpen) return;
++      const panelIds = selectThreadRightPanelState(
++        useRightPanelStore.getState().byThreadKey,
++        activeThreadRef,
++      ).surfaces.flatMap((surface) => (surface.kind === "terminal" ? surface.terminalIds : []));
++      const terminalId = nextTerminalId([...activeKnownTerminalIds, ...panelIds]);
++      useRightPanelStore
++        .getState()
++        .splitTerminal(activeThreadRef, activeRightPanelSurface.id, terminalId, direction);
++      setTerminalFocusRequestId((value) => value + 1);
++      void api.terminal
++        .open({
++          threadId: activeThreadId,
++          terminalId,
++          cwd: cwdForOpen,
++          ...(activeThreadWorktreePath != null ? { worktreePath: activeThreadWorktreePath } : {}),
++          env: projectScriptRuntimeEnv({
++            project: { cwd: activeProject.cwd },
++            worktreePath: activeThreadWorktreePath,
++          }),
++        })
++        .catch(() => undefined);
++    },
++    [
++      activeKnownTerminalIds,
++      activeProject,
++      activeRightPanelSurface,
++      activeThreadId,
++      activeThreadRef,
++      activeThreadWorktreePath,
++      gitCwd,
++    ],
++  );
++  const splitPanelTerminalVertical = useCallback(() => {
++    splitPanelTerminal("vertical");
++  }, [splitPanelTerminal]);
++  const activatePanelTerminal = useCallback(
++    (terminalId: string) => {
++      if (!activeThreadRef || activeRightPanelSurface?.kind !== "terminal") return;
++      useRightPanelStore
++        .getState()
++        .activateTerminal(activeThreadRef, activeRightPanelSurface.id, terminalId);
++      setTerminalFocusRequestId((value) => value + 1);
++    },
++    [activeRightPanelSurface, activeThreadRef],
++  );
++  const closePanelTerminal = useCallback(
++    (terminalId: string) => {
++      if (!activeThreadRef || activeRightPanelSurface?.kind !== "terminal") return;
++      const api = readEnvironmentApi(activeThreadRef.environmentId);
++      void api?.terminal
++        .close({
++          threadId: activeThreadRef.threadId,
++          terminalId,
++          deleteHistory: true,
++        })
++        .catch(() => undefined);
++      useRightPanelStore
++        .getState()
++        .closeTerminal(activeThreadRef, activeRightPanelSurface.id, terminalId);
++      setTerminalFocusRequestId((value) => value + 1);
++    },
++    [activeRightPanelSurface, activeThreadRef],
++  );
+   const runProjectScript = useCallback(
+     async (
+       script: ProjectScript,
+@@ -2612,6 +3196,9 @@ export default function ChatView(props: ChatViewProps) {
+     handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
+   }, [handleInteractionModeChange, interactionMode]);
+   const togglePlanSidebar = useCallback(() => {
++    if (!planSidebarOpen && activeThreadRef && rightPanelOpen) {
++      useRightPanelStore.getState().close(activeThreadRef);
++    }
+     setPlanSidebarOpen((open) => {
+       if (open) {
+         planSidebarDismissedForTurnRef.current =
+@@ -2621,12 +3208,112 @@ export default function ChatView(props: ChatViewProps) {
+       }
+       return !open;
+     });
+-  }, [activePlan?.turnId, sidebarProposedPlan?.turnId]);
++  }, [
++    activePlan?.turnId,
++    activeThreadRef,
++    planSidebarOpen,
++    rightPanelOpen,
++    sidebarProposedPlan?.turnId,
++  ]);
+   const closePlanSidebar = useCallback(() => {
+     setPlanSidebarOpen(false);
+     planSidebarDismissedForTurnRef.current =
+       activePlan?.turnId ?? sidebarProposedPlan?.turnId ?? "__dismissed__";
+   }, [activePlan?.turnId, sidebarProposedPlan?.turnId]);
++  const closeRightPanel = useCallback(() => {
++    if (!activeThreadRef) return;
++    setMaximizedRightPanelThreadKey(null);
++    useRightPanelStore.getState().close(activeThreadRef);
++    if (!diffOpen) return;
++    pendingDiffRouteTargetRef.current = false;
++    void navigate({
++      to: "/$environmentId/$threadId",
++      params: { environmentId, threadId },
++      replace: true,
++      search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++    });
++  }, [activeThreadRef, diffOpen, environmentId, navigate, threadId]);
++  const toggleRightPanel = useCallback(() => {
++    if (!activeThreadRef) return;
++    if (rightPanelOpen) {
++      closeRightPanel();
++      return;
++    }
++    setPlanSidebarOpen(false);
++    useRightPanelStore.getState().show(activeThreadRef);
++  }, [activeThreadRef, closeRightPanel, rightPanelOpen]);
++  const toggleRightPanelMaximized = useCallback(() => {
++    if (!canMaximizeRightPanel) return;
++    setMaximizedRightPanelThreadKey((threadKey) =>
++      threadKey === routeThreadKey ? null : routeThreadKey,
++    );
++  }, [canMaximizeRightPanel, routeThreadKey]);
++  const activateRightPanelSurface = useCallback(
++    (surface: RightPanelSurface) => {
++      if (!activeThreadRef) return;
++      useRightPanelStore.getState().activateSurface(activeThreadRef, surface.id);
++      if (surface.kind === "preview" && surface.resourceId) {
++        usePreviewStateStore.getState().setActiveTab(activeThreadRef, surface.resourceId);
++      }
++      if (surface.kind === "terminal") {
++        setTerminalFocusRequestId((value) => value + 1);
++      }
++      if (surface.kind === "diff" && !diffOpen) {
++        onDiffPanelOpen?.();
++        pendingDiffRouteTargetRef.current = true;
++        void navigate({
++          to: "/$environmentId/$threadId",
++          params: { environmentId, threadId },
++          replace: true,
++          search: (previous) => ({ ...stripDiffSearchParams(previous), diff: "1" }),
++        });
++      } else if (surface.kind !== "diff" && diffOpen) {
++        pendingDiffRouteTargetRef.current = false;
++        void navigate({
++          to: "/$environmentId/$threadId",
++          params: { environmentId, threadId },
++          replace: true,
++          search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++        });
++      }
++    },
++    [activeThreadRef, diffOpen, environmentId, navigate, onDiffPanelOpen, threadId],
++  );
++  const closeRightPanelSurface = useCallback(
++    (surface: RightPanelSurface) => {
++      if (!activeThreadRef) return;
++      if (surface.kind === "preview" && surface.resourceId) {
++        usePreviewStateStore.getState().removeSession(activeThreadRef, surface.resourceId);
++        const api = readEnvironmentApi(activeThreadRef.environmentId);
++        void api?.preview
++          .close({ threadId: activeThreadRef.threadId, tabId: surface.resourceId })
++          .catch(() => undefined);
++      }
++      useRightPanelStore.getState().closeSurface(activeThreadRef, surface.id);
++      const nextActiveSurface = selectActiveRightPanelSurface(
++        useRightPanelStore.getState().byThreadKey,
++        activeThreadRef,
++      );
++      if (nextActiveSurface?.kind === "preview" && nextActiveSurface.resourceId) {
++        usePreviewStateStore.getState().setActiveTab(activeThreadRef, nextActiveSurface.resourceId);
++      }
++      if (surface.kind === "terminal") {
++        for (const terminalId of surface.terminalIds) {
++          closePanelTerminal(terminalId);
++        }
++      }
++      if (surface.kind === "diff" && diffOpen) {
++        pendingDiffRouteTargetRef.current = false;
++        void navigate({
++          to: "/$environmentId/$threadId",
++          params: { environmentId, threadId },
++          replace: true,
++          search: (previous) => ({ ...stripDiffSearchParams(previous), diff: undefined }),
++        });
++      }
++    },
++    [activeThreadRef, closePanelTerminal, diffOpen, environmentId, navigate, threadId],
++  );
+ 
+   const persistThreadSettingsForNextTurn = useCallback(
+     async (input: {
+@@ -2725,6 +3412,7 @@ export default function ChatView(props: ChatViewProps) {
+     if (!autoOpenPlanSidebar) return;
+     if (!activePlan) return;
+     if (planSidebarOpen) return;
++    if (rightPanelOpen) return;
+     const latestTurnId = activeLatestTurn?.turnId ?? null;
+     if (latestTurnId && activePlan.turnId !== latestTurnId) return;
+     const turnKey = activePlan.turnId ?? sidebarProposedPlan?.turnId ?? "__dismissed__";
+@@ -2735,6 +3423,7 @@ export default function ChatView(props: ChatViewProps) {
+     activeLatestTurn?.turnId,
+     autoOpenPlanSidebar,
+     planSidebarOpen,
++    rightPanelOpen,
+     sidebarProposedPlan?.turnId,
+   ]);
+ 
+@@ -2943,6 +3632,16 @@ export default function ChatView(props: ChatViewProps) {
+         return;
+       }
+ 
++      if (command === "terminal.splitVertical") {
++        event.preventDefault();
++        event.stopPropagation();
++        if (!terminalUiState.terminalOpen) {
++          setTerminalOpen(true);
++        }
++        splitTerminalVertical();
++        return;
++      }
++
+       if (command === "terminal.close") {
+         event.preventDefault();
+         event.stopPropagation();
+@@ -2995,6 +3694,7 @@ export default function ChatView(props: ChatViewProps) {
+     setTerminalOpen,
+     runProjectScript,
+     splitTerminal,
++    splitTerminalVertical,
+     keybindings,
+     onToggleDiff,
+     toggleTerminalVisibility,
+@@ -4079,6 +4779,7 @@ export default function ChatView(props: ChatViewProps) {
+           promptRef={promptRef}
+           composerImagesRef={composerImagesRef}
+           composerTerminalContextsRef={composerTerminalContextsRef}
++          composerElementContextsRef={composerElementContextsRef}
+           shouldAutoScrollRef={isAtEndRef}
+           scheduleStickToBottom={scrollToEnd}
+           onSend={onSend}
+@@ -4151,188 +4852,308 @@ export default function ChatView(props: ChatViewProps) {
+       {branchToolbar}
+     </div>
+   );
++  const panelLayoutControls = (
++    <PanelLayoutControls
++      terminalAvailable={Boolean(activeProject)}
++      terminalOpen={Boolean(terminalUiState.terminalOpen)}
++      terminalShortcutLabel={terminalToggleShortcutLabel}
++      rightPanelAvailable={Boolean(activeProject)}
++      rightPanelOpen={rightPanelOpen}
++      rightPanelShortcutLabel={diffPanelShortcutLabel}
++      rightPanelMaximized={rightPanelMaximized}
++      canMaximizeRightPanel={canMaximizeRightPanel}
++      onToggleTerminal={toggleTerminalVisibility}
++      onToggleRightPanel={toggleRightPanel}
++      onToggleRightPanelMaximized={toggleRightPanelMaximized}
++    />
++  );
++  let rightPanelContent: ReactNode = null;
++  if (activeThreadRef && activeRightPanelSurface?.kind === "preview") {
++    rightPanelContent = (
++      <PreviewPanel
++        mode="embedded"
++        threadRef={activeThreadRef}
++        tabId={activeRightPanelSurface.resourceId}
++        visible
++      />
++    );
++  } else if (activeThreadRef && activeRightPanelSurface?.kind === "terminal") {
++    rightPanelContent = (
++      <PersistentThreadTerminalPanel
++        threadRef={activeThreadRef}
++        surface={activeRightPanelSurface}
++        launchContext={activeTerminalLaunchContext ?? null}
++        focusRequestId={terminalFocusRequestId}
++        keybindings={keybindings}
++        onAddTerminalContext={addTerminalContextToDraft}
++        onSplitTerminal={splitPanelTerminal}
++        onSplitTerminalVertical={splitPanelTerminalVertical}
++        onNewTerminal={addTerminalSurface}
++        onActiveTerminalChange={activatePanelTerminal}
++        onCloseTerminal={closePanelTerminal}
++        splitShortcutLabel={splitTerminalShortcutLabel ?? undefined}
++        splitVerticalShortcutLabel={splitTerminalVerticalShortcutLabel ?? undefined}
++        newShortcutLabel={newTerminalShortcutLabel ?? undefined}
++        closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
++      />
++    );
++  } else if (activeRightPanelSurface?.kind === "diff") {
++    rightPanelContent = <DiffPanel mode="embedded" />;
++  } else if (
++    (activeRightPanelSurface?.kind === "files" || activeRightPanelSurface?.kind === "file") &&
++    activeProject &&
++    activeWorkspaceRoot
++  ) {
++    rightPanelContent = (
++      <FilePreviewPanel
++        key={`${activeProject.environmentId}:${activeWorkspaceRoot}`}
++        environmentId={activeProject.environmentId}
++        cwd={activeWorkspaceRoot}
++        projectName={activeProject.name}
++        relativePath={
++          activeRightPanelSurface.kind === "file" ? activeRightPanelSurface.relativePath : null
++        }
++        onOpenFile={openFileSurface}
++        onPendingChange={handleFilePendingChange}
++      />
++    );
++  }
+ 
+   return (
+-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
+-      {/* Top bar */}
+-      <FadingTopBar
+-        reserveTitleBarControlInset={reserveTitleBarControlInset}
+-        viewportFixed={topBarViewportFixed}
++    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
++      {isElectron && activeThreadRef ? (
++        <PreviewAutomationOwner threadRef={activeThreadRef} visible={previewPanelOpen} />
++      ) : null}
++      {inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
++      <div
++        className={cn(
++          "flex min-h-0 min-w-0 flex-col overflow-x-hidden",
++          rightPanelMaximized ? "w-0 flex-none" : "flex-1",
++        )}
++        data-chat-column-maximized-away={rightPanelMaximized ? "true" : "false"}
+       >
+-        <ChatHeader
+-          activeThreadEnvironmentId={activeThread.environmentId}
+-          activeThreadId={activeThread.id}
+-          {...(routeKind === "draft" && draftId ? { draftId } : {})}
+-          activeProjectName={activeProject?.name}
+-          isGitRepo={isGitRepo}
+-          openInCwd={gitCwd}
+-          activeProjectScripts={activeProject?.scripts}
+-          preferredScriptId={
+-            activeProject ? (lastInvokedScriptByProjectId[activeProject.id] ?? null) : null
+-          }
+-          keybindings={keybindings}
+-          availableEditors={availableEditors}
+-          terminalAvailable={activeProject !== undefined}
+-          terminalOpen={terminalUiState.terminalOpen}
+-          terminalToggleShortcutLabel={terminalToggleShortcutLabel}
+-          diffToggleShortcutLabel={diffPanelShortcutLabel}
+-          gitDiffStats={gitDiffStats}
+-          gitCwd={gitCwd}
+-          diffOpen={diffOpen}
+-          onRunProjectScript={runProjectScript}
+-          onAddProjectScript={saveProjectScript}
+-          onUpdateProjectScript={updateProjectScript}
+-          onDeleteProjectScript={deleteProjectScript}
+-          onToggleTerminal={toggleTerminalVisibility}
+-          onToggleDiff={onToggleDiff}
++        {/* Top bar */}
++        <FadingTopBar
++          data-chat-header
++          reserveTitleBarControlInset={reserveTitleBarControlInset && !inlineRightPanelOwnsTitleBar}
++          viewportFixed={topBarViewportFixed}
++        >
++          <ChatHeader
++            activeThreadEnvironmentId={activeThread.environmentId}
++            activeThreadId={activeThread.id}
++            {...(routeKind === "draft" && draftId ? { draftId } : {})}
++            activeThreadTitle={activeThread.title}
++            activeProjectName={activeProject?.name}
++            openInCwd={gitCwd}
++            activeProjectScripts={activeProject?.scripts}
++            preferredScriptId={
++              activeProject ? (lastInvokedScriptByProjectId[activeProject.id] ?? null) : null
++            }
++            keybindings={keybindings}
++            availableEditors={availableEditors}
++            gitCwd={gitCwd}
++            onRunProjectScript={runProjectScript}
++            onAddProjectScript={saveProjectScript}
++            onUpdateProjectScript={updateProjectScript}
++            onDeleteProjectScript={deleteProjectScript}
++            rightPanelOpen={rightPanelOpen}
++          />
++          {!inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
++        </FadingTopBar>
++
++        {/* Error banner */}
++        <ProviderStatusBanner status={activeProviderStatus} />
++        <ThreadErrorBanner
++          error={activeThread.error}
++          onDismiss={() => setThreadError(activeThread.id, null)}
+         />
+-      </FadingTopBar>
+-
+-      {/* Error banner */}
+-      <ProviderStatusBanner status={activeProviderStatus} />
+-      <ThreadErrorBanner
+-        error={activeThread.error}
+-        onDismiss={() => setThreadError(activeThread.id, null)}
+-      />
+-      {/* Main content area with optional plan sidebar */}
+-      <div className="flex min-h-0 min-w-0 flex-1">
+-        {/* Chat column */}
+-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+-          {shouldUseStartupDraftLayout ? (
+-            <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
+-              <div className="w-full max-w-3xl">{startupDraftComposerGroup}</div>
+-            </div>
+-          ) : (
+-            <>
+-              {/* Messages Wrapper */}
+-              <div className="relative flex min-h-0 flex-1 flex-col">
+-                {/* Messages — LegendList handles virtualization and scrolling internally */}
+-                <MessagesTimeline
+-                  key={activeThread.id}
+-                  isWorking={isWorking}
+-                  activeTurnInProgress={isWorking || !latestTurnSettled}
+-                  activeTurnStartedAt={activeWorkStartedAt}
+-                  listRef={legendListRef}
+-                  timelineEntries={timelineEntries}
+-                  latestTurn={activeLatestTurn}
+-                  turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+-                  activeThreadEnvironmentId={activeThread.environmentId}
+-                  routeThreadKey={routeThreadKey}
+-                  onOpenTurnDiff={onOpenTurnDiff}
+-                  revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
+-                  onRevertUserMessage={onRevertUserMessage}
+-                  isRevertingCheckpoint={isRevertingCheckpoint}
+-                  onImageExpand={onExpandTimelineImage}
+-                  markdownCwd={gitCwd ?? undefined}
+-                  resolvedTheme={resolvedTheme}
+-                  timestampFormat={timestampFormat}
+-                  workspaceRoot={activeWorkspaceRoot}
+-                  skills={activeProviderStatus?.skills ?? EMPTY_PROVIDER_SKILLS}
+-                  onIsAtEndChange={onIsAtEndChange}
+-                />
+-
+-                {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}
+-                {showScrollToBottom && (
+-                  <div className="pointer-events-none absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 justify-center py-1.5">
+-                    <button
+-                      type="button"
+-                      onClick={() => scrollToEnd(true)}
+-                      className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-muted-foreground text-xs shadow-sm transition-colors hover:border-border hover:text-foreground hover:cursor-pointer"
+-                    >
+-                      <ChevronDownIcon className="size-3.5" />
+-                      Scroll to bottom
+-                    </button>
+-                  </div>
+-                )}
+-              </div>
+-
+-              {/* Input bar */}
+-              <div
+-                className={cn(
+-                  "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-1.5 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-2",
+-                  isGitRepo
+-                    ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
+-                    : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+-                )}
+-              >
+-                {startupDraftComposerDocking ? (
+-                  <div className="mx-auto w-full max-w-3xl">{startupDraftComposerGroup}</div>
+-                ) : (
+-                  <>
+-                    {composerStack}
+-                    {branchToolbar}
+-                  </>
+-                )}
++        {/* Main content area with optional plan sidebar */}
++        <div className="flex min-h-0 min-w-0 flex-1">
++          {/* Chat column */}
++          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
++            {shouldUseStartupDraftLayout ? (
++              <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
++                <div className="w-full max-w-3xl">{startupDraftComposerGroup}</div>
+               </div>
+-            </>
+-          )}
+-
+-          {pullRequestDialogState ? (
+-            <PullRequestThreadDialog
+-              key={pullRequestDialogState.key}
+-              open
+-              environmentId={activeThread.environmentId}
+-              threadId={activeThread.id}
+-              cwd={activeProject?.cwd ?? null}
+-              initialReference={pullRequestDialogState.initialReference}
+-              onOpenChange={(open) => {
+-                if (!open) {
+-                  closePullRequestDialog();
+-                }
+-              }}
+-              onPrepared={handlePreparedPullRequestThread}
++            ) : (
++              <>
++                {/* Messages Wrapper */}
++                <div className="relative flex min-h-0 flex-1 flex-col">
++                  {/* Messages — LegendList handles virtualization and scrolling internally */}
++                  <MessagesTimeline
++                    key={activeThread.id}
++                    isWorking={isWorking}
++                    activeTurnInProgress={isWorking || !latestTurnSettled}
++                    activeTurnStartedAt={activeWorkStartedAt}
++                    listRef={legendListRef}
++                    timelineEntries={timelineEntries}
++                    latestTurn={activeLatestTurn}
++                    turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
++                    activeThreadEnvironmentId={activeThread.environmentId}
++                    routeThreadKey={routeThreadKey}
++                    onOpenTurnDiff={onOpenTurnDiff}
++                    revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
++                    onRevertUserMessage={onRevertUserMessage}
++                    isRevertingCheckpoint={isRevertingCheckpoint}
++                    onImageExpand={onExpandTimelineImage}
++                    markdownCwd={gitCwd ?? undefined}
++                    resolvedTheme={resolvedTheme}
++                    timestampFormat={timestampFormat}
++                    workspaceRoot={activeWorkspaceRoot}
++                    skills={activeProviderStatus?.skills ?? EMPTY_PROVIDER_SKILLS}
++                    onIsAtEndChange={onIsAtEndChange}
++                  />
++
++                  {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}
++                  {showScrollToBottom && (
++                    <div className="pointer-events-none absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 justify-center py-1.5">
++                      <button
++                        type="button"
++                        onClick={() => scrollToEnd(true)}
++                        className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-muted-foreground text-xs shadow-sm transition-colors hover:border-border hover:text-foreground hover:cursor-pointer"
++                      >
++                        <ChevronDownIcon className="size-3.5" />
++                        Scroll to bottom
++                      </button>
++                    </div>
++                  )}
++                </div>
++
++                {/* Input bar */}
++                <div
++                  className={cn(
++                    "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-1.5 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-2",
++                    isGitRepo
++                      ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
++                      : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
++                  )}
++                >
++                  {startupDraftComposerDocking ? (
++                    <div className="mx-auto w-full max-w-3xl">{startupDraftComposerGroup}</div>
++                  ) : (
++                    <>
++                      {composerStack}
++                      {branchToolbar}
++                    </>
++                  )}
++                </div>
++              </>
++            )}
++
++            {pullRequestDialogState ? (
++              <PullRequestThreadDialog
++                key={pullRequestDialogState.key}
++                open
++                environmentId={activeThread.environmentId}
++                threadId={activeThread.id}
++                cwd={activeProject?.cwd ?? null}
++                initialReference={pullRequestDialogState.initialReference}
++                onOpenChange={(open) => {
++                  if (!open) {
++                    closePullRequestDialog();
++                  }
++                }}
++                onPrepared={handlePreparedPullRequestThread}
++              />
++            ) : null}
++          </div>
++          {/* end chat column */}
++
++          {/* Plan sidebar */}
++          {planSidebarOpen && !shouldUsePlanSidebarSheet ? (
++            <PlanSidebar
++              activePlan={activePlan}
++              activeProposedPlan={sidebarProposedPlan}
++              label={planSidebarLabel}
++              environmentId={environmentId}
++              markdownCwd={gitCwd ?? undefined}
++              workspaceRoot={activeWorkspaceRoot}
++              timestampFormat={timestampFormat}
++              mode="sidebar"
++              onClose={closePlanSidebar}
+             />
+           ) : null}
+         </div>
+-        {/* end chat column */}
+-
+-        {/* Plan sidebar */}
+-        {planSidebarOpen && !shouldUsePlanSidebarSheet ? (
+-          <PlanSidebar
+-            activePlan={activePlan}
+-            activeProposedPlan={sidebarProposedPlan}
+-            label={planSidebarLabel}
+-            environmentId={environmentId}
+-            markdownCwd={gitCwd ?? undefined}
+-            workspaceRoot={activeWorkspaceRoot}
+-            timestampFormat={timestampFormat}
+-            mode="sidebar"
+-            onClose={closePlanSidebar}
++        {/* end horizontal flex container */}
++
++        {mountedTerminalThreadRefs.map(({ key: mountedThreadKey, threadRef: mountedThreadRef }) => (
++          <PersistentThreadTerminalDrawer
++            key={mountedThreadKey}
++            threadRef={mountedThreadRef}
++            threadId={mountedThreadRef.threadId}
++            visible={mountedThreadKey === activeThreadKey && terminalUiState.terminalOpen}
++            launchContext={
++              mountedThreadKey === activeThreadKey ? (activeTerminalLaunchContext ?? null) : null
++            }
++            focusRequestId={mountedThreadKey === activeThreadKey ? terminalFocusRequestId : 0}
++            splitShortcutLabel={splitTerminalShortcutLabel ?? undefined}
++            newShortcutLabel={newTerminalShortcutLabel ?? undefined}
++            closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
++            keybindings={keybindings}
++            onAddTerminalContext={addTerminalContextToDraft}
+           />
++        ))}
++        {shouldUsePlanSidebarSheet ? (
++          <RightPanelSheet open={planSidebarOpen} onClose={closePlanSidebar}>
++            <PlanSidebar
++              activePlan={activePlan}
++              activeProposedPlan={sidebarProposedPlan}
++              label={planSidebarLabel}
++              environmentId={environmentId}
++              markdownCwd={gitCwd ?? undefined}
++              workspaceRoot={activeWorkspaceRoot}
++              timestampFormat={timestampFormat}
++              mode="sheet"
++              onClose={closePlanSidebar}
++            />
++          </RightPanelSheet>
+         ) : null}
+       </div>
+-      {/* end horizontal flex container */}
+-
+-      {mountedTerminalThreadRefs.map(({ key: mountedThreadKey, threadRef: mountedThreadRef }) => (
+-        <PersistentThreadTerminalDrawer
+-          key={mountedThreadKey}
+-          threadRef={mountedThreadRef}
+-          threadId={mountedThreadRef.threadId}
+-          visible={mountedThreadKey === activeThreadKey && terminalUiState.terminalOpen}
+-          launchContext={
+-            mountedThreadKey === activeThreadKey ? (activeTerminalLaunchContext ?? null) : null
+-          }
+-          focusRequestId={mountedThreadKey === activeThreadKey ? terminalFocusRequestId : 0}
+-          splitShortcutLabel={splitTerminalShortcutLabel ?? undefined}
+-          newShortcutLabel={newTerminalShortcutLabel ?? undefined}
+-          closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
+-          keybindings={keybindings}
+-          onAddTerminalContext={addTerminalContextToDraft}
+-        />
+-      ))}
+-      {shouldUsePlanSidebarSheet ? (
+-        <RightPanelSheet open={planSidebarOpen} onClose={closePlanSidebar}>
+-          <PlanSidebar
+-            activePlan={activePlan}
+-            activeProposedPlan={sidebarProposedPlan}
+-            label={planSidebarLabel}
+-            environmentId={environmentId}
+-            markdownCwd={gitCwd ?? undefined}
+-            workspaceRoot={activeWorkspaceRoot}
+-            timestampFormat={timestampFormat}
++
++      {!shouldUsePlanSidebarSheet && rightPanelOpen && activeThreadRef ? (
++        <RightPanelTabs
++          mode="inline"
++          maximized={rightPanelMaximized}
++          surfaces={rightPanelState.surfaces}
++          activeSurfaceId={activeRightPanelSurface?.id ?? null}
++          pendingSurfaceIds={pendingFileSurfaceIds}
++          previewSessions={activePreviewState.sessions}
++          terminalLabelsById={activeTerminalLabelsById}
++          onActivate={activateRightPanelSurface}
++          onCloseSurface={closeRightPanelSurface}
++          onAddBrowser={createBrowserSurface}
++          onAddTerminal={addTerminalSurface}
++          onAddDiff={addDiffSurface}
++          onAddFiles={addFilesSurface}
++          browserAvailable={isPreviewSupportedInRuntime()}
++          diffAvailable={isServerThread && isGitRepo}
++          filesAvailable={Boolean(activeProject)}
++        >
++          {rightPanelContent}
++        </RightPanelTabs>
++      ) : null}
++
++      {shouldUsePlanSidebarSheet && rightPanelOpen && activeThreadRef ? (
++        <RightPanelSheet open onClose={closeRightPanel}>
++          <RightPanelTabs
+             mode="sheet"
+-            onClose={closePlanSidebar}
+-          />
++            surfaces={rightPanelState.surfaces}
++            activeSurfaceId={activeRightPanelSurface?.id ?? null}
++            pendingSurfaceIds={pendingFileSurfaceIds}
++            previewSessions={activePreviewState.sessions}
++            terminalLabelsById={activeTerminalLabelsById}
++            onActivate={activateRightPanelSurface}
++            onCloseSurface={closeRightPanelSurface}
++            onAddBrowser={createBrowserSurface}
++            onAddTerminal={addTerminalSurface}
++            onAddDiff={addDiffSurface}
++            onAddFiles={addFilesSurface}
++            browserAvailable={isPreviewSupportedInRuntime()}
++            diffAvailable={isServerThread && isGitRepo}
++            filesAvailable={Boolean(activeProject)}
++          >
++            {rightPanelContent}
++          </RightPanelTabs>
+         </RightPanelSheet>
+       ) : null}
+ 
+diff --git a/apps/web/src/components/FadingTopBar.tsx b/apps/web/src/components/FadingTopBar.tsx
+new file mode 100644
+index 00000000..d04d9071
+--- /dev/null
++++ b/apps/web/src/components/FadingTopBar.tsx
+@@ -0,0 +1,51 @@
++import { type ComponentPropsWithoutRef } from "react";
++
++import { isElectron } from "../env";
++import { cn } from "../lib/utils";
++
++export function FadingTopBar({
++  children,
++  reserveTitleBarControlInset = true,
++  surface = "fade",
++  viewportFixed = false,
++  className,
++  contentClassName,
++  style,
++  ...headerProps
++}: ComponentPropsWithoutRef<"header"> & {
++  reserveTitleBarControlInset?: boolean;
++  surface?: "fade" | "transparent";
++  viewportFixed?: boolean;
++  contentClassName?: string;
++}) {
++  const fadeBackgroundImage =
++    "linear-gradient(to bottom, #191919 0%, #191919 var(--fading-topbar-solid-end), rgb(25 25 25 / 0) calc(var(--fading-topbar-solid-end) + 2rem))";
++
++  return (
++    <header
++      {...headerProps}
++      style={style}
++      className={cn(
++        "pointer-events-none right-0 top-0 z-20 [--fading-topbar-scrollbar-gutter:12px] [--fading-topbar-solid-end:43.75px]",
++        viewportFixed ? "fixed left-(--sidebar-width)" : "absolute left-0",
++        isElectron
++          ? cn(
++              "drag-region flex h-[52px] items-start px-3 pt-3 sm:px-5 [--fading-topbar-solid-end:40.5px] wco:h-[env(titlebar-area-height)]",
++              reserveTitleBarControlInset &&
++                "wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]",
++            )
++          : "h-(--workspace-topbar-height) min-h-(--workspace-topbar-height) pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-2 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-3",
++        className,
++      )}
++    >
++      {surface === "fade" ? (
++        <div
++          aria-hidden="true"
++          className="pointer-events-none absolute left-0 right-[var(--fading-topbar-scrollbar-gutter)] top-0 h-[calc(var(--fading-topbar-solid-end)+2rem)]"
++          style={{ backgroundImage: fadeBackgroundImage }}
++        />
++      ) : null}
++      <div className={cn("pointer-events-auto relative w-full", contentClassName)}>{children}</div>
++    </header>
++  );
++}
+diff --git a/apps/web/src/components/ThreadTerminalDrawer.tsx b/apps/web/src/components/ThreadTerminalDrawer.tsx
+index 4972e07b..1fb7ac67 100644
+--- a/apps/web/src/components/ThreadTerminalDrawer.tsx
++++ b/apps/web/src/components/ThreadTerminalDrawer.tsx
+@@ -788,7 +788,6 @@ export function TerminalViewport({
+     };
+     // autoFocus is intentionally omitted;
+     // it is only read at mount time and must not trigger terminal teardown/recreation.
+-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [cwd, environmentId, runtimeEnvKey, terminalId, threadId, worktreePath]);
+ 
+   useEffect(() => {
+diff --git a/apps/web/src/composerDraftStore.ts b/apps/web/src/composerDraftStore.ts
+index 78ba22b8..73e9674b 100644
+--- a/apps/web/src/composerDraftStore.ts
++++ b/apps/web/src/composerDraftStore.ts
+@@ -4,6 +4,8 @@ import {
+   defaultInstanceIdForDriver,
+   type EnvironmentId,
+   ModelSelection,
++  type PreviewAnnotationPayload,
++  PreviewAnnotationPayloadSchema,
+   ProjectId,
+   ProviderInstanceId,
+   ProviderInteractionMode,
+@@ -36,6 +38,12 @@ import {
+   ensureInlineTerminalContextPlaceholders,
+   normalizeTerminalContextText,
+ } from "./lib/terminalContext";
++import {
++  type ElementContextDraft,
++  type ElementContextSelection,
++  elementContextDedupKey,
++  newElementContextId,
++} from "./lib/elementContext";
+ import { create } from "zustand";
+ import { createJSONStorage, persist } from "zustand/middleware";
+ import { useShallow } from "zustand/react/shallow";
+@@ -98,10 +106,34 @@ const PersistedTerminalContextDraft = Schema.Struct({
+ });
+ type PersistedTerminalContextDraft = typeof PersistedTerminalContextDraft.Type;
+ 
++const PersistedElementContextStackFrame = Schema.Struct({
++  functionName: Schema.NullOr(Schema.String),
++  fileName: Schema.NullOr(Schema.String),
++  lineNumber: Schema.NullOr(Schema.Number),
++  columnNumber: Schema.NullOr(Schema.Number),
++});
++
++const PersistedElementContextDraft = Schema.Struct({
++  id: Schema.String,
++  threadId: ThreadId,
++  pickedAt: Schema.String,
++  pageUrl: Schema.String,
++  pageTitle: Schema.NullOr(Schema.String),
++  tagName: Schema.String,
++  selector: Schema.NullOr(Schema.String),
++  htmlPreview: Schema.String,
++  componentName: Schema.NullOr(Schema.String),
++  source: Schema.NullOr(PersistedElementContextStackFrame),
++  styles: Schema.String,
++});
++type PersistedElementContextDraft = typeof PersistedElementContextDraft.Type;
++
+ const PersistedComposerThreadDraftState = Schema.Struct({
+   prompt: Schema.String,
+   attachments: Schema.Array(PersistedComposerImageAttachment),
+   terminalContexts: Schema.optionalKey(Schema.Array(PersistedTerminalContextDraft)),
++  elementContexts: Schema.optionalKey(Schema.Array(PersistedElementContextDraft)),
++  previewAnnotations: Schema.optionalKey(Schema.Array(PreviewAnnotationPayloadSchema)),
+   // Keyed by `ProviderInstanceId` (open branded slug) so custom provider
+   // instances (e.g. `codex_personal`) round-trip alongside the built-in
+   // `codex` / `claudeAgent` / ... entries. Every prior `ProviderDriverKind`
+@@ -222,6 +254,8 @@ export interface ComposerThreadDraftState {
+   nonPersistedImageIds: string[];
+   persistedAttachments: PersistedComposerImageAttachment[];
+   terminalContexts: TerminalContextDraft[];
++  elementContexts: ElementContextDraft[];
++  previewAnnotations: PreviewAnnotationPayload[];
+   /**
+    * Per-instance model selection. Keyed by `ProviderInstanceId` (open
+    * branded slug) so a default `codex` instance and a user-authored
+@@ -403,6 +437,25 @@ interface ComposerDraftStoreState {
+   addTerminalContexts: (threadRef: ComposerThreadTarget, contexts: TerminalContextDraft[]) => void;
+   removeTerminalContext: (threadRef: ComposerThreadTarget, contextId: string) => void;
+   clearTerminalContexts: (threadRef: ComposerThreadTarget) => void;
++  addElementContext: (
++    threadRef: ComposerThreadTarget,
++    selection: ElementContextSelection,
++  ) => boolean;
++  setElementContexts: (
++    threadRef: ComposerThreadTarget,
++    contexts: ReadonlyArray<ElementContextDraft>,
++  ) => void;
++  removeElementContext: (threadRef: ComposerThreadTarget, contextId: string) => void;
++  clearElementContexts: (threadRef: ComposerThreadTarget) => void;
++  addPreviewAnnotation: (
++    threadRef: ComposerThreadTarget,
++    annotation: PreviewAnnotationPayload,
++  ) => void;
++  setPreviewAnnotations: (
++    threadRef: ComposerThreadTarget,
++    annotations: ReadonlyArray<PreviewAnnotationPayload>,
++  ) => void;
++  removePreviewAnnotation: (threadRef: ComposerThreadTarget, annotationId: string) => void;
+   clearPersistedAttachments: (threadRef: ComposerThreadTarget) => void;
+   syncPersistedAttachments: (
+     threadRef: ComposerThreadTarget,
+@@ -478,9 +531,13 @@ const EMPTY_IMAGES: ComposerImageAttachment[] = [];
+ const EMPTY_IDS: string[] = [];
+ const EMPTY_PERSISTED_ATTACHMENTS: PersistedComposerImageAttachment[] = [];
+ const EMPTY_TERMINAL_CONTEXTS: TerminalContextDraft[] = [];
++const EMPTY_ELEMENT_CONTEXTS: ElementContextDraft[] = [];
++const EMPTY_PREVIEW_ANNOTATIONS: PreviewAnnotationPayload[] = [];
+ Object.freeze(EMPTY_IMAGES);
+ Object.freeze(EMPTY_IDS);
+ Object.freeze(EMPTY_PERSISTED_ATTACHMENTS);
++Object.freeze(EMPTY_ELEMENT_CONTEXTS);
++Object.freeze(EMPTY_PREVIEW_ANNOTATIONS);
+ const EMPTY_MODEL_SELECTION_BY_PROVIDER: Partial<Record<ProviderDriverKind, ModelSelection>> =
+   Object.freeze({});
+ const EMPTY_COMPOSER_DRAFT_MODEL_STATE = Object.freeze<ComposerDraftModelState>({
+@@ -494,19 +551,23 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
+   nonPersistedImageIds: EMPTY_IDS,
+   persistedAttachments: EMPTY_PERSISTED_ATTACHMENTS,
+   terminalContexts: EMPTY_TERMINAL_CONTEXTS,
++  elementContexts: EMPTY_ELEMENT_CONTEXTS,
++  previewAnnotations: EMPTY_PREVIEW_ANNOTATIONS,
+   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
+   activeProvider: null,
+   runtimeMode: null,
+   interactionMode: null,
+ });
+ 
+-function createEmptyThreadDraft(): ComposerThreadDraftState {
++export function createEmptyThreadDraft(): ComposerThreadDraftState {
+   return {
+     prompt: "",
+     images: [],
+     nonPersistedImageIds: [],
+     persistedAttachments: [],
+     terminalContexts: [],
++    elementContexts: [],
++    previewAnnotations: [],
+     modelSelectionByProvider: {},
+     activeProvider: null,
+     runtimeMode: null,
+@@ -577,6 +638,8 @@ function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
+     draft.images.length === 0 &&
+     draft.persistedAttachments.length === 0 &&
+     draft.terminalContexts.length === 0 &&
++    draft.elementContexts.length === 0 &&
++    draft.previewAnnotations.length === 0 &&
+     Object.keys(draft.modelSelectionByProvider).length === 0 &&
+     draft.activeProvider === null &&
+     draft.runtimeMode === null &&
+@@ -970,6 +1033,63 @@ function normalizePersistedAttachment(value: unknown): PersistedComposerImageAtt
+   };
+ }
+ 
++function normalizePersistedElementContextDraft(
++  value: unknown,
++): PersistedElementContextDraft | null {
++  if (!value || typeof value !== "object") return null;
++  const candidate = value as Record<string, unknown>;
++  const id = candidate.id;
++  const threadId = candidate.threadId;
++  const pickedAt = candidate.pickedAt;
++  const pageUrl = candidate.pageUrl;
++  const tagName = candidate.tagName;
++  if (
++    typeof id !== "string" ||
++    id.length === 0 ||
++    typeof threadId !== "string" ||
++    threadId.length === 0 ||
++    typeof pickedAt !== "string" ||
++    pickedAt.length === 0 ||
++    typeof pageUrl !== "string" ||
++    pageUrl.length === 0 ||
++    typeof tagName !== "string" ||
++    tagName.length === 0
++  ) {
++    return null;
++  }
++  const sourceCandidate = candidate.source;
++  let source: PersistedElementContextDraft["source"] = null;
++  if (sourceCandidate && typeof sourceCandidate === "object") {
++    const sourceRecord = sourceCandidate as Record<string, unknown>;
++    source = {
++      functionName:
++        typeof sourceRecord.functionName === "string" ? sourceRecord.functionName : null,
++      fileName: typeof sourceRecord.fileName === "string" ? sourceRecord.fileName : null,
++      lineNumber:
++        typeof sourceRecord.lineNumber === "number" && Number.isFinite(sourceRecord.lineNumber)
++          ? sourceRecord.lineNumber
++          : null,
++      columnNumber:
++        typeof sourceRecord.columnNumber === "number" && Number.isFinite(sourceRecord.columnNumber)
++          ? sourceRecord.columnNumber
++          : null,
++    };
++  }
++  return {
++    id,
++    threadId: threadId as ThreadId,
++    pickedAt,
++    pageUrl,
++    pageTitle: typeof candidate.pageTitle === "string" ? candidate.pageTitle : null,
++    tagName,
++    selector: typeof candidate.selector === "string" ? candidate.selector : null,
++    htmlPreview: typeof candidate.htmlPreview === "string" ? candidate.htmlPreview : "",
++    componentName: typeof candidate.componentName === "string" ? candidate.componentName : null,
++    source,
++    styles: typeof candidate.styles === "string" ? candidate.styles : "",
++  };
++}
++
+ function normalizePersistedTerminalContextDraft(
+   value: unknown,
+ ): PersistedTerminalContextDraft | null {
+@@ -1484,6 +1604,17 @@ function normalizePersistedDraftsByThreadId(
+           return normalized ? [normalized] : [];
+         })
+       : [];
++    const elementContexts = Array.isArray(draftCandidate.elementContexts)
++      ? draftCandidate.elementContexts.flatMap((entry) => {
++          const normalized = normalizePersistedElementContextDraft(entry);
++          return normalized ? [normalized] : [];
++        })
++      : [];
++    const previewAnnotations = Array.isArray(draftCandidate.previewAnnotations)
++      ? draftCandidate.previewAnnotations.map(
++          (annotation) => ({ ...annotation }) as DeepMutable<PreviewAnnotationPayload>,
++        )
++      : [];
+     const runtimeMode = isRuntimeMode(draftCandidate.runtimeMode)
+       ? draftCandidate.runtimeMode
+       : null;
+@@ -1547,6 +1678,8 @@ function normalizePersistedDraftsByThreadId(
+       promptCandidate.length === 0 &&
+       attachments.length === 0 &&
+       terminalContexts.length === 0 &&
++      elementContexts.length === 0 &&
++      previewAnnotations.length === 0 &&
+       !hasModelData &&
+       !runtimeMode &&
+       !interactionMode
+@@ -1569,6 +1702,8 @@ function normalizePersistedDraftsByThreadId(
+       prompt,
+       attachments,
+       ...(terminalContexts.length > 0 ? { terminalContexts } : {}),
++      ...(elementContexts.length > 0 ? { elementContexts } : {}),
++      ...(previewAnnotations.length > 0 ? { previewAnnotations } : {}),
+       ...(hasModelData
+         ? {
+             modelSelectionByProvider: compactModelSelectionByProvider(modelSelectionByProvider),
+@@ -1651,6 +1786,8 @@ function partializeComposerDraftStoreState(
+       draft.prompt.length === 0 &&
+       draft.persistedAttachments.length === 0 &&
+       draft.terminalContexts.length === 0 &&
++      draft.elementContexts.length === 0 &&
++      draft.previewAnnotations.length === 0 &&
+       !hasModelData &&
+       draft.runtimeMode === null &&
+       draft.interactionMode === null
+@@ -1673,6 +1810,30 @@ function partializeComposerDraftStoreState(
+             })),
+           }
+         : {}),
++      ...(draft.elementContexts.length > 0
++        ? {
++            elementContexts: draft.elementContexts.map((context) => ({
++              id: context.id,
++              threadId: context.threadId,
++              pickedAt: context.pickedAt,
++              pageUrl: context.pageUrl,
++              pageTitle: context.pageTitle,
++              tagName: context.tagName,
++              selector: context.selector,
++              htmlPreview: context.htmlPreview,
++              componentName: context.componentName,
++              source: context.source,
++              styles: context.styles,
++            })),
++          }
++        : {}),
++      ...(draft.previewAnnotations.length > 0
++        ? {
++            previewAnnotations: draft.previewAnnotations.map(
++              (annotation) => ({ ...annotation }) as DeepMutable<PreviewAnnotationPayload>,
++            ),
++          }
++        : {}),
+       ...(hasModelData
+         ? {
+             modelSelectionByProvider: compactModelSelectionByProvider(
+@@ -1910,6 +2071,12 @@ function toHydratedThreadDraft(
+         ...context,
+         text: "",
+       })) ?? [],
++    elementContexts:
++      persistedDraft.elementContexts?.map((context) => ({
++        ...context,
++      })) ?? [],
++    previewAnnotations:
++      persistedDraft.previewAnnotations?.map((annotation) => ({ ...annotation })) ?? [],
+     modelSelectionByProvider,
+     activeProvider,
+     runtimeMode: persistedDraft.runtimeMode ?? null,
+@@ -2832,6 +2999,172 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
+             return { draftsByThreadKey: nextDraftsByThreadKey };
+           });
+         },
++        addElementContext: (threadRef, selection) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef);
++          const threadId = resolveComposerThreadId(get(), threadRef);
++          if (!threadKey || !threadId) return false;
++          let accepted = false;
++          set((state) => {
++            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
++            const dedupKey = elementContextDedupKey(selection);
++            if (
++              existing.elementContexts.some((entry) => elementContextDedupKey(entry) === dedupKey)
++            ) {
++              return state;
++            }
++            accepted = true;
++            const draft: ElementContextDraft = {
++              ...selection,
++              id: newElementContextId(),
++              threadId,
++              pickedAt: new Date().toISOString(),
++            };
++            return {
++              draftsByThreadKey: {
++                ...state.draftsByThreadKey,
++                [threadKey]: {
++                  ...existing,
++                  elementContexts: [...existing.elementContexts, draft],
++                },
++              },
++            };
++          });
++          return accepted;
++        },
++        setElementContexts: (threadRef, contexts) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef);
++          if (!threadKey) return;
++          set((state) => {
++            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
++            const nextDraft: ComposerThreadDraftState = {
++              ...existing,
++              elementContexts: [...contexts],
++            };
++            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
++            if (shouldRemoveDraft(nextDraft)) {
++              delete nextDraftsByThreadKey[threadKey];
++            } else {
++              nextDraftsByThreadKey[threadKey] = nextDraft;
++            }
++            return { draftsByThreadKey: nextDraftsByThreadKey };
++          });
++        },
++        removeElementContext: (threadRef, contextId) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
++          if (threadKey.length === 0 || contextId.length === 0) {
++            return;
++          }
++          set((state) => {
++            const current = state.draftsByThreadKey[threadKey];
++            if (!current) {
++              return state;
++            }
++            const nextDraft: ComposerThreadDraftState = {
++              ...current,
++              elementContexts: current.elementContexts.filter(
++                (context) => context.id !== contextId,
++              ),
++            };
++            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
++            if (shouldRemoveDraft(nextDraft)) {
++              delete nextDraftsByThreadKey[threadKey];
++            } else {
++              nextDraftsByThreadKey[threadKey] = nextDraft;
++            }
++            return { draftsByThreadKey: nextDraftsByThreadKey };
++          });
++        },
++        clearElementContexts: (threadRef) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
++          if (threadKey.length === 0) {
++            return;
++          }
++          set((state) => {
++            const current = state.draftsByThreadKey[threadKey];
++            if (!current || current.elementContexts.length === 0) {
++              return state;
++            }
++            const nextDraft: ComposerThreadDraftState = {
++              ...current,
++              elementContexts: [],
++            };
++            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
++            if (shouldRemoveDraft(nextDraft)) {
++              delete nextDraftsByThreadKey[threadKey];
++            } else {
++              nextDraftsByThreadKey[threadKey] = nextDraft;
++            }
++            return { draftsByThreadKey: nextDraftsByThreadKey };
++          });
++        },
++        addPreviewAnnotation: (threadRef, annotation) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef);
++          if (!threadKey) return;
++          set((state) => {
++            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
++            const nextAnnotations = existing.previewAnnotations.filter(
++              (entry) => entry.id !== annotation.id,
++            );
++            const compactAnnotation: PreviewAnnotationPayload = {
++              ...annotation,
++              screenshot: annotation.screenshot ? { ...annotation.screenshot, dataUrl: "" } : null,
++            };
++            return {
++              draftsByThreadKey: {
++                ...state.draftsByThreadKey,
++                [threadKey]: {
++                  ...existing,
++                  previewAnnotations: [...nextAnnotations, compactAnnotation],
++                },
++              },
++            };
++          });
++        },
++        setPreviewAnnotations: (threadRef, annotations) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef);
++          if (!threadKey) return;
++          set((state) => {
++            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
++            return {
++              draftsByThreadKey: {
++                ...state.draftsByThreadKey,
++                [threadKey]: { ...existing, previewAnnotations: [...annotations] },
++              },
++            };
++          });
++        },
++        removePreviewAnnotation: (threadRef, annotationId) => {
++          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
++          if (threadKey.length === 0 || annotationId.length === 0) {
++            return;
++          }
++          set((state) => {
++            const current = state.draftsByThreadKey[threadKey];
++            if (!current) {
++              return state;
++            }
++            const nextDraft: ComposerThreadDraftState = {
++              ...current,
++              previewAnnotations: current.previewAnnotations.filter(
++                (annotation) => annotation.id !== annotationId,
++              ),
++              images: current.images.filter((image) => image.id !== annotationId),
++              persistedAttachments: current.persistedAttachments.filter(
++                (image) => image.id !== annotationId,
++              ),
++              nonPersistedImageIds: current.nonPersistedImageIds.filter(
++                (imageId) => imageId !== annotationId,
++              ),
++            };
++            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
++            if (shouldRemoveDraft(nextDraft)) {
++              delete nextDraftsByThreadKey[threadKey];
++            } else {
++              nextDraftsByThreadKey[threadKey] = nextDraft;
++            }
++            return { draftsByThreadKey: nextDraftsByThreadKey };
++          });
++        },
+         clearPersistedAttachments: (threadRef) => {
+           const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+           if (threadKey.length === 0) {
+@@ -2904,6 +3237,8 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
+               nonPersistedImageIds: [],
+               persistedAttachments: [],
+               terminalContexts: [],
++              elementContexts: [],
++              previewAnnotations: [],
+             };
+             const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+             if (shouldRemoveDraft(nextDraft)) {
+diff --git a/packages/contracts/src/keybindings.test.ts b/packages/contracts/src/keybindings.test.ts
+index 7d34a77c..68f29751 100644
+--- a/packages/contracts/src/keybindings.test.ts
++++ b/packages/contracts/src/keybindings.test.ts
+@@ -29,11 +29,11 @@ it.effect("parses keybinding rules", () =>
+     });
+     assert.strictEqual(parsed.command, "terminal.toggle");
+ 
+-    const parsedRightPanelToggle = yield* decode(KeybindingRule, {
+-      key: "mod+alt+b",
+-      command: "rightPanel.toggle",
++    const parsedSidebarToggle = yield* decode(KeybindingRule, {
++      key: "mod+s",
++      command: "sidebar.toggle",
+     });
+-    assert.strictEqual(parsedRightPanelToggle.command, "rightPanel.toggle");
++    assert.strictEqual(parsedSidebarToggle.command, "sidebar.toggle");
+ 
+     const parsedClose = yield* decode(KeybindingRule, {
+       key: "mod+w",
+@@ -53,12 +53,6 @@ it.effect("parses keybinding rules", () =>
+     });
+     assert.strictEqual(parsedCommandPalette.command, "commandPalette.toggle");
+ 
+-    const parsedSidebarToggle = yield* decode(KeybindingRule, {
+-      key: "mod+s",
+-      command: "sidebar.toggle",
+-    });
+-    assert.strictEqual(parsedSidebarToggle.command, "sidebar.toggle");
+-
+     const parsedLocal = yield* decode(KeybindingRule, {
+       key: "mod+shift+n",
+       command: "chat.newLocal",
+diff --git a/packages/contracts/src/keybindings.ts b/packages/contracts/src/keybindings.ts
+index a65f3aef..84e2cc6e 100644
+--- a/packages/contracts/src/keybindings.ts
++++ b/packages/contracts/src/keybindings.ts
+@@ -50,9 +50,16 @@ export type ModelPickerKeybindingCommand = (typeof MODEL_PICKER_KEYBINDING_COMMA
+ const STATIC_KEYBINDING_COMMANDS = [
+   "terminal.toggle",
+   "terminal.split",
++  "terminal.splitVertical",
+   "terminal.new",
+   "terminal.close",
+   "diff.toggle",
++  "preview.toggle",
++  "preview.refresh",
++  "preview.focusUrl",
++  "preview.zoomIn",
++  "preview.zoomOut",
++  "preview.resetZoom",
+   "sidebar.toggle",
+   "commandPalette.toggle",
+   "chat.new",
+diff --git a/scripts/build-desktop-artifact.test.ts b/scripts/build-desktop-artifact.test.ts
+index a58162c0..2067ee2f 100644
+--- a/scripts/build-desktop-artifact.test.ts
++++ b/scripts/build-desktop-artifact.test.ts
+@@ -55,7 +55,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
+           ConfigProvider.layer(
+             ConfigProvider.fromEnv({
+               env: {
+-                T3CODE_DESKTOP_UPDATE_REPOSITORY: "pingdotgg/t3code",
++                MODE_DESKTOP_UPDATE_REPOSITORY: "pingdotgg/t3code",
+               },
+             }),
+           ),
+diff --git a/scripts/build-desktop-artifact.ts b/scripts/build-desktop-artifact.ts
+index 6f1e94ac..b965e1ea 100644
+--- a/scripts/build-desktop-artifact.ts
++++ b/scripts/build-desktop-artifact.ts
+@@ -11,6 +11,7 @@ import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
+ 
+ import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
+ import * as NodeServices from "@effect/platform-node/NodeServices";
++import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+ import * as Config from "effect/Config";
+ import * as Data from "effect/Data";
+ import * as Effect from "effect/Effect";
+@@ -36,11 +37,19 @@ const WorkspaceConfig = Schema.Struct({
+ });
+ type WorkspaceConfig = typeof WorkspaceConfig.Type;
+ 
++const StageWorkspaceConfig = Schema.Struct({
++  supportedArchitectures: Schema.Struct({
++    os: Schema.Array(Schema.String),
++    cpu: Schema.Array(Schema.String),
++  }),
++});
++
+ const RepoRoot = Effect.service(Path.Path).pipe(
+   Effect.flatMap((path) => path.fromFileUrl(new URL("..", import.meta.url))),
+ );
+ const encodeJsonString = Schema.encodeEffect(Schema.UnknownFromJsonString);
+ const decodeWorkspaceConfig = Schema.decodeEffect(fromYaml(WorkspaceConfig));
++const encodeStageWorkspaceConfig = Schema.encodeEffect(fromYaml(StageWorkspaceConfig));
+ 
+ const readWorkspaceConfig = Effect.fn("readWorkspaceConfig")(function* () {
+   const fs = yield* FileSystem.FileSystem;
+@@ -101,14 +110,14 @@ function detectHostBuildPlatform(hostPlatform: string): typeof BuildPlatform.Typ
+   return undefined;
+ }
+ 
+-function getDefaultArch(platform: typeof BuildPlatform.Type): typeof BuildArch.Type {
++const getDefaultArch = Effect.fn("getDefaultArch")(function* (platform: typeof BuildPlatform.Type) {
+   const config = PLATFORM_CONFIG[platform];
+   if (!config) {
+     return "x64";
+   }
+ 
+-  return getDefaultBuildArch(platform, process.arch, process.env, config);
+-}
++  return yield* getDefaultBuildArch(platform, config);
++});
+ 
+ class BuildScriptError extends Data.TaggedError("BuildScriptError")<{
+   readonly message: string;
+@@ -198,12 +207,13 @@ const resolveGitCommitHash = Effect.fn("resolveGitCommitHash")(function* (repoRo
+ const resolvePythonForNodeGyp = Effect.fn("resolvePythonForNodeGyp")(function* () {
+   const fs = yield* FileSystem.FileSystem;
+   const path = yield* Path.Path;
++  const hostPlatform = yield* HostProcessPlatform;
+   const configured = process.env.npm_config_python ?? process.env.PYTHON;
+   if (configured && (yield* fs.exists(configured))) {
+     return configured;
+   }
+ 
+-  if (process.platform === "win32") {
++  if (hostPlatform === "win32") {
+     const localAppData = process.env.LOCALAPPDATA;
+     if (localAppData) {
+       for (const version of ["Python313", "Python312", "Python311", "Python310"]) {
+@@ -272,6 +282,47 @@ interface StagePackageJson {
+   };
+ }
+ 
++export const STAGE_INSTALL_ARGS = ["install", "--prod"] as const;
++export const DESKTOP_ASAR_UNPACK = ["node_modules/@ff-labs/fff-bin-*/**/*"] as const;
++
++export function resolveFffNativeDependencies(
++  platform: typeof BuildPlatform.Type,
++  arch: typeof BuildArch.Type,
++  version: string,
++): Record<string, string> {
++  const architectures = arch === "universal" ? (["arm64", "x64"] as const) : [arch];
++
++  if (platform === "mac") {
++    return Object.fromEntries(
++      architectures.map((architecture) => [`@ff-labs/fff-bin-darwin-${architecture}`, version]),
++    );
++  }
++
++  if (platform === "win") {
++    return Object.fromEntries(
++      architectures.map((architecture) => [`@ff-labs/fff-bin-win32-${architecture}`, version]),
++    );
++  }
++
++  return Object.fromEntries(
++    architectures.flatMap((architecture) =>
++      ["gnu", "musl"].map((libc) => [`@ff-labs/fff-bin-linux-${architecture}-${libc}`, version]),
++    ),
++  );
++}
++
++export function createStageWorkspaceConfig(
++  platform: typeof BuildPlatform.Type,
++  arch: typeof BuildArch.Type,
++): typeof StageWorkspaceConfig.Type {
++  return {
++    supportedArchitectures: {
++      os: [platform === "mac" ? "darwin" : platform === "win" ? "win32" : "linux"],
++      cpu: arch === "universal" ? ["arm64", "x64"] : [arch],
++    },
++  };
++}
++
+ export function createStagePnpmConfig(
+   patchedDependencies: Record<string, string>,
+   dependencies: Record<string, unknown>,
+@@ -292,6 +343,11 @@ function getPatchedDependencyPackageName(patchKey: string): string {
+   return versionSeparator > 0 ? patchKey.slice(0, versionSeparator) : patchKey;
+ }
+ 
++function getPatchedDependencyVersion(patchKey: string): string | undefined {
++  const versionSeparator = patchKey.lastIndexOf("@");
++  return versionSeparator > 0 ? patchKey.slice(versionSeparator + 1) : undefined;
++}
++
+ const AzureTrustedSigningOptionsConfig = Config.all({
+   publisherName: Config.string("AZURE_TRUSTED_SIGNING_PUBLISHER_NAME"),
+   endpoint: Config.string("AZURE_TRUSTED_SIGNING_ENDPOINT"),
+@@ -348,21 +404,22 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
+   const path = yield* Path.Path;
+   const repoRoot = yield* RepoRoot;
+   const env = yield* BuildEnvConfig;
++  const hostPlatform = yield* HostProcessPlatform;
+ 
+   const platform = mergeOptions(
+     input.platform,
+     env.platform,
+-    detectHostBuildPlatform(process.platform),
++    detectHostBuildPlatform(hostPlatform),
+   );
+ 
+   if (!platform) {
+     return yield* new BuildScriptError({
+-      message: `Unsupported host platform '${process.platform}'.`,
++      message: `Unsupported host platform '${hostPlatform}'.`,
+     });
+   }
+ 
+   const target = mergeOptions(input.target, env.target, PLATFORM_CONFIG[platform].defaultTarget);
+-  const arch = mergeOptions(input.arch, env.arch, getDefaultArch(platform));
++  const arch = mergeOptions(input.arch, env.arch, yield* getDefaultArch(platform));
+   const version = mergeOptions(input.buildVersion, env.version, undefined);
+   const releaseDir = resolveBooleanFlag(input.mockUpdates, env.mockUpdates)
+     ? "release-mock"
+@@ -622,19 +679,18 @@ export function resolveDesktopRuntimeDependencies(
+   return resolveCatalogDependencies(runtimeDependencies, catalog, "apps/desktop");
+ }
+ 
+-function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
+-  | {
+-      readonly provider: "github";
+-      readonly owner: string;
+-      readonly repo: string;
+-      readonly releaseType: "release" | "prerelease";
+-      readonly channel?: "nightly";
+-    }
+-  | undefined {
+-  const rawRepo =
+-    process.env.MODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
+-    process.env.GITHUB_REPOSITORY?.trim() ||
+-    "";
++export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
++  updateChannel: "latest" | "nightly",
++) {
++  const env = yield* Config.all({
++    updateRepository: Config.string("MODE_DESKTOP_UPDATE_REPOSITORY").pipe(Config.option),
++    githubRepository: Config.string("GITHUB_REPOSITORY").pipe(Config.option),
++  });
++  const rawRepo = (
++    Option.getOrUndefined(env.updateRepository)?.trim() ||
++    Option.getOrUndefined(env.githubRepository)?.trim() ||
++    ""
++  ).trim();
+   if (!rawRepo) return undefined;
+ 
+   const [owner, repo, ...rest] = rawRepo.split("/");
+@@ -647,7 +703,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
+     releaseType: updateChannel === "nightly" ? "prerelease" : "release",
+     ...(updateChannel === "nightly" ? { channel: "nightly" as const } : {}),
+   };
+-}
++});
+ 
+ export function resolveDesktopUpdateChannel(version: string): "latest" | "nightly" {
+   return /-nightly\.\d{8}\.\d+$/.test(version) ? "nightly" : "latest";
+@@ -691,12 +747,13 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+     appId: "com.t3tools.t3code",
+     productName: resolveDesktopProductName(version),
+     artifactName: "T3-Code-${version}-${arch}.${ext}",
++    asarUnpack: [...DESKTOP_ASAR_UNPACK],
+     directories: {
+       buildResources: "apps/desktop/resources",
+     },
+   };
+   const updateChannel = resolveDesktopUpdateChannel(version);
+-  const publishConfig = resolveGitHubPublishConfig(updateChannel);
++  const publishConfig = yield* resolveGitHubPublishConfig(updateChannel);
+   if (publishConfig) {
+     buildConfig.publish = [publishConfig];
+   } else if (mockUpdates) {
+@@ -780,6 +837,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   const repoRoot = yield* RepoRoot;
+   const path = yield* Path.Path;
+   const fs = yield* FileSystem.FileSystem;
++  const hostPlatform = yield* HostProcessPlatform;
+   const workspaceConfig = yield* readWorkspaceConfig();
+   const workspaceCatalog = workspaceConfig.catalog ?? {};
+   const workspaceOverrides = workspaceConfig.overrides ?? {};
+@@ -826,6 +884,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+         cause,
+       }),
+   });
++  const fffNodeVersion = Object.keys(workspacePatchedDependencies)
++    .filter((patchKey) => getPatchedDependencyPackageName(patchKey) === "@ff-labs/fff-node")
++    .map(getPatchedDependencyVersion)
++    .find((version): version is string => version !== undefined);
+ 
+   const appVersion = options.version ?? serverPackageJson.version;
+   const iconAssets = resolveDesktopBuildIconAssets(appVersion);
+@@ -850,7 +912,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+       ChildProcess.make({
+         cwd: repoRoot,
+         // Windows needs shell mode to resolve .cmd shims (e.g. vp.cmd).
+-        shell: process.platform === "win32",
++        shell: hostPlatform === "win32",
+       })`vp run build:desktop`,
+       { label: "vp run build:desktop", verbose: options.verbose },
+     );
+@@ -897,6 +959,9 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   const stageDependencies = {
+     ...resolvedServerDependencies,
+     ...resolvedDesktopRuntimeDependencies,
++    ...(fffNodeVersion
++      ? resolveFffNativeDependencies(options.platform, options.arch, fffNodeVersion)
++      : {}),
+   };
+   const stagePnpmConfig = createStagePnpmConfig(workspacePatchedDependencies, stageDependencies);
+   const stagePackageJson: StagePackageJson = {
+@@ -927,6 +992,12 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+ 
+   const stagePackageJsonString = yield* encodeJsonString(stagePackageJson);
+   yield* fs.writeFileString(path.join(stageAppDir, "package.json"), `${stagePackageJsonString}\n`);
++  const stageWorkspaceConfig = createStageWorkspaceConfig(options.platform, options.arch);
++  const stageWorkspaceConfigString = yield* encodeStageWorkspaceConfig(stageWorkspaceConfig);
++  yield* fs.writeFileString(
++    path.join(stageAppDir, "pnpm-workspace.yaml"),
++    stageWorkspaceConfigString,
++  );
+ 
+   if (Object.keys(workspacePatchedDependencies).length > 0) {
+     yield* fs.copy(path.join(repoRoot, "patches"), path.join(stageAppDir, "patches"));
+@@ -937,9 +1008,9 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+     ChildProcess.make({
+       cwd: stageAppDir,
+       // Windows needs shell mode to resolve .cmd shims (e.g. vp.cmd).
+-      shell: process.platform === "win32",
+-    })`vp install --prod --no-optional`,
+-    { label: "vp install --prod --no-optional", verbose: options.verbose },
++      shell: hostPlatform === "win32",
++    })`vp ${STAGE_INSTALL_ARGS[0]} ${STAGE_INSTALL_ARGS[1]}`,
++    { label: `vp ${STAGE_INSTALL_ARGS.join(" ")}`, verbose: options.verbose },
+   );
+ 
+   const buildEnv: NodeJS.ProcessEnv = {
+@@ -959,7 +1030,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+     delete buildEnv.APPLE_API_ISSUER;
+   }
+ 
+-  if (process.platform === "win32") {
++  if (hostPlatform === "win32") {
+     const python = yield* resolvePythonForNodeGyp();
+     if (python) {
+       buildEnv.PYTHON = python;
+@@ -983,7 +1054,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+       cwd: repoRoot,
+       env: buildEnv,
+       // Windows needs shell mode to resolve .cmd shims.
+-      shell: process.platform === "win32",
++      shell: hostPlatform === "win32",
+     })`vp exec --filter @t3tools/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
+     {
+       label: `vp exec --filter @t3tools/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
+-- 
+2.50.1 (Apple Git-155)
+

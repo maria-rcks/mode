@@ -1,7 +1,7 @@
-From d06785c83e7f7e94eefdb5ceb403ea8d74fa32d3 Mon Sep 17 00:00:00 2001
+From 8ebebf40902ec3bb669fb8408c4069e77a5e7a30 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 01/34] mode: apply mode/0001-mode-worktree.patch
+Subject: [PATCH 01/38] mode: apply mode/0001-mode-worktree.patch
 
 ---
  docs/getting-started/quick-start.md | 9 ++++++---
@@ -47,7 +47,7 @@ index b3fcd4b3..25f51a04 100644
  - Override server CLI-equivalent flags from root dev commands with `--`, for example:
    `bun run dev -- --base-dir ~/.t3-2`
 diff --git a/package.json b/package.json
-index ec11096b..c18fdabd 100644
+index f97275e6..5556ba45 100644
 --- a/package.json
 +++ b/package.json
 @@ -4,7 +4,7 @@

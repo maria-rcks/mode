@@ -1,20 +1,20 @@
-From c5493413ee0be79873357eb4b247ec83ff7605f4 Mon Sep 17 00:00:00 2001
+From c768b26760fa55d32e001c334839e7b50f48ed01 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:33:42 -0400
-Subject: [PATCH 22/34] feat(keybindings): add sidebar toggle shortcut
+Subject: [PATCH 22/38] feat(keybindings): add sidebar toggle shortcut
 
 ---
  apps/server/src/keybindings.test.ts           |  1 +
- apps/web/src/components/AppSidebarLayout.tsx  | 41 ++++++++++++++++++-
+ apps/web/src/components/AppSidebarLayout.tsx  | 41 +++++++++++-
  .../KeybindingsSettings.logic.test.ts         |  1 +
- apps/web/src/keybindings.test.ts              | 25 +++++++++++
- packages/contracts/src/keybindings.test.ts    |  6 +++
- packages/contracts/src/keybindings.ts         |  1 +
- packages/shared/src/keybindings.ts            |  1 +
- 7 files changed, 75 insertions(+), 1 deletion(-)
+ apps/web/src/keybindings.test.ts              | 67 +++++++------------
+ packages/contracts/src/keybindings.test.ts    |  6 ++
+ packages/contracts/src/keybindings.ts         |  9 +--
+ packages/shared/src/keybindings.ts            | 10 +--
+ 7 files changed, 75 insertions(+), 60 deletions(-)
 
 diff --git a/apps/server/src/keybindings.test.ts b/apps/server/src/keybindings.test.ts
-index 188a8d32..2df93ec2 100644
+index 1bfd042d..c39f8dae 100644
 --- a/apps/server/src/keybindings.test.ts
 +++ b/apps/server/src/keybindings.test.ts
 @@ -202,6 +202,7 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
@@ -105,10 +105,38 @@ index 75235a05..b37a557d 100644
    });
  
 diff --git a/apps/web/src/keybindings.test.ts b/apps/web/src/keybindings.test.ts
-index a0190ed9..f3268a2d 100644
+index d4fc945c..f3268a2d 100644
 --- a/apps/web/src/keybindings.test.ts
 +++ b/apps/web/src/keybindings.test.ts
-@@ -105,6 +105,10 @@ const DEFAULT_BINDINGS = compile([
+@@ -18,7 +18,6 @@ import {
+   isTerminalCloseShortcut,
+   isTerminalNewShortcut,
+   isTerminalSplitShortcut,
+-  isTerminalSplitVerticalShortcut,
+   isTerminalToggleShortcut,
+   resolveShortcutCommand,
+   shouldShowModelPickerJumpHints,
+@@ -86,7 +85,6 @@ function compile(bindings: TestBinding[]): ResolvedKeybindingsConfig {
+ 
+ const DEFAULT_BINDINGS = compile([
+   { shortcut: modShortcut("j"), command: "terminal.toggle" },
+-  { shortcut: modShortcut("b", { altKey: true }), command: "rightPanel.toggle" },
+   {
+     shortcut: modShortcut("d"),
+     command: "terminal.split",
+@@ -94,11 +92,6 @@ const DEFAULT_BINDINGS = compile([
+   },
+   {
+     shortcut: modShortcut("d", { shiftKey: true }),
+-    command: "terminal.splitVertical",
+-    whenAst: whenIdentifier("terminalFocus"),
+-  },
+-  {
+-    shortcut: modShortcut("n"),
+     command: "terminal.new",
+     whenAst: whenIdentifier("terminalFocus"),
+   },
+@@ -112,6 +105,10 @@ const DEFAULT_BINDINGS = compile([
      command: "diff.toggle",
      whenAst: whenNot(whenIdentifier("terminalFocus")),
    },
@@ -119,18 +147,56 @@ index a0190ed9..f3268a2d 100644
    {
      shortcut: modShortcut("k"),
      command: "commandPalette.toggle",
-@@ -287,6 +291,10 @@ describe("shortcutLabelForCommand", () => {
-   it("returns effective labels for non-terminal commands", () => {
+@@ -181,17 +178,7 @@ describe("split/new/close terminal shortcuts", () => {
+       }),
+     );
+     assert.isFalse(
+-      isTerminalSplitVerticalShortcut(
+-        event({ key: "d", metaKey: true, shiftKey: true }),
+-        DEFAULT_BINDINGS,
+-        {
+-          platform: "MacIntel",
+-          context: { terminalFocus: false },
+-        },
+-      ),
+-    );
+-    assert.isFalse(
+-      isTerminalNewShortcut(event({ key: "n", ctrlKey: true }), DEFAULT_BINDINGS, {
++      isTerminalNewShortcut(event({ key: "d", ctrlKey: true, shiftKey: true }), DEFAULT_BINDINGS, {
+         platform: "Linux",
+         context: { terminalFocus: false },
+       }),
+@@ -212,17 +199,7 @@ describe("split/new/close terminal shortcuts", () => {
+       }),
+     );
+     assert.isTrue(
+-      isTerminalSplitVerticalShortcut(
+-        event({ key: "d", metaKey: true, shiftKey: true }),
+-        DEFAULT_BINDINGS,
+-        {
+-          platform: "MacIntel",
+-          context: { terminalFocus: true },
+-        },
+-      ),
+-    );
+-    assert.isTrue(
+-      isTerminalNewShortcut(event({ key: "n", ctrlKey: true }), DEFAULT_BINDINGS, {
++      isTerminalNewShortcut(event({ key: "d", ctrlKey: true, shiftKey: true }), DEFAULT_BINDINGS, {
+         platform: "Linux",
+         context: { terminalFocus: true },
+       }),
+@@ -315,8 +292,8 @@ describe("shortcutLabelForCommand", () => {
      assert.strictEqual(shortcutLabelForCommand(DEFAULT_BINDINGS, "chat.new", "MacIntel"), "⇧⌘O");
      assert.strictEqual(shortcutLabelForCommand(DEFAULT_BINDINGS, "diff.toggle", "Linux"), "Ctrl+D");
-+    assert.strictEqual(
+     assert.strictEqual(
+-      shortcutLabelForCommand(DEFAULT_BINDINGS, "rightPanel.toggle", "MacIntel"),
+-      "⌥⌘B",
 +      shortcutLabelForCommand(DEFAULT_BINDINGS, "sidebar.toggle", "MacIntel"),
 +      "⌘S",
-+    );
+     );
      assert.strictEqual(
        shortcutLabelForCommand(DEFAULT_BINDINGS, "commandPalette.toggle", "MacIntel"),
-       "⌘K",
-@@ -492,6 +500,23 @@ describe("chat/editor shortcuts", () => {
+@@ -523,6 +500,23 @@ describe("chat/editor shortcuts", () => {
        }),
      );
    });
@@ -154,11 +220,29 @@ index a0190ed9..f3268a2d 100644
  });
  
  describe("cross-command precedence", () => {
+@@ -621,17 +615,6 @@ describe("resolveShortcutCommand", () => {
+       "thread.next",
+     );
+   });
+-
+-  it("matches Option-modified letters using the physical key code on macOS", () => {
+-    assert.strictEqual(
+-      resolveShortcutCommand(
+-        event({ key: "∫", code: "KeyB", metaKey: true, altKey: true }),
+-        DEFAULT_BINDINGS,
+-        { platform: "MacIntel" },
+-      ),
+-      "rightPanel.toggle",
+-    );
+-  });
+ });
+ 
+ describe("formatShortcutLabel", () => {
 diff --git a/packages/contracts/src/keybindings.test.ts b/packages/contracts/src/keybindings.test.ts
-index 2165597a..c731882a 100644
+index 19c98c39..7d34a77c 100644
 --- a/packages/contracts/src/keybindings.test.ts
 +++ b/packages/contracts/src/keybindings.test.ts
-@@ -47,6 +47,12 @@ it.effect("parses keybinding rules", () =>
+@@ -53,6 +53,12 @@ it.effect("parses keybinding rules", () =>
      });
      assert.strictEqual(parsedCommandPalette.command, "commandPalette.toggle");
  
@@ -172,25 +256,49 @@ index 2165597a..c731882a 100644
        key: "mod+shift+n",
        command: "chat.newLocal",
 diff --git a/packages/contracts/src/keybindings.ts b/packages/contracts/src/keybindings.ts
-index 303d5c71..a65f3aef 100644
+index 4a5ffd0c..a65f3aef 100644
 --- a/packages/contracts/src/keybindings.ts
 +++ b/packages/contracts/src/keybindings.ts
-@@ -53,6 +53,7 @@ const STATIC_KEYBINDING_COMMANDS = [
+@@ -50,17 +50,10 @@ export type ModelPickerKeybindingCommand = (typeof MODEL_PICKER_KEYBINDING_COMMA
+ const STATIC_KEYBINDING_COMMANDS = [
+   "terminal.toggle",
+   "terminal.split",
+-  "terminal.splitVertical",
    "terminal.new",
    "terminal.close",
+-  "rightPanel.toggle",
    "diff.toggle",
+-  "preview.toggle",
+-  "preview.refresh",
+-  "preview.focusUrl",
+-  "preview.zoomIn",
+-  "preview.zoomOut",
+-  "preview.resetZoom",
 +  "sidebar.toggle",
    "commandPalette.toggle",
    "chat.new",
    "chat.newLocal",
 diff --git a/packages/shared/src/keybindings.ts b/packages/shared/src/keybindings.ts
-index 3cc2e913..1ed9deb1 100644
+index 4abe53f2..1ed9deb1 100644
 --- a/packages/shared/src/keybindings.ts
 +++ b/packages/shared/src/keybindings.ts
-@@ -24,6 +24,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
+@@ -20,19 +20,11 @@ type WhenToken =
+ 
+ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
+   { key: "mod+j", command: "terminal.toggle" },
+-  { key: "mod+alt+b", command: "rightPanel.toggle" },
+   { key: "mod+d", command: "terminal.split", when: "terminalFocus" },
+-  { key: "mod+shift+d", command: "terminal.splitVertical", when: "terminalFocus" },
    { key: "mod+n", command: "terminal.new", when: "terminalFocus" },
    { key: "mod+w", command: "terminal.close", when: "terminalFocus" },
    { key: "mod+d", command: "diff.toggle", when: "!terminalFocus" },
+-  { key: "mod+shift+j", command: "preview.toggle" },
+-  { key: "mod+r", command: "preview.refresh", when: "previewFocus" },
+-  { key: "mod+l", command: "preview.focusUrl", when: "previewFocus" },
+-  { key: "mod+=", command: "preview.zoomIn", when: "previewFocus" },
+-  { key: "mod++", command: "preview.zoomIn", when: "previewFocus" },
+-  { key: "mod+-", command: "preview.zoomOut", when: "previewFocus" },
+-  { key: "mod+0", command: "preview.resetZoom", when: "previewFocus" },
 +  { key: "mod+s", command: "sidebar.toggle" },
    { key: "mod+k", command: "commandPalette.toggle", when: "!terminalFocus" },
    { key: "mod+n", command: "chat.new", when: "!terminalFocus" },

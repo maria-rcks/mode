@@ -1,107 +1,106 @@
-From 9c05b065cc6457ee11a0dd1704267c02b15d90e4 Mon Sep 17 00:00:00 2001
+From 30b469d2ab9c75563f5f85ee3b497619b2426bb4 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Sun, 7 Jun 2026 00:52:32 +0000
-Subject: [PATCH 03/34] mode: apply
+Subject: [PATCH 03/38] mode: apply
  mode/0003-feat-mode-use-Mode-runtime-namespace.patch
 
 ---
- .github/workflows/release.yml                 | 12 +--
- apps/desktop/scripts/dev-electron.mjs         | 10 +--
- apps/desktop/scripts/electron-launcher.mjs    | 28 +++----
- apps/desktop/src/app/DesktopApp.ts            |  2 +-
- .../src/app/DesktopAppIdentity.test.ts        | 43 +++++++++-
- apps/desktop/src/app/DesktopAppIdentity.ts    |  5 +-
- apps/desktop/src/app/DesktopCloudAuth.test.ts | 26 +++----
- apps/desktop/src/app/DesktopCloudAuth.ts      | 12 +--
- .../app/DesktopCloudAuthTokenStore.test.ts    |  2 +-
- apps/desktop/src/app/DesktopConfig.ts         | 26 +++----
- .../src/app/DesktopEnvironment.test.ts        | 20 ++---
- apps/desktop/src/app/DesktopEnvironment.ts    |  8 +-
- .../src/app/DesktopObservability.test.ts      |  2 +-
- .../DesktopBackendConfiguration.test.ts       | 14 ++--
- .../backend/DesktopBackendConfiguration.ts    | 20 ++---
- .../src/backend/DesktopServerExposure.test.ts | 10 +--
- .../src/settings/DesktopAppSettings.test.ts   |  2 +-
- .../settings/DesktopClientSettings.test.ts    |  2 +-
- .../settings/DesktopSavedEnvironments.test.ts |  2 +-
- .../src/shell/DesktopShellEnvironment.test.ts |  6 +-
- .../src/shell/DesktopShellEnvironment.ts      |  4 +-
- .../src/updates/DesktopUpdates.test.ts        | 12 +--
- apps/desktop/src/updates/DesktopUpdates.ts    |  2 +-
- apps/desktop/src/window/DesktopWindow.test.ts |  2 +-
- apps/mobile/app.config.ts                     |  6 +-
- .../src/features/connection/pairing.test.ts   |  2 +-
- .../mobile/src/features/connection/pairing.ts |  2 +-
- apps/server/src/cli/config.test.ts            | 58 +++++++-------
- apps/server/src/cli/config.ts                 | 48 ++++++------
- .../Layers/ProviderRuntimeIngestion.ts        |  2 +-
- apps/server/src/os-jank.ts                    |  2 +-
- .../Layers/ProjectSetupScriptRunner.test.ts   |  4 +-
- .../provider/Layers/ProviderRegistry.test.ts  |  4 +-
- .../src/sourceControl/BitbucketApi.test.ts    |  6 +-
- apps/server/src/sourceControl/BitbucketApi.ts | 10 +--
- .../BitbucketSourceControlProvider.ts         |  2 +-
- .../SourceControlDiscovery.test.ts            |  2 +-
- apps/server/src/telemetry/Identify.ts         |  2 +-
- .../telemetry/Layers/AnalyticsService.test.ts |  8 +-
- .../src/telemetry/Layers/AnalyticsService.ts  | 10 +--
- .../src/terminal/Layers/Manager.test.ts       | 16 ++--
- apps/server/src/terminal/Layers/Manager.ts    |  2 +-
- .../CodexTextGeneration.test.ts               |  4 +-
- apps/server/src/vcs/GitVcsDriver.ts           |  4 +-
- apps/server/src/vcs/VcsProjectConfig.test.ts  |  4 +-
- apps/server/src/vcs/VcsProjectConfig.ts       |  2 +-
- apps/web/index.html                           |  9 ++-
- apps/web/src/clientPersistenceStorage.test.ts | 18 +++++
- apps/web/src/clientPersistenceStorage.ts      | 15 +++-
- .../components/BranchToolbar.logic.test.ts    | 30 +++----
- apps/web/src/components/ChatView.browser.tsx  | 22 +++---
- apps/web/src/components/ChatView.logic.ts     |  5 +-
- apps/web/src/components/ChatView.tsx          |  2 +
- .../components/KeybindingsToast.browser.tsx   |  4 +-
- apps/web/src/components/Sidebar.logic.test.ts |  4 +-
- .../chat/ProviderModelPicker.browser.tsx      | 16 ++--
- .../settings/SettingsPanels.browser.tsx       | 10 +--
- apps/web/src/composerDraftStore.test.ts       | 29 ++++++-
- apps/web/src/composerDraftStore.ts            | 13 +++-
- apps/web/src/editorPreferences.ts             | 12 ++-
- apps/web/src/hooks/useLocalStorage.ts         | 37 +++++++--
- apps/web/src/hooks/useTheme.ts                | 18 ++++-
- apps/web/src/hostedPairing.test.ts            |  2 +-
- apps/web/src/hostedPairing.ts                 |  2 +-
- apps/web/src/lib/storage.ts                   | 28 +++++++
- apps/web/src/projectScripts.test.ts           | 10 +--
- apps/web/src/providerUpdateDismissal.ts       |  7 +-
- apps/web/src/terminalUiStateStore.ts          | 13 +++-
- apps/web/src/uiStateStore.ts                  | 26 +++++--
- apps/web/src/versionSkew.ts                   |  6 +-
- apps/web/src/worktreeCleanup.test.ts          |  4 +-
- apps/web/vercel.ts                            |  6 +-
- apps/web/vite.config.ts                       |  2 +-
- docs/getting-started/quick-start.md           |  2 +-
- docs/integrations/source-control-providers.md |  4 +-
- docs/operations/observability.md              | 62 +++++++--------
- docs/operations/release.md                    | 18 ++---
- docs/reference/scripts.md                     | 10 +--
- docs/user/keybindings.md                      |  2 +-
- docs/user/remote-access.md                    |  4 +-
- packages/contracts/src/terminal.test.ts       | 12 +--
- packages/shared/src/projectScripts.ts         |  4 +-
- packages/shared/src/shell.test.ts             | 36 ++++-----
- packages/shared/src/shell.ts                  |  8 +-
- packages/ssh/src/tunnel.ts                    | 14 ++--
- scripts/build-desktop-artifact.test.ts        | 10 +--
- scripts/build-desktop-artifact.ts             | 58 +++++++-------
- scripts/dev-runner.test.ts                    | 54 ++++++-------
- scripts/dev-runner.ts                         | 78 +++++++++----------
- scripts/mock-update-server.ts                 |  4 +-
- 90 files changed, 705 insertions(+), 497 deletions(-)
+ .github/workflows/release.yml                 |  12 +-
+ apps/desktop/scripts/dev-electron.mjs         |  28 +-
+ apps/desktop/scripts/electron-launcher.mjs    |  76 +---
+ apps/desktop/src/app/DesktopApp.ts            |   2 +-
+ .../src/app/DesktopAppIdentity.test.ts        |  43 ++-
+ apps/desktop/src/app/DesktopAppIdentity.ts    |   5 +-
+ apps/desktop/src/app/DesktopCloudAuth.test.ts |  26 +-
+ apps/desktop/src/app/DesktopCloudAuth.ts      |  12 +-
+ .../app/DesktopCloudAuthTokenStore.test.ts    |   2 +-
+ apps/desktop/src/app/DesktopConfig.ts         |  26 +-
+ .../src/app/DesktopEnvironment.test.ts        |  20 +-
+ apps/desktop/src/app/DesktopEnvironment.ts    |   8 +-
+ .../src/app/DesktopObservability.test.ts      |   2 +-
+ .../DesktopBackendConfiguration.test.ts       |  14 +-
+ .../backend/DesktopBackendConfiguration.ts    |  20 +-
+ .../src/backend/DesktopServerExposure.test.ts |  10 +-
+ .../src/settings/DesktopAppSettings.test.ts   |   2 +-
+ .../settings/DesktopClientSettings.test.ts    |   2 +-
+ .../settings/DesktopSavedEnvironments.test.ts |   2 +-
+ .../src/shell/DesktopShellEnvironment.test.ts |   6 +-
+ .../src/shell/DesktopShellEnvironment.ts      |   4 +-
+ .../src/updates/DesktopUpdates.test.ts        |  12 +-
+ apps/desktop/src/updates/DesktopUpdates.ts    |   2 +-
+ apps/desktop/src/window/DesktopWindow.test.ts |   2 +-
+ apps/mobile/app.config.ts                     |   6 +-
+ .../src/features/connection/pairing.test.ts   |   2 +-
+ .../mobile/src/features/connection/pairing.ts |   2 +-
+ apps/server/src/cli/config.test.ts            |  58 +--
+ apps/server/src/cli/config.ts                 |  48 ++-
+ .../Layers/ProviderRuntimeIngestion.ts        |   2 +-
+ apps/server/src/os-jank.ts                    |   2 +-
+ .../Layers/ProjectSetupScriptRunner.test.ts   |   4 +-
+ .../provider/Layers/ProviderRegistry.test.ts  |   4 +-
+ .../src/sourceControl/BitbucketApi.test.ts    |   6 +-
+ apps/server/src/sourceControl/BitbucketApi.ts |  10 +-
+ .../BitbucketSourceControlProvider.ts         |   2 +-
+ .../SourceControlDiscovery.test.ts            |   2 +-
+ apps/server/src/telemetry/Identify.ts         |   2 +-
+ .../telemetry/Layers/AnalyticsService.test.ts |   8 +-
+ .../src/telemetry/Layers/AnalyticsService.ts  |  10 +-
+ .../src/terminal/Layers/Manager.test.ts       | 118 +++---
+ apps/server/src/terminal/Layers/Manager.ts    |   2 +-
+ .../CodexTextGeneration.test.ts               |   4 +-
+ apps/server/src/vcs/GitVcsDriver.ts           |   4 +-
+ apps/server/src/vcs/VcsProjectConfig.test.ts  |   4 +-
+ apps/server/src/vcs/VcsProjectConfig.ts       |   2 +-
+ apps/web/index.html                           |   9 +-
+ apps/web/src/clientPersistenceStorage.test.ts |  18 +
+ apps/web/src/clientPersistenceStorage.ts      |  15 +-
+ .../components/BranchToolbar.logic.test.ts    |  30 +-
+ apps/web/src/components/ChatView.browser.tsx  |  22 +-
+ apps/web/src/components/ChatView.logic.ts     |   5 +-
+ .../components/KeybindingsToast.browser.tsx   |   4 +-
+ apps/web/src/components/Sidebar.logic.test.ts |   4 +-
+ .../chat/ProviderModelPicker.browser.tsx      |  16 +-
+ .../settings/SettingsPanels.browser.tsx       |  10 +-
+ apps/web/src/composerDraftStore.test.ts       |  29 +-
+ apps/web/src/composerDraftStore.ts            | 362 ++----------------
+ apps/web/src/editorPreferences.ts             |  12 +-
+ apps/web/src/hooks/useLocalStorage.ts         |  37 +-
+ apps/web/src/hooks/useTheme.ts                |  18 +-
+ apps/web/src/hostedPairing.test.ts            |   2 +-
+ apps/web/src/hostedPairing.ts                 |   2 +-
+ apps/web/src/lib/storage.ts                   |  28 ++
+ apps/web/src/projectScripts.test.ts           |  10 +-
+ apps/web/src/providerUpdateDismissal.ts       |   7 +-
+ apps/web/src/terminalUiStateStore.ts          |  13 +-
+ apps/web/src/uiStateStore.ts                  |  26 +-
+ apps/web/src/versionSkew.ts                   |   6 +-
+ apps/web/src/worktreeCleanup.test.ts          |   4 +-
+ apps/web/vercel.ts                            |   6 +-
+ apps/web/vite.config.ts                       |   2 +-
+ docs/getting-started/quick-start.md           |   2 +-
+ docs/integrations/source-control-providers.md |   4 +-
+ docs/operations/observability.md              |  62 +--
+ docs/operations/release.md                    |  18 +-
+ docs/reference/scripts.md                     |  10 +-
+ docs/user/keybindings.md                      |   2 +-
+ docs/user/remote-access.md                    |   4 +-
+ packages/contracts/src/terminal.test.ts       |  12 +-
+ packages/shared/src/projectScripts.ts         |   4 +-
+ packages/shared/src/shell.test.ts             |  36 +-
+ packages/shared/src/shell.ts                  |   8 +-
+ packages/ssh/src/tunnel.ts                    |  14 +-
+ scripts/build-desktop-artifact.test.ts        |  10 +-
+ scripts/build-desktop-artifact.ts             | 223 ++++-------
+ scripts/dev-runner.test.ts                    |  54 +--
+ scripts/dev-runner.ts                         |  78 ++--
+ scripts/mock-update-server.ts                 |   4 +-
+ 89 files changed, 820 insertions(+), 1062 deletions(-)
 
 diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
-index e1fb9216..6b0c61aa 100644
+index 2348417a..91b2d1be 100644
 --- a/.github/workflows/release.yml
 +++ b/.github/workflows/release.yml
-@@ -650,9 +650,9 @@ jobs:
+@@ -712,9 +712,9 @@ jobs:
        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -114,7 +113,7 @@ index e1fb9216..6b0c61aa 100644
        VERCEL_TEAM_SLUG: ${{ vars.VERCEL_TEAM_SLUG }}
      steps:
        - name: Checkout
-@@ -686,9 +686,9 @@ jobs:
+@@ -762,9 +762,9 @@ jobs:
              exit 1
            fi
  
@@ -128,19 +127,36 @@ index e1fb9216..6b0c61aa 100644
            router_domain="${router_domain#https://}"
            router_domain="${router_domain%%/*}"
 diff --git a/apps/desktop/scripts/dev-electron.mjs b/apps/desktop/scripts/dev-electron.mjs
-index 2a2e5244..47525907 100644
+index 58ccfe90..47525907 100644
 --- a/apps/desktop/scripts/dev-electron.mjs
 +++ b/apps/desktop/scripts/dev-electron.mjs
-@@ -28,7 +28,7 @@ const watchedDirectories = [
+@@ -1,13 +1,8 @@
+ import { spawn, spawnSync } from "node:child_process";
+ import { watch } from "node:fs";
+-import * as NodeOS from "node:os";
+ import { join } from "node:path";
+ 
+-import {
+-  desktopDir,
+-  resolveDevProtocolClient,
+-  resolveElectronLaunchCommand,
+-} from "./electron-launcher.mjs";
++import { desktopDir, resolveDevProtocolClient, resolveElectronPath } from "./electron-launcher.mjs";
+ import { waitForResources } from "./wait-for-resources.mjs";
+ 
+ const devServerUrl = process.env.VITE_DEV_SERVER_URL?.trim();
+@@ -33,9 +28,7 @@ const watchedDirectories = [
  const forcedShutdownTimeoutMs = 1_500;
  const restartDebounceMs = 120;
  const childTreeGracePeriodMs = 1_200;
 -const remoteDebuggingPort = process.env.T3CODE_DESKTOP_REMOTE_DEBUGGING_PORT?.trim();
+-// oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone dev script has no Effect runtime.
+-const hostPlatform = NodeOS.platform();
 +const remoteDebuggingPort = process.env.MODE_DESKTOP_REMOTE_DEBUGGING_PORT?.trim();
  
  await waitForResources({
    baseDir: desktopDir,
-@@ -41,8 +41,8 @@ const childEnv = { ...process.env };
+@@ -48,8 +41,8 @@ const childEnv = { ...process.env };
  delete childEnv.ELECTRON_RUN_AS_NODE;
  const devProtocolClient = resolveDevProtocolClient();
  if (devProtocolClient) {
@@ -151,7 +167,21 @@ index 2a2e5244..47525907 100644
  }
  
  let shuttingDown = false;
-@@ -65,7 +65,7 @@ function cleanupStaleDevApps() {
+@@ -60,7 +53,7 @@ const expectedExits = new WeakSet();
+ const watchers = [];
+ 
+ function killChildTreeByPid(pid, signal) {
+-  if (hostPlatform === "win32" || typeof pid !== "number") {
++  if (process.platform === "win32" || typeof pid !== "number") {
+     return;
+   }
+ 
+@@ -68,11 +61,11 @@ function killChildTreeByPid(pid, signal) {
+ }
+ 
+ function cleanupStaleDevApps() {
+-  if (hostPlatform === "win32") {
++  if (process.platform === "win32") {
      return;
    }
  
@@ -160,28 +190,51 @@ index 2a2e5244..47525907 100644
  }
  
  function startApp() {
-@@ -78,7 +78,7 @@ function startApp() {
+@@ -85,9 +78,8 @@ function startApp() {
      : [];
    const launchArgs = devProtocolClient
      ? electronArgs
 -    : [...electronArgs, `--t3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"];
+-  const electronCommand = resolveElectronLaunchCommand(launchArgs);
+-  const app = spawn(electronCommand.electronPath, electronCommand.args, {
 +    : [...electronArgs, `--mode-dev-root=${desktopDir}`, "dist-electron/main.cjs"];
-   const app = spawn(resolveElectronPath(), launchArgs, {
++  const app = spawn(resolveElectronPath(), launchArgs, {
      cwd: desktopDir,
      env: childEnv,
+     stdio: "inherit",
+@@ -197,7 +189,7 @@ function startWatchers() {
+ }
+ 
+ function killChildTree(signal) {
+-  if (hostPlatform === "win32") {
++  if (process.platform === "win32") {
+     return;
+   }
+ 
 diff --git a/apps/desktop/scripts/electron-launcher.mjs b/apps/desktop/scripts/electron-launcher.mjs
-index 8f20001b..c055cfcc 100644
+index 52b6dd5c..c055cfcc 100644
 --- a/apps/desktop/scripts/electron-launcher.mjs
 +++ b/apps/desktop/scripts/electron-launcher.mjs
-@@ -29,13 +29,13 @@ export const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alph
+@@ -14,7 +14,6 @@ import {
+   writeFileSync,
+ } from "node:fs";
+ import { createRequire } from "node:module";
+-import * as NodeOS from "node:os";
+ import { basename, dirname, join, resolve } from "node:path";
+ import { fileURLToPath } from "node:url";
+ import { ensureElectronRuntime } from "./ensure-electron-runtime.mjs";
+@@ -30,15 +29,13 @@ export const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alph
  export const APP_BUNDLE_ID = isDevelopment
    ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
    : "com.t3tools.t3code";
 -const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
+-const LAUNCHER_VERSION = 11;
 +const APP_PROTOCOL_SCHEMES = isDevelopment ? ["mode-dev"] : ["mode"];
- const LAUNCHER_VERSION = 10;
++const LAUNCHER_VERSION = 10;
  const defaultIconPath = join(desktopDir, "resources", "icon.icns");
  const developmentMacIconPngPath = join(repoRoot, "assets", "dev", "blueprint-macos-1024.png");
+-// oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher script has no Effect runtime.
+-const hostPlatform = NodeOS.platform();
  
  function resolveDevelopmentProtocolCallbackPort() {
 -  const configuredPort = Number.parseInt(process.env.T3CODE_PORT ?? "", 10);
@@ -189,7 +242,7 @@ index 8f20001b..c055cfcc 100644
    if (Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort < 65535) {
      return configuredPort + 1;
    }
-@@ -100,14 +100,14 @@ function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
+@@ -103,14 +100,14 @@ function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
    const protocolCallbackUrl = `http://127.0.0.1:${resolveDevelopmentProtocolCallbackPort()}/auth/callback`;
    const envEntries = [
      ["VITE_DEV_SERVER_URL", process.env.VITE_DEV_SERVER_URL],
@@ -212,7 +265,7 @@ index 8f20001b..c055cfcc 100644
    ].filter((entry) => typeof entry[1] === "string" && entry[1].trim().length > 0);
    writeFileSync(
      targetBinaryPath,
-@@ -116,14 +116,14 @@ function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
+@@ -119,14 +116,14 @@ function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
        ...envEntries.map(([name, value]) => `export ${name}=${shellSingleQuote(value)}`),
        'for arg in "$@"; do',
        '  case "$arg" in',
@@ -231,8 +284,78 @@ index 8f20001b..c055cfcc 100644
        "",
      ].join("\n"),
    );
+@@ -298,11 +295,7 @@ function buildMacLauncher(electronBinaryPath) {
+   }
+ 
+   rmSync(targetAppBundlePath, { recursive: true, force: true });
+-  // verbatimSymlinks keeps the framework's relative symlinks intact
+-  // (e.g. Resources -> Versions/Current/Resources). Without it cpSync
+-  // rewrites them to absolute paths into node_modules, which escape the
+-  // bundle and crash sandboxed helper processes (icudtl.dat not found).
+-  cpSync(sourceAppBundlePath, targetAppBundlePath, { recursive: true, verbatimSymlinks: true });
++  cpSync(sourceAppBundlePath, targetAppBundlePath, { recursive: true });
+   patchMainBundleInfoPlist(targetAppBundlePath, iconPath);
+   patchHelperBundleInfoPlists(targetAppBundlePath);
+   if (isDevelopment) {
+@@ -314,54 +307,21 @@ function buildMacLauncher(electronBinaryPath) {
+   return targetBinaryPath;
+ }
+ 
+-function isLinuxSetuidSandboxConfigured(electronBinaryPath) {
+-  if (hostPlatform !== "linux") {
+-    return true;
+-  }
+-
+-  const sandboxPath = join(dirname(electronBinaryPath), "chrome-sandbox");
+-  try {
+-    const sandboxStat = statSync(sandboxPath);
+-    return sandboxStat.uid === 0 && (sandboxStat.mode & 0o4777) === 0o4755;
+-  } catch {
+-    return false;
+-  }
+-}
+-
+-function resolveLinuxSandboxArgs(electronBinaryPath) {
+-  if (isLinuxSetuidSandboxConfigured(electronBinaryPath)) {
+-    return [];
+-  }
+-
+-  console.warn(
+-    "[desktop-launcher] Electron chrome-sandbox is not root-owned with mode 4755; launching local Electron with --no-sandbox.",
+-  );
+-  return ["--no-sandbox"];
+-}
+-
+ export function resolveElectronPath() {
+   ensureElectronRuntime();
+ 
+   const require = createRequire(import.meta.url);
+   const electronBinaryPath = require("electron");
+ 
+-  if (hostPlatform !== "darwin") {
++  if (process.platform !== "darwin") {
+     return electronBinaryPath;
+   }
+ 
+   return buildMacLauncher(electronBinaryPath);
+ }
+ 
+-export function resolveElectronLaunchCommand(args = []) {
+-  const electronPath = resolveElectronPath();
+-  return {
+-    electronPath,
+-    args: [...resolveLinuxSandboxArgs(electronPath), ...args],
+-  };
+-}
+-
+ export function resolveDevProtocolClient() {
+-  if (hostPlatform !== "darwin" || !isDevelopment) {
++  if (process.platform !== "darwin" || !isDevelopment) {
+     return null;
+   }
+ 
 diff --git a/apps/desktop/src/app/DesktopApp.ts b/apps/desktop/src/app/DesktopApp.ts
-index 052a25e4..f44869b2 100644
+index 4da1ce63..7467a8ad 100644
 --- a/apps/desktop/src/app/DesktopApp.ts
 +++ b/apps/desktop/src/app/DesktopApp.ts
 @@ -48,7 +48,7 @@ class DesktopDevelopmentBackendPortRequiredError extends Data.TaggedError(
@@ -517,7 +640,7 @@ index 4bf6b513..7a843a27 100644
    ),
  });
 diff --git a/apps/desktop/src/app/DesktopEnvironment.test.ts b/apps/desktop/src/app/DesktopEnvironment.test.ts
-index ee732bf8..ad613a0c 100644
+index 92da3f88..c881cb75 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.test.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.test.ts
 @@ -40,13 +40,13 @@ describe("DesktopEnvironment", () => {
@@ -540,7 +663,7 @@ index ee732bf8..ad613a0c 100644
          },
        );
  
-@@ -64,7 +64,7 @@ describe("DesktopEnvironment", () => {
+@@ -65,7 +65,7 @@ describe("DesktopEnvironment", () => {
        assert.equal(environment.backendEntryPath, "/repo/apps/server/dist/bin.mjs");
        assert.equal(environment.backendCwd, "/repo");
        assert.equal(environment.appUserModelId, "com.t3tools.t3code.dev");
@@ -549,7 +672,7 @@ index ee732bf8..ad613a0c 100644
        assert.deepEqual(
          Option.map(environment.devServerUrl, (url) => url.href),
          Option.some("http://localhost:5173/"),
-@@ -82,7 +82,7 @@ describe("DesktopEnvironment", () => {
+@@ -83,7 +83,7 @@ describe("DesktopEnvironment", () => {
        const environment = yield* makeEnvironment(
          {},
          {
@@ -558,7 +681,7 @@ index ee732bf8..ad613a0c 100644
          },
        );
  
-@@ -98,12 +98,12 @@ describe("DesktopEnvironment", () => {
+@@ -100,12 +100,12 @@ describe("DesktopEnvironment", () => {
        const environment = yield* makeEnvironment(
          {},
          {
@@ -574,10 +697,10 @@ index ee732bf8..ad613a0c 100644
    );
  
 diff --git a/apps/desktop/src/app/DesktopEnvironment.ts b/apps/desktop/src/app/DesktopEnvironment.ts
-index 431e0d34..913d7a38 100644
+index 5a6be92a..c8b801ce 100644
 --- a/apps/desktop/src/app/DesktopEnvironment.ts
 +++ b/apps/desktop/src/app/DesktopEnvironment.ts
-@@ -151,7 +151,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
+@@ -152,7 +152,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
        : input.platform === "darwin"
          ? path.join(homeDirectory, "Library", "Application Support")
          : Option.getOrElse(config.xdgConfigHome, () => path.join(homeDirectory, ".config"));
@@ -586,7 +709,7 @@ index 431e0d34..913d7a38 100644
    const rootDir = path.resolve(input.dirname, "../../..");
    const appRoot = input.isPackaged ? input.appPath : rootDir;
    const branding = resolveDesktopAppBranding({
-@@ -160,7 +160,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
+@@ -161,7 +161,7 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
    });
    const displayName = branding.displayName;
    const stateDir = path.join(baseDir, isDevelopment ? "dev" : "userdata");
@@ -595,7 +718,7 @@ index 431e0d34..913d7a38 100644
    const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
    const resourcesPath = input.resourcesPath;
  
-@@ -202,8 +202,8 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
+@@ -204,8 +204,8 @@ const makeDesktopEnvironment = Effect.fn("desktop.environment.make")(function* (
      appUserModelId: Option.getOrElse(config.appUserModelIdOverride, () =>
        isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
      ),
@@ -839,10 +962,10 @@ index e6c81d8d..4309a00a 100644
    if (args.platform === "linux" && !args.appImage) {
      return "Automatic updates on Linux require running the AppImage build.";
 diff --git a/apps/desktop/src/window/DesktopWindow.test.ts b/apps/desktop/src/window/DesktopWindow.test.ts
-index 5e977de2..6ffa7b18 100644
+index e22db07c..debc86b4 100644
 --- a/apps/desktop/src/window/DesktopWindow.test.ts
 +++ b/apps/desktop/src/window/DesktopWindow.test.ts
-@@ -111,7 +111,7 @@ const desktopEnvironmentLayer = DesktopEnvironment.layer(environmentInput).pipe(
+@@ -125,7 +125,7 @@ const desktopEnvironmentLayer = DesktopEnvironment.layer(environmentInput).pipe(
      Layer.mergeAll(
        NodeServices.layer,
        DesktopConfig.layerTest({
@@ -907,7 +1030,7 @@ index f7362900..fbd39712 100644
        if (pairingUrl.length > 0) {
          return pairingUrl;
 diff --git a/apps/server/src/cli/config.test.ts b/apps/server/src/cli/config.test.ts
-index 9e73773d..5369d919 100644
+index d4d9d378..8e671f36 100644
 --- a/apps/server/src/cli/config.test.ts
 +++ b/apps/server/src/cli/config.test.ts
 @@ -83,15 +83,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
@@ -1127,10 +1250,10 @@ index 3e5978f4..49e6a8a5 100644
  type TurnStartRequestedDomainEvent = Extract<
    OrchestrationEvent,
 diff --git a/apps/server/src/os-jank.ts b/apps/server/src/os-jank.ts
-index 93a40ae7..85ac6417 100644
+index bc72758b..80d82394 100644
 --- a/apps/server/src/os-jank.ts
 +++ b/apps/server/src/os-jank.ts
-@@ -98,7 +98,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
+@@ -86,7 +86,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
  export const resolveBaseDir = Effect.fn(function* (raw: string | undefined) {
    const { join, resolve } = yield* Path.Path;
    if (!raw || raw.trim().length === 0) {
@@ -1155,7 +1278,7 @@ index 051a7d20..cc6b66f1 100644
      });
      expect(write).toHaveBeenCalledWith({
 diff --git a/apps/server/src/provider/Layers/ProviderRegistry.test.ts b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
-index cd09ae53..f4ea1320 100644
+index 4972fc75..ac5ecd1a 100644
 --- a/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 +++ b/apps/server/src/provider/Layers/ProviderRegistry.test.ts
 @@ -59,7 +59,7 @@ const disabledCodexSettings: CodexSettings = Schema.decodeSync(CodexSettings)({
@@ -1250,10 +1373,10 @@ index f65710c4..5f3d71fa 100644
            }),
          },
 diff --git a/apps/server/src/telemetry/Identify.ts b/apps/server/src/telemetry/Identify.ts
-index da04bd0b..ab69ba32 100644
+index 364273a9..4998074d 100644
 --- a/apps/server/src/telemetry/Identify.ts
 +++ b/apps/server/src/telemetry/Identify.ts
-@@ -81,7 +81,7 @@ const upsertAnonymousId = Effect.gen(function* () {
+@@ -82,7 +82,7 @@ const upsertAnonymousId = Effect.gen(function* () {
   * getTelemetryIdentifier - Users are "identified" by finding the first match of the following, then hashing the value.
   * 1. ~/.codex/auth.json tokens.account_id
   * 2. ~/.claude.json userID
@@ -1282,10 +1405,10 @@ index 5aa47406..3db2b40d 100644
        );
        const batchServerLayer = HttpServer.serve(
 diff --git a/apps/server/src/telemetry/Layers/AnalyticsService.ts b/apps/server/src/telemetry/Layers/AnalyticsService.ts
-index 27bf64c7..2b29f96b 100644
+index 0d51d7c6..dff6b307 100644
 --- a/apps/server/src/telemetry/Layers/AnalyticsService.ts
 +++ b/apps/server/src/telemetry/Layers/AnalyticsService.ts
-@@ -26,15 +26,15 @@ interface BufferedAnalyticsEvent {
+@@ -28,15 +28,15 @@ interface BufferedAnalyticsEvent {
  }
  
  const TelemetryEnvConfig = Config.all({
@@ -1305,12 +1428,57 @@ index 27bf64c7..2b29f96b 100644
 +  maxBufferedEvents: Config.number("MODE_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
      Config.withDefault(1_000),
    ),
- });
+   wslDistroName: Config.string("WSL_DISTRO_NAME").pipe(Config.option),
 diff --git a/apps/server/src/terminal/Layers/Manager.test.ts b/apps/server/src/terminal/Layers/Manager.test.ts
-index 2ebf8481..4e403059 100644
+index 8b5aa3ad..4e403059 100644
 --- a/apps/server/src/terminal/Layers/Manager.test.ts
 +++ b/apps/server/src/terminal/Layers/Manager.test.ts
-@@ -338,7 +338,7 @@ it.layer(
+@@ -8,7 +8,6 @@ import {
+   type TerminalOpenInput,
+   type TerminalRestartInput,
+ } from "@t3tools/contracts";
+-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+ import * as Data from "effect/Data";
+ import * as Duration from "effect/Duration";
+ import * as Effect from "effect/Effect";
+@@ -200,11 +199,11 @@ const multiTerminalHistoryLogPath = (
+ 
+ interface CreateManagerOptions {
+   shellResolver?: () => string;
++  platform?: NodeJS.Platform;
+   env?: NodeJS.ProcessEnv;
+   subprocessInspector?: (terminalPid: number) => Effect.Effect<{
+     readonly hasRunningSubprocess: boolean;
+     readonly childCommand: string | null;
+-    readonly processIds: ReadonlyArray<number>;
+   }>;
+   subprocessPollIntervalMs?: number;
+   processKillGraceMs?: number;
+@@ -240,6 +239,7 @@ const createManager = (
+         historyLineLimit,
+         ptyAdapter,
+         ...(options.shellResolver !== undefined ? { shellResolver: options.shellResolver } : {}),
++        ...(options.platform !== undefined ? { platform: options.platform } : {}),
+         ...(options.env !== undefined ? { env: options.env } : {}),
+         ...(options.subprocessInspector !== undefined
+           ? { subprocessInspector: options.subprocessInspector }
+@@ -269,13 +269,12 @@ const createManager = (
+     }),
+   );
+ 
+-const withHostPlatform = (platform: NodeJS.Platform) =>
+-  Layer.succeed(HostProcessPlatform, platform);
+-
+ it.layer(
+   Layer.merge(NodeServices.layer, ProcessRunner.layer.pipe(Layer.provide(NodeServices.layer))),
+   { excludeTestServices: true },
+ )("TerminalManager", (it) => {
++  const itEffectSkipOnWindows = process.platform === "win32" ? it.effect.skip : it.effect;
++
+   it.effect("spawns lazily and reuses running terminal per thread", () =>
+     Effect.gen(function* () {
+       const { manager, ptyAdapter } = yield* createManager();
+@@ -339,7 +338,7 @@ it.layer(
        const unsubscribe = yield* manager.attachStream(
          openInput({
            env: {
@@ -1319,7 +1487,7 @@ index 2ebf8481..4e403059 100644
            },
            worktreePath: "/tmp/should-not-restart",
          }),
-@@ -376,7 +376,7 @@ it.layer(
+@@ -377,7 +376,7 @@ it.layer(
          {
            ...openInput({
              env: {
@@ -1328,25 +1496,187 @@ index 2ebf8481..4e403059 100644
              },
              worktreePath: "/tmp/restart-requested",
            }),
-@@ -1186,7 +1186,7 @@ it.layer(
-       };
+@@ -415,10 +414,8 @@ it.layer(
+       fs.writeFileString(filePath, contents),
+     );
  
-       setEnv("PORT", "5173");
--      setEnv("T3CODE_PORT", "3773");
+-  it.effect("preserves non-notFound cwd stat failures", () =>
++  itEffectSkipOnWindows("preserves non-notFound cwd stat failures", () =>
+     Effect.gen(function* () {
+-      if ((yield* HostProcessPlatform) === "win32") return;
+-
+       const path = yield* Path.Path;
+ 
+       const { manager, baseDir } = yield* createManager();
+@@ -748,8 +745,7 @@ it.layer(
+       let inspect: {
+         readonly hasRunningSubprocess: boolean;
+         readonly childCommand: string | null;
+-        readonly processIds: ReadonlyArray<number>;
+-      } = { hasRunningSubprocess: false, childCommand: null, processIds: [] };
++      } = { hasRunningSubprocess: false, childCommand: null };
+       const { manager, getEvents } = yield* createManager(5, {
+         subprocessInspector: () => Effect.succeed(inspect),
+         subprocessPollIntervalMs: 20,
+@@ -758,7 +754,7 @@ it.layer(
+       yield* manager.open(openInput());
+       expect((yield* getEvents).some((event) => event.type === "activity")).toBe(false);
+ 
+-      inspect = { hasRunningSubprocess: true, childCommand: "vim", processIds: [100, 101] };
++      inspect = { hasRunningSubprocess: true, childCommand: "vim" };
+       yield* waitFor(
+         Effect.map(getEvents, (events) =>
+           events.some(
+@@ -771,7 +767,7 @@ it.layer(
+         "1200 millis",
+       );
+ 
+-      inspect = { hasRunningSubprocess: false, childCommand: null, processIds: [] };
++      inspect = { hasRunningSubprocess: false, childCommand: null };
+       yield* waitFor(
+         Effect.map(getEvents, (events) =>
+           events.some(
+@@ -792,11 +788,7 @@ it.layer(
+       const { manager } = yield* createManager(5, {
+         subprocessInspector: () => {
+           checks += 1;
+-          return Effect.succeed({
+-            hasRunningSubprocess: false,
+-            childCommand: null,
+-            processIds: [],
+-          });
++          return Effect.succeed({ hasRunningSubprocess: false, childCommand: null });
+         },
+         subprocessPollIntervalMs: 20,
+       });
+@@ -1084,9 +1076,10 @@ it.layer(
+ 
+   it.effect("retries with fallback shells when preferred shell spawn fails", () =>
+     Effect.gen(function* () {
+-      const platform = yield* HostProcessPlatform;
+       const missingShell =
+-        platform === "win32" ? "C:\\definitely\\missing-shell.exe" : "/definitely/missing-shell -l";
++        process.platform === "win32"
++          ? "C:\\definitely\\missing-shell.exe"
++          : "/definitely/missing-shell -l";
+       const { manager, ptyAdapter } = yield* createManager(5, {
+         shellResolver: () => missingShell,
+       });
+@@ -1097,10 +1090,10 @@ it.layer(
+       assert.equal(snapshot.status, "running");
+       expect(ptyAdapter.spawnInputs.length).toBeGreaterThanOrEqual(2);
+       expect(ptyAdapter.spawnInputs[0]?.shell).toBe(
+-        platform === "win32" ? missingShell : "/definitely/missing-shell",
++        process.platform === "win32" ? missingShell : "/definitely/missing-shell",
+       );
+ 
+-      if (platform === "win32") {
++      if (process.platform === "win32") {
+         expect(
+           ptyAdapter.spawnInputs.some(
+             (input) =>
+@@ -1122,12 +1115,13 @@ it.layer(
+   it.effect("prefers PowerShell over ComSpec for Windows terminals", () =>
+     Effect.gen(function* () {
+       const { manager, ptyAdapter } = yield* createManager(5, {
++        platform: "win32",
+         env: {
+           ComSpec: "C:\\Windows\\System32\\cmd.exe",
+           PATH: "C:\\Windows\\System32",
+           SystemRoot: "C:\\Windows",
+         },
+-      }).pipe(Effect.provide(withHostPlatform("win32")));
++      });
+ 
+       yield* manager.open(openInput());
+ 
+@@ -1142,16 +1136,15 @@ it.layer(
+ 
+   it.effect("falls back to built-in PowerShell by absolute path on Windows", () =>
+     Effect.gen(function* () {
+-      const ptyAdapter = new FakePtyAdapter();
+-      const { manager } = yield* createManager(5, {
+-        ptyAdapter,
+-        shellResolver: () => "C:\\missing\\custom-shell.exe",
++      const { manager, ptyAdapter } = yield* createManager(5, {
++        platform: "win32",
+         env: {
+           ComSpec: "C:\\Windows\\System32\\cmd.exe",
+           PATH: "C:\\Windows\\System32",
+           SystemRoot: "C:\\Windows",
+         },
+-      }).pipe(Effect.provide(withHostPlatform("win32")));
++        shellResolver: () => "C:\\missing\\custom-shell.exe",
++      });
+       ptyAdapter.spawnFailures.push(
+         new Error("spawn custom-shell.exe ENOENT"),
+         new Error("spawn pwsh.exe ENOENT"),
+@@ -1171,25 +1164,46 @@ it.layer(
+ 
+   it.effect("filters app runtime env variables from terminal sessions", () =>
+     Effect.gen(function* () {
+-      const { manager, ptyAdapter } = yield* createManager(5, {
+-        env: {
+-          PORT: "5173",
+-          T3CODE_PORT: "3773",
+-          VITE_DEV_SERVER_URL: "http://localhost:5173",
+-          TEST_TERMINAL_KEEP: "keep-me",
+-        },
+-      });
+-      yield* manager.open(openInput());
+-      const spawnInput = ptyAdapter.spawnInputs[0];
+-      expect(spawnInput).toBeDefined();
+-      if (!spawnInput) return;
++      const originalValues = new Map<string, string | undefined>();
++      const setEnv = (key: string, value: string | undefined) => {
++        if (!originalValues.has(key)) {
++          originalValues.set(key, process.env[key]);
++        }
++        if (value === undefined) {
++          delete process.env[key];
++          return;
++        }
++        process.env[key] = value;
++      };
++      const restoreEnv = () => {
++        for (const [key, value] of originalValues) {
++          if (value === undefined) {
++            delete process.env[key];
++          } else {
++            process.env[key] = value;
++          }
++        }
++      };
++
++      setEnv("PORT", "5173");
 +      setEnv("MODE_PORT", "3773");
-       setEnv("VITE_DEV_SERVER_URL", "http://localhost:5173");
-       setEnv("TEST_TERMINAL_KEEP", "keep-me");
++      setEnv("VITE_DEV_SERVER_URL", "http://localhost:5173");
++      setEnv("TEST_TERMINAL_KEEP", "keep-me");
  
-@@ -1198,7 +1198,7 @@ it.layer(
-         if (!spawnInput) return;
- 
-         expect(spawnInput.env.PORT).toBeUndefined();
--        expect(spawnInput.env.T3CODE_PORT).toBeUndefined();
+-      expect(spawnInput.env.PORT).toBeUndefined();
+-      expect(spawnInput.env.T3CODE_PORT).toBeUndefined();
+-      expect(spawnInput.env.VITE_DEV_SERVER_URL).toBeUndefined();
+-      // Arbitrary host env vars must pass through — terminals inherit the
+-      // user's environment apart from the explicit blocklist.
+-      expect(spawnInput.env.TEST_TERMINAL_KEEP).toBe("keep-me");
++      try {
++        const { manager, ptyAdapter } = yield* createManager();
++        yield* manager.open(openInput());
++        const spawnInput = ptyAdapter.spawnInputs[0];
++        expect(spawnInput).toBeDefined();
++        if (!spawnInput) return;
++
++        expect(spawnInput.env.PORT).toBeUndefined();
 +        expect(spawnInput.env.MODE_PORT).toBeUndefined();
-         expect(spawnInput.env.VITE_DEV_SERVER_URL).toBeUndefined();
-         expect(spawnInput.env.TEST_TERMINAL_KEEP).toBe("keep-me");
-       } finally {
-@@ -1213,8 +1213,8 @@ it.layer(
++        expect(spawnInput.env.VITE_DEV_SERVER_URL).toBeUndefined();
++        expect(spawnInput.env.TEST_TERMINAL_KEEP).toBe("keep-me");
++      } finally {
++        restoreEnv();
++      }
+     }),
+   );
+ 
+@@ -1199,8 +1213,8 @@ it.layer(
        yield* manager.open(
          openInput({
            env: {
@@ -1357,7 +1687,7 @@ index 2ebf8481..4e403059 100644
              CUSTOM_FLAG: "1",
            },
          }),
-@@ -1223,8 +1223,8 @@ it.layer(
+@@ -1209,15 +1223,15 @@ it.layer(
        expect(spawnInput).toBeDefined();
        if (!spawnInput) return;
  
@@ -1368,11 +1698,19 @@ index 2ebf8481..4e403059 100644
        assert.equal(spawnInput.env.CUSTOM_FLAG, "1");
      }),
    );
+ 
+   it.effect("starts zsh with prompt spacer disabled to avoid `%` end markers", () =>
+     Effect.gen(function* () {
+-      if ((yield* HostProcessPlatform) === "win32") return;
++      if (process.platform === "win32") return;
+       const { manager, ptyAdapter } = yield* createManager(5, {
+         shellResolver: () => "/bin/zsh",
+       });
 diff --git a/apps/server/src/terminal/Layers/Manager.ts b/apps/server/src/terminal/Layers/Manager.ts
-index cd490de1..6cbe9817 100644
+index e33d9b4b..3b5f3f2a 100644
 --- a/apps/server/src/terminal/Layers/Manager.ts
 +++ b/apps/server/src/terminal/Layers/Manager.ts
-@@ -885,7 +885,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
+@@ -936,7 +936,7 @@ function toSessionKey(threadId: string, terminalId: string): string {
  
  function shouldExcludeTerminalEnvKey(key: string): boolean {
    const normalizedKey = key.toUpperCase();
@@ -1644,10 +1982,10 @@ index 94a3909a..8b2f7692 100644
      });
    });
 diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
-index 5a92a244..db5910de 100644
+index 6f620d9a..8dd8ba1f 100644
 --- a/apps/web/src/components/ChatView.browser.tsx
 +++ b/apps/web/src/components/ChatView.browser.tsx
-@@ -207,7 +207,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -209,7 +209,7 @@ function createBaseServerConfig(): ServerConfig {
        sessionCookieName: "t3_session",
      },
      cwd: "/repo/project",
@@ -1656,7 +1994,7 @@ index 5a92a244..db5910de 100644
      keybindings: [],
      issues: [],
      providers: [
-@@ -227,7 +227,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -229,7 +229,7 @@ function createBaseServerConfig(): ServerConfig {
      ],
      availableEditors: [],
      observability: {
@@ -1665,7 +2003,7 @@ index 5a92a244..db5910de 100644
        localTracingEnabled: true,
        otlpTracesEnabled: false,
        otlpMetricsEnabled: false,
-@@ -2006,10 +2006,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2058,10 +2058,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
              cwd: "/repo/project",
              worktreePath: null,
              env: {
@@ -1678,7 +2016,7 @@ index 5a92a244..db5910de 100644
          },
          { timeout: 8_000, interval: 16 },
        );
-@@ -2259,7 +2259,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2888,7 +2888,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
    });
  
    it("falls back to the first installed editor when the stored favorite is unavailable", async () => {
@@ -1687,7 +2025,7 @@ index 5a92a244..db5910de 100644
      setDraftThreadWithoutWorktree();
  
      const mounted = await mountChatView({
-@@ -2359,7 +2359,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -2988,7 +2988,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
              threadId: THREAD_ID,
              cwd: "/repo/project",
              env: {
@@ -1696,7 +2034,7 @@ index 5a92a244..db5910de 100644
              },
            });
          },
-@@ -2438,8 +2438,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -3067,8 +3067,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
              threadId: THREAD_ID,
              cwd: "/repo/worktrees/feature-draft",
              env: {
@@ -1707,7 +2045,7 @@ index 5a92a244..db5910de 100644
              },
            });
          },
-@@ -4097,7 +4097,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4795,7 +4795,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
  
    it("shows the confirm archive action after clicking the archive button", async () => {
      localStorage.setItem(
@@ -1716,7 +2054,7 @@ index 5a92a244..db5910de 100644
        JSON.stringify({
          ...DEFAULT_CLIENT_SETTINGS,
          confirmThreadArchive: true,
-@@ -4126,7 +4126,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4824,7 +4824,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
        await expect.element(confirmButton).toBeInTheDocument();
        await expect.element(confirmButton).toBeVisible();
      } finally {
@@ -1725,7 +2063,7 @@ index 5a92a244..db5910de 100644
        await mounted.cleanup();
      }
    });
-@@ -4249,7 +4249,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4947,7 +4947,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
            thread.id === THREAD_ID
              ? Object.assign({}, thread, {
                  branch: "feature/existing",
@@ -1735,7 +2073,7 @@ index 5a92a244..db5910de 100644
              : thread,
          ),
 diff --git a/apps/web/src/components/ChatView.logic.ts b/apps/web/src/components/ChatView.logic.ts
-index b30d3be0..72767691 100644
+index c70a3a49..ced9b5b4 100644
 --- a/apps/web/src/components/ChatView.logic.ts
 +++ b/apps/web/src/components/ChatView.logic.ts
 @@ -21,7 +21,10 @@ import {
@@ -1748,33 +2086,13 @@ index b30d3be0..72767691 100644
 +  "t3code:last-invoked-script-by-project",
 +] as const;
  export const MAX_HIDDEN_MOUNTED_TERMINAL_THREADS = 10;
+ export const MAX_HIDDEN_MOUNTED_PREVIEW_THREADS = 3;
  
- export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
-diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index 0a17fcf7..342a9632 100644
---- a/apps/web/src/components/ChatView.tsx
-+++ b/apps/web/src/components/ChatView.tsx
-@@ -168,6 +168,7 @@ import {
-   hasServerAcknowledgedLocalDispatch,
-   getStartedThreadModelChangeBlockReason,
-   LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
-+  LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS,
-   LastInvokedScriptByProjectSchema,
-   type LocalDispatchSnapshot,
-   PullRequestDialogState,
-@@ -938,6 +939,7 @@ export default function ChatView(props: ChatViewProps) {
-     LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
-     {},
-     LastInvokedScriptByProjectSchema,
-+    LEGACY_LAST_INVOKED_SCRIPT_BY_PROJECT_KEYS,
-   );
-   const legendListRef = useRef<LegendListRef | null>(null);
-   const isAtEndRef = useRef(true);
 diff --git a/apps/web/src/components/KeybindingsToast.browser.tsx b/apps/web/src/components/KeybindingsToast.browser.tsx
-index e9e56282..076f0295 100644
+index 79e20e0e..1510001c 100644
 --- a/apps/web/src/components/KeybindingsToast.browser.tsx
 +++ b/apps/web/src/components/KeybindingsToast.browser.tsx
-@@ -109,7 +109,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -110,7 +110,7 @@ function createBaseServerConfig(): ServerConfig {
        sessionCookieName: "t3_session",
      },
      cwd: "/repo/project",
@@ -1783,7 +2101,7 @@ index e9e56282..076f0295 100644
      keybindings: [],
      issues: [],
      providers: [
-@@ -129,7 +129,7 @@ function createBaseServerConfig(): ServerConfig {
+@@ -130,7 +130,7 @@ function createBaseServerConfig(): ServerConfig {
      ],
      availableEditors: [],
      observability: {
@@ -1793,10 +2111,10 @@ index e9e56282..076f0295 100644
        otlpTracesEnabled: false,
        otlpMetricsEnabled: false,
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index bdbbf6f8..3d6e45b9 100644
+index fc6cbd1c..c1783d07 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
-@@ -199,12 +199,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
+@@ -218,12 +218,12 @@ describe("resolveSidebarNewThreadSeedContext", () => {
          activeThread: {
            projectId: "project-1",
            branch: "feature/existing",
@@ -1883,7 +2201,7 @@ index 1952d77d..a9b8d559 100644
    });
  
 diff --git a/apps/web/src/components/settings/SettingsPanels.browser.tsx b/apps/web/src/components/settings/SettingsPanels.browser.tsx
-index a4cdc867..320930c3 100644
+index 339c817b..33ed53ff 100644
 --- a/apps/web/src/components/settings/SettingsPanels.browser.tsx
 +++ b/apps/web/src/components/settings/SettingsPanels.browser.tsx
 @@ -235,13 +235,13 @@ function createBaseServerConfig(): ServerConfig {
@@ -1902,7 +2220,7 @@ index a4cdc867..320930c3 100644
        localTracingEnabled: true,
        otlpTracesUrl: "http://localhost:4318/v1/traces",
        otlpTracesEnabled: true,
-@@ -1122,8 +1122,8 @@ describe("GeneralSettingsPanel observability", () => {
+@@ -1175,8 +1175,8 @@ describe("GeneralSettingsPanel observability", () => {
            .fn()
            .mockResolvedValue(createEmptyProcessResourceHistoryResult()),
          getTraceDiagnostics: vi.fn().mockResolvedValue({
@@ -1913,7 +2231,7 @@ index a4cdc867..320930c3 100644
            readAt: makeUtc("2036-04-07T00:00:00.000Z"),
            recordCount: 0,
            parseErrorCount: 0,
-@@ -1156,7 +1156,7 @@ describe("GeneralSettingsPanel observability", () => {
+@@ -1209,7 +1209,7 @@ describe("GeneralSettingsPanel observability", () => {
      const openLogsButton = page.getByLabelText("Open logs folder");
      await openLogsButton.click();
  
@@ -1923,7 +2241,7 @@ index a4cdc867..320930c3 100644
  
    it("shows an OpenCode server URL field in provider settings", async () => {
 diff --git a/apps/web/src/composerDraftStore.test.ts b/apps/web/src/composerDraftStore.test.ts
-index e6caedaa..3f4c613d 100644
+index 37470af4..3218b560 100644
 --- a/apps/web/src/composerDraftStore.test.ts
 +++ b/apps/web/src/composerDraftStore.test.ts
 @@ -74,7 +74,7 @@ import {
@@ -1935,7 +2253,7 @@ index e6caedaa..3f4c613d 100644
  
  function makeImage(input: {
    id: string;
-@@ -1446,6 +1446,33 @@ function createMockStorage() {
+@@ -1539,6 +1539,33 @@ function createMockStorage() {
    };
  }
  
@@ -1970,10 +2288,28 @@ index e6caedaa..3f4c613d 100644
    beforeEach(() => {
      vi.useFakeTimers();
 diff --git a/apps/web/src/composerDraftStore.ts b/apps/web/src/composerDraftStore.ts
-index 3de3b5d7..3415235e 100644
+index a71c1690..78ba22b8 100644
 --- a/apps/web/src/composerDraftStore.ts
 +++ b/apps/web/src/composerDraftStore.ts
-@@ -39,13 +39,14 @@ import {
+@@ -9,8 +9,6 @@ import {
+   ProviderInteractionMode,
+   ProviderDriverKind,
+   ProviderOptionSelection,
+-  PreviewAnnotationPayloadSchema,
+-  type PreviewAnnotationPayload,
+   RuntimeMode,
+   type ServerProvider,
+   type ScopedProjectRef,
+@@ -38,23 +36,18 @@ import {
+   ensureInlineTerminalContextPlaceholders,
+   normalizeTerminalContextText,
+ } from "./lib/terminalContext";
+-import {
+-  type ElementContextDraft,
+-  type ElementContextSelection,
+-  elementContextDedupKey,
+-  newElementContextId,
+-} from "./lib/elementContext";
  import { create } from "zustand";
  import { createJSONStorage, persist } from "zustand/middleware";
  import { useShallow } from "zustand/react/shallow";
@@ -1985,12 +2321,14 @@ index 3de3b5d7..3415235e 100644
  const isProviderDriverKind = Schema.is(ProviderDriverKind);
  
 -export const COMPOSER_DRAFT_STORAGE_KEY = "t3code:composer-drafts:v1";
+-const COMPOSER_DRAFT_STORAGE_VERSION = 7;
 +export const COMPOSER_DRAFT_STORAGE_KEY = "mode:composer-drafts:v1";
 +const LEGACY_COMPOSER_DRAFT_STORAGE_KEYS = ["t3code:composer-drafts:v1"] as const;
- const COMPOSER_DRAFT_STORAGE_VERSION = 6;
++const COMPOSER_DRAFT_STORAGE_VERSION = 6;
  const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
  export type DraftThreadEnvMode = typeof DraftThreadEnvModeSchema.Type;
-@@ -56,7 +57,12 @@ export type DraftId = typeof DraftId.Type;
+ 
+@@ -64,7 +57,12 @@ export type DraftId = typeof DraftId.Type;
  const COMPOSER_PERSIST_DEBOUNCE_MS = 300;
  
  const composerDebouncedStorage = createDebouncedStorage(
@@ -2004,7 +2342,278 @@ index 3de3b5d7..3415235e 100644
    COMPOSER_PERSIST_DEBOUNCE_MS,
  );
  
-@@ -1770,6 +1776,7 @@ function readPersistedAttachmentIdsFromStorage(threadKey: string): string[] {
+@@ -100,34 +98,10 @@ const PersistedTerminalContextDraft = Schema.Struct({
+ });
+ type PersistedTerminalContextDraft = typeof PersistedTerminalContextDraft.Type;
+ 
+-const PersistedElementContextStackFrame = Schema.Struct({
+-  functionName: Schema.NullOr(Schema.String),
+-  fileName: Schema.NullOr(Schema.String),
+-  lineNumber: Schema.NullOr(Schema.Number),
+-  columnNumber: Schema.NullOr(Schema.Number),
+-});
+-
+-const PersistedElementContextDraft = Schema.Struct({
+-  id: Schema.String,
+-  threadId: ThreadId,
+-  pickedAt: Schema.String,
+-  pageUrl: Schema.String,
+-  pageTitle: Schema.NullOr(Schema.String),
+-  tagName: Schema.String,
+-  selector: Schema.NullOr(Schema.String),
+-  htmlPreview: Schema.String,
+-  componentName: Schema.NullOr(Schema.String),
+-  source: Schema.NullOr(PersistedElementContextStackFrame),
+-  styles: Schema.String,
+-});
+-type PersistedElementContextDraft = typeof PersistedElementContextDraft.Type;
+-
+ const PersistedComposerThreadDraftState = Schema.Struct({
+   prompt: Schema.String,
+   attachments: Schema.Array(PersistedComposerImageAttachment),
+   terminalContexts: Schema.optionalKey(Schema.Array(PersistedTerminalContextDraft)),
+-  elementContexts: Schema.optionalKey(Schema.Array(PersistedElementContextDraft)),
+-  previewAnnotations: Schema.optionalKey(Schema.Array(PreviewAnnotationPayloadSchema)),
+   // Keyed by `ProviderInstanceId` (open branded slug) so custom provider
+   // instances (e.g. `codex_personal`) round-trip alongside the built-in
+   // `codex` / `claudeAgent` / ... entries. Every prior `ProviderDriverKind`
+@@ -248,14 +222,6 @@ export interface ComposerThreadDraftState {
+   nonPersistedImageIds: string[];
+   persistedAttachments: PersistedComposerImageAttachment[];
+   terminalContexts: TerminalContextDraft[];
+-  /**
+-   * Element-pick attachments captured from the in-app preview browser. The
+-   * full payload (selector / html / styles / source frame) is persisted
+-   * inline because — unlike terminal contexts — there's no live session to
+-   * re-derive the snapshot from on reload.
+-   */
+-  elementContexts: ElementContextDraft[];
+-  previewAnnotations: PreviewAnnotationPayload[];
+   /**
+    * Per-instance model selection. Keyed by `ProviderInstanceId` (open
+    * branded slug) so a default `codex` instance and a user-authored
+@@ -437,33 +403,6 @@ interface ComposerDraftStoreState {
+   addTerminalContexts: (threadRef: ComposerThreadTarget, contexts: TerminalContextDraft[]) => void;
+   removeTerminalContext: (threadRef: ComposerThreadTarget, contextId: string) => void;
+   clearTerminalContexts: (threadRef: ComposerThreadTarget) => void;
+-  /**
+-   * Append a fresh element pick to the draft. Returns true when accepted,
+-   * false when deduped against an existing pick of the same element.
+-   */
+-  addElementContext: (
+-    threadRef: ComposerThreadTarget,
+-    selection: ElementContextSelection,
+-  ) => boolean;
+-  /**
+-   * Replace the entire element-contexts list (used by send-failure retry to
+-   * restore the pre-send snapshot).
+-   */
+-  setElementContexts: (
+-    threadRef: ComposerThreadTarget,
+-    contexts: ReadonlyArray<ElementContextDraft>,
+-  ) => void;
+-  removeElementContext: (threadRef: ComposerThreadTarget, contextId: string) => void;
+-  clearElementContexts: (threadRef: ComposerThreadTarget) => void;
+-  addPreviewAnnotation: (
+-    threadRef: ComposerThreadTarget,
+-    annotation: PreviewAnnotationPayload,
+-  ) => void;
+-  setPreviewAnnotations: (
+-    threadRef: ComposerThreadTarget,
+-    annotations: ReadonlyArray<PreviewAnnotationPayload>,
+-  ) => void;
+-  removePreviewAnnotation: (threadRef: ComposerThreadTarget, annotationId: string) => void;
+   clearPersistedAttachments: (threadRef: ComposerThreadTarget) => void;
+   syncPersistedAttachments: (
+     threadRef: ComposerThreadTarget,
+@@ -539,13 +478,9 @@ const EMPTY_IMAGES: ComposerImageAttachment[] = [];
+ const EMPTY_IDS: string[] = [];
+ const EMPTY_PERSISTED_ATTACHMENTS: PersistedComposerImageAttachment[] = [];
+ const EMPTY_TERMINAL_CONTEXTS: TerminalContextDraft[] = [];
+-const EMPTY_ELEMENT_CONTEXTS: ElementContextDraft[] = [];
+-const EMPTY_PREVIEW_ANNOTATIONS: PreviewAnnotationPayload[] = [];
+ Object.freeze(EMPTY_IMAGES);
+ Object.freeze(EMPTY_IDS);
+ Object.freeze(EMPTY_PERSISTED_ATTACHMENTS);
+-Object.freeze(EMPTY_ELEMENT_CONTEXTS);
+-Object.freeze(EMPTY_PREVIEW_ANNOTATIONS);
+ const EMPTY_MODEL_SELECTION_BY_PROVIDER: Partial<Record<ProviderDriverKind, ModelSelection>> =
+   Object.freeze({});
+ const EMPTY_COMPOSER_DRAFT_MODEL_STATE = Object.freeze<ComposerDraftModelState>({
+@@ -559,29 +494,19 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
+   nonPersistedImageIds: EMPTY_IDS,
+   persistedAttachments: EMPTY_PERSISTED_ATTACHMENTS,
+   terminalContexts: EMPTY_TERMINAL_CONTEXTS,
+-  elementContexts: EMPTY_ELEMENT_CONTEXTS,
+-  previewAnnotations: EMPTY_PREVIEW_ANNOTATIONS,
+   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
+   activeProvider: null,
+   runtimeMode: null,
+   interactionMode: null,
+ });
+ 
+-/**
+- * Canonical factory for a blank `ComposerThreadDraftState`. Exported so tests
+- * (and any other call sites) can build a draft without re-declaring every
+- * slice — adding a new field to the interface (e.g. `elementContexts`) only
+- * has to be reflected here, not in every stub.
+- */
+-export function createEmptyThreadDraft(): ComposerThreadDraftState {
++function createEmptyThreadDraft(): ComposerThreadDraftState {
+   return {
+     prompt: "",
+     images: [],
+     nonPersistedImageIds: [],
+     persistedAttachments: [],
+     terminalContexts: [],
+-    elementContexts: [],
+-    previewAnnotations: [],
+     modelSelectionByProvider: {},
+     activeProvider: null,
+     runtimeMode: null,
+@@ -652,8 +577,6 @@ function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
+     draft.images.length === 0 &&
+     draft.persistedAttachments.length === 0 &&
+     draft.terminalContexts.length === 0 &&
+-    draft.elementContexts.length === 0 &&
+-    draft.previewAnnotations.length === 0 &&
+     Object.keys(draft.modelSelectionByProvider).length === 0 &&
+     draft.activeProvider === null &&
+     draft.runtimeMode === null &&
+@@ -1047,63 +970,6 @@ function normalizePersistedAttachment(value: unknown): PersistedComposerImageAtt
+   };
+ }
+ 
+-function normalizePersistedElementContextDraft(
+-  value: unknown,
+-): PersistedElementContextDraft | null {
+-  if (!value || typeof value !== "object") return null;
+-  const candidate = value as Record<string, unknown>;
+-  const id = candidate.id;
+-  const threadId = candidate.threadId;
+-  const pickedAt = candidate.pickedAt;
+-  const pageUrl = candidate.pageUrl;
+-  const tagName = candidate.tagName;
+-  if (
+-    typeof id !== "string" ||
+-    id.length === 0 ||
+-    typeof threadId !== "string" ||
+-    threadId.length === 0 ||
+-    typeof pickedAt !== "string" ||
+-    pickedAt.length === 0 ||
+-    typeof pageUrl !== "string" ||
+-    pageUrl.length === 0 ||
+-    typeof tagName !== "string" ||
+-    tagName.length === 0
+-  ) {
+-    return null;
+-  }
+-  const sourceCandidate = candidate.source;
+-  let source: PersistedElementContextDraft["source"] = null;
+-  if (sourceCandidate && typeof sourceCandidate === "object") {
+-    const sourceRecord = sourceCandidate as Record<string, unknown>;
+-    source = {
+-      functionName:
+-        typeof sourceRecord.functionName === "string" ? sourceRecord.functionName : null,
+-      fileName: typeof sourceRecord.fileName === "string" ? sourceRecord.fileName : null,
+-      lineNumber:
+-        typeof sourceRecord.lineNumber === "number" && Number.isFinite(sourceRecord.lineNumber)
+-          ? sourceRecord.lineNumber
+-          : null,
+-      columnNumber:
+-        typeof sourceRecord.columnNumber === "number" && Number.isFinite(sourceRecord.columnNumber)
+-          ? sourceRecord.columnNumber
+-          : null,
+-    };
+-  }
+-  return {
+-    id,
+-    threadId: threadId as ThreadId,
+-    pickedAt,
+-    pageUrl,
+-    pageTitle: typeof candidate.pageTitle === "string" ? candidate.pageTitle : null,
+-    tagName,
+-    selector: typeof candidate.selector === "string" ? candidate.selector : null,
+-    htmlPreview: typeof candidate.htmlPreview === "string" ? candidate.htmlPreview : "",
+-    componentName: typeof candidate.componentName === "string" ? candidate.componentName : null,
+-    source,
+-    styles: typeof candidate.styles === "string" ? candidate.styles : "",
+-  };
+-}
+-
+ function normalizePersistedTerminalContextDraft(
+   value: unknown,
+ ): PersistedTerminalContextDraft | null {
+@@ -1618,12 +1484,6 @@ function normalizePersistedDraftsByThreadId(
+           return normalized ? [normalized] : [];
+         })
+       : [];
+-    const elementContexts = Array.isArray(draftCandidate.elementContexts)
+-      ? draftCandidate.elementContexts.flatMap((entry) => {
+-          const normalized = normalizePersistedElementContextDraft(entry);
+-          return normalized ? [normalized] : [];
+-        })
+-      : [];
+     const runtimeMode = isRuntimeMode(draftCandidate.runtimeMode)
+       ? draftCandidate.runtimeMode
+       : null;
+@@ -1687,7 +1547,6 @@ function normalizePersistedDraftsByThreadId(
+       promptCandidate.length === 0 &&
+       attachments.length === 0 &&
+       terminalContexts.length === 0 &&
+-      elementContexts.length === 0 &&
+       !hasModelData &&
+       !runtimeMode &&
+       !interactionMode
+@@ -1710,7 +1569,6 @@ function normalizePersistedDraftsByThreadId(
+       prompt,
+       attachments,
+       ...(terminalContexts.length > 0 ? { terminalContexts } : {}),
+-      ...(elementContexts.length > 0 ? { elementContexts } : {}),
+       ...(hasModelData
+         ? {
+             modelSelectionByProvider: compactModelSelectionByProvider(modelSelectionByProvider),
+@@ -1793,8 +1651,6 @@ function partializeComposerDraftStoreState(
+       draft.prompt.length === 0 &&
+       draft.persistedAttachments.length === 0 &&
+       draft.terminalContexts.length === 0 &&
+-      draft.elementContexts.length === 0 &&
+-      draft.previewAnnotations.length === 0 &&
+       !hasModelData &&
+       draft.runtimeMode === null &&
+       draft.interactionMode === null
+@@ -1817,30 +1673,6 @@ function partializeComposerDraftStoreState(
+             })),
+           }
+         : {}),
+-      ...(draft.elementContexts.length > 0
+-        ? {
+-            elementContexts: draft.elementContexts.map((context) => ({
+-              id: context.id,
+-              threadId: context.threadId,
+-              pickedAt: context.pickedAt,
+-              pageUrl: context.pageUrl,
+-              pageTitle: context.pageTitle,
+-              tagName: context.tagName,
+-              selector: context.selector,
+-              htmlPreview: context.htmlPreview,
+-              componentName: context.componentName,
+-              source: context.source,
+-              styles: context.styles,
+-            })),
+-          }
+-        : {}),
+-      ...(draft.previewAnnotations.length > 0
+-        ? {
+-            previewAnnotations: draft.previewAnnotations.map(
+-              (annotation) => ({ ...annotation }) as DeepMutable<PreviewAnnotationPayload>,
+-            ),
+-          }
+-        : {}),
+       ...(hasModelData
+         ? {
+             modelSelectionByProvider: compactModelSelectionByProvider(
+@@ -1944,6 +1776,7 @@ function readPersistedAttachmentIdsFromStorage(threadKey: string): string[] {
      const persisted = getLocalStorageItem(
        COMPOSER_DRAFT_STORAGE_KEY,
        PersistedComposerDraftStoreStorage,
@@ -2012,6 +2621,205 @@ index 3de3b5d7..3415235e 100644
      );
      if (!persisted || persisted.version !== COMPOSER_DRAFT_STORAGE_VERSION) {
        return [];
+@@ -2077,12 +1910,6 @@ function toHydratedThreadDraft(
+         ...context,
+         text: "",
+       })) ?? [],
+-    elementContexts:
+-      persistedDraft.elementContexts?.map((context) => ({
+-        ...context,
+-      })) ?? [],
+-    previewAnnotations:
+-      persistedDraft.previewAnnotations?.map((annotation) => ({ ...annotation })) ?? [],
+     modelSelectionByProvider,
+     activeProvider,
+     runtimeMode: persistedDraft.runtimeMode ?? null,
+@@ -2221,6 +2048,16 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
+               ...state.logicalProjectDraftThreadKeyByLogicalProjectKey,
+               [normalizedLogicalProjectKey]: draftId,
+             };
++            for (const [logicalProjectDraftKey, mappedDraftId] of Object.entries(
++              nextLogicalProjectDraftThreadKeyByLogicalProjectKey,
++            )) {
++              if (
++                logicalProjectDraftKey !== normalizedLogicalProjectKey &&
++                mappedDraftId === draftId
++              ) {
++                delete nextLogicalProjectDraftThreadKeyByLogicalProjectKey[logicalProjectDraftKey];
++              }
++            }
+             const nextDraftThreadsByThreadKey: Record<string, DraftThreadState> = {
+               ...state.draftThreadsByThreadKey,
+               [draftId]: nextDraftThread,
+@@ -2995,159 +2832,6 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
+             return { draftsByThreadKey: nextDraftsByThreadKey };
+           });
+         },
+-        addElementContext: (threadRef, selection) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef);
+-          const threadId = resolveComposerThreadId(get(), threadRef);
+-          if (!threadKey || !threadId) return false;
+-          let accepted = false;
+-          set((state) => {
+-            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
+-            const dedupKey = elementContextDedupKey(selection);
+-            if (
+-              existing.elementContexts.some((entry) => elementContextDedupKey(entry) === dedupKey)
+-            ) {
+-              return state;
+-            }
+-            accepted = true;
+-            const draft: ElementContextDraft = {
+-              ...selection,
+-              id: newElementContextId(),
+-              threadId,
+-              pickedAt: new Date().toISOString(),
+-            };
+-            return {
+-              draftsByThreadKey: {
+-                ...state.draftsByThreadKey,
+-                [threadKey]: {
+-                  ...existing,
+-                  elementContexts: [...existing.elementContexts, draft],
+-                },
+-              },
+-            };
+-          });
+-          return accepted;
+-        },
+-        setElementContexts: (threadRef, contexts) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef);
+-          if (!threadKey) return;
+-          set((state) => {
+-            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
+-            const nextDraft: ComposerThreadDraftState = {
+-              ...existing,
+-              elementContexts: [...contexts],
+-            };
+-            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+-            if (shouldRemoveDraft(nextDraft)) {
+-              delete nextDraftsByThreadKey[threadKey];
+-            } else {
+-              nextDraftsByThreadKey[threadKey] = nextDraft;
+-            }
+-            return { draftsByThreadKey: nextDraftsByThreadKey };
+-          });
+-        },
+-        removeElementContext: (threadRef, contextId) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+-          if (threadKey.length === 0 || contextId.length === 0) return;
+-          set((state) => {
+-            const current = state.draftsByThreadKey[threadKey];
+-            if (!current) return state;
+-            const filtered = current.elementContexts.filter((entry) => entry.id !== contextId);
+-            if (filtered.length === current.elementContexts.length) return state;
+-            const nextDraft: ComposerThreadDraftState = {
+-              ...current,
+-              elementContexts: filtered,
+-            };
+-            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+-            if (shouldRemoveDraft(nextDraft)) {
+-              delete nextDraftsByThreadKey[threadKey];
+-            } else {
+-              nextDraftsByThreadKey[threadKey] = nextDraft;
+-            }
+-            return { draftsByThreadKey: nextDraftsByThreadKey };
+-          });
+-        },
+-        clearElementContexts: (threadRef) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+-          if (threadKey.length === 0) return;
+-          set((state) => {
+-            const current = state.draftsByThreadKey[threadKey];
+-            if (!current || current.elementContexts.length === 0) return state;
+-            const nextDraft: ComposerThreadDraftState = {
+-              ...current,
+-              elementContexts: [],
+-            };
+-            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+-            if (shouldRemoveDraft(nextDraft)) {
+-              delete nextDraftsByThreadKey[threadKey];
+-            } else {
+-              nextDraftsByThreadKey[threadKey] = nextDraft;
+-            }
+-            return { draftsByThreadKey: nextDraftsByThreadKey };
+-          });
+-        },
+-        addPreviewAnnotation: (threadRef, annotation) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef);
+-          if (!threadKey) return;
+-          set((state) => {
+-            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
+-            const nextAnnotations = existing.previewAnnotations.filter(
+-              (entry) => entry.id !== annotation.id,
+-            );
+-            const compactAnnotation: PreviewAnnotationPayload = {
+-              ...annotation,
+-              screenshot: annotation.screenshot ? { ...annotation.screenshot, dataUrl: "" } : null,
+-            };
+-            return {
+-              draftsByThreadKey: {
+-                ...state.draftsByThreadKey,
+-                [threadKey]: {
+-                  ...existing,
+-                  previewAnnotations: [...nextAnnotations, compactAnnotation],
+-                },
+-              },
+-            };
+-          });
+-        },
+-        setPreviewAnnotations: (threadRef, annotations) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef);
+-          if (!threadKey) return;
+-          set((state) => {
+-            const existing = state.draftsByThreadKey[threadKey] ?? createEmptyThreadDraft();
+-            return {
+-              draftsByThreadKey: {
+-                ...state.draftsByThreadKey,
+-                [threadKey]: { ...existing, previewAnnotations: [...annotations] },
+-              },
+-            };
+-          });
+-        },
+-        removePreviewAnnotation: (threadRef, annotationId) => {
+-          const threadKey = resolveComposerDraftKey(get(), threadRef);
+-          if (!threadKey || !annotationId) return;
+-          set((state) => {
+-            const current = state.draftsByThreadKey[threadKey];
+-            if (!current) return state;
+-            const previewAnnotations = current.previewAnnotations.filter(
+-              (entry) => entry.id !== annotationId,
+-            );
+-            if (previewAnnotations.length === current.previewAnnotations.length) return state;
+-            const nextDraft = {
+-              ...current,
+-              previewAnnotations,
+-              images: current.images.filter((image) => image.id !== annotationId),
+-              persistedAttachments: current.persistedAttachments.filter(
+-                (image) => image.id !== annotationId,
+-              ),
+-              nonPersistedImageIds: current.nonPersistedImageIds.filter(
+-                (imageId) => imageId !== annotationId,
+-              ),
+-            };
+-            const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+-            if (shouldRemoveDraft(nextDraft)) delete nextDraftsByThreadKey[threadKey];
+-            else nextDraftsByThreadKey[threadKey] = nextDraft;
+-            return { draftsByThreadKey: nextDraftsByThreadKey };
+-          });
+-        },
+         clearPersistedAttachments: (threadRef) => {
+           const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
+           if (threadKey.length === 0) {
+@@ -3220,8 +2904,6 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
+               nonPersistedImageIds: [],
+               persistedAttachments: [],
+               terminalContexts: [],
+-              elementContexts: [],
+-              previewAnnotations: [],
+             };
+             const nextDraftsByThreadKey = { ...state.draftsByThreadKey };
+             if (shouldRemoveDraft(nextDraft)) {
 diff --git a/apps/web/src/editorPreferences.ts b/apps/web/src/editorPreferences.ts
 index 38c59115..7334038f 100644
 --- a/apps/web/src/editorPreferences.ts
@@ -2305,7 +3113,7 @@ index 7cce819c..b7b2b087 100644
    const dismissedKeys = dismissals.keys;
  
 diff --git a/apps/web/src/terminalUiStateStore.ts b/apps/web/src/terminalUiStateStore.ts
-index 6c10ae44..5d2eef30 100644
+index e5262bfc..8f4fed0b 100644
 --- a/apps/web/src/terminalUiStateStore.ts
 +++ b/apps/web/src/terminalUiStateStore.ts
 @@ -9,7 +9,7 @@ import { parseScopedThreadKey, scopedThreadKey } from "@t3tools/client-runtime";
@@ -2472,10 +3280,10 @@ index 784eceff..56f24877 100644
        headers: {
          Location: "/",
 diff --git a/apps/web/vite.config.ts b/apps/web/vite.config.ts
-index cc15820e..d0dcb60c 100644
+index bfa0f8e4..67f6d8be 100644
 --- a/apps/web/vite.config.ts
 +++ b/apps/web/vite.config.ts
-@@ -34,7 +34,7 @@ const configuredHostedAppUrl = (() => {
+@@ -37,7 +37,7 @@ const configuredHostedAppUrl = (() => {
    }
    return undefined;
  })();
@@ -2761,7 +3569,7 @@ index 25f51a04..2c43c11a 100644
 -If you want full control instead of hashing, set `T3CODE_PORT_OFFSET` to a numeric offset.
 +If you want full control instead of hashing, set `MODE_PORT_OFFSET` to a numeric offset.
 diff --git a/docs/user/keybindings.md b/docs/user/keybindings.md
-index 67652cc9..1c83c784 100644
+index 254aa92c..dc6cb88a 100644
 --- a/docs/user/keybindings.md
 +++ b/docs/user/keybindings.md
 @@ -2,7 +2,7 @@
@@ -2852,10 +3660,10 @@ index 199a55bf..26f576b2 100644
    if (input.extraEnv) {
      return { ...env, ...input.extraEnv };
 diff --git a/packages/shared/src/shell.test.ts b/packages/shared/src/shell.test.ts
-index a9e2dff6..9db72bf4 100644
+index e8b2c41c..2d24caee 100644
 --- a/packages/shared/src/shell.test.ts
 +++ b/packages/shared/src/shell.test.ts
-@@ -19,7 +19,7 @@ describe("extractPathFromShellOutput", () => {
+@@ -39,7 +39,7 @@ describe("extractPathFromShellOutput", () => {
    it("extracts the path between capture markers", () => {
      expect(
        extractPathFromShellOutput(
@@ -2864,7 +3672,7 @@ index a9e2dff6..9db72bf4 100644
        ),
      ).toBe("/opt/homebrew/bin:/usr/bin");
    });
-@@ -27,7 +27,7 @@ describe("extractPathFromShellOutput", () => {
+@@ -47,7 +47,7 @@ describe("extractPathFromShellOutput", () => {
    it("ignores shell startup noise around the capture markers", () => {
      expect(
        extractPathFromShellOutput(
@@ -2873,7 +3681,7 @@ index a9e2dff6..9db72bf4 100644
        ),
      ).toBe("/opt/homebrew/bin:/usr/bin");
    });
-@@ -45,7 +45,7 @@ describe("readPathFromLoginShell", () => {
+@@ -65,7 +65,7 @@ describe("readPathFromLoginShell", () => {
          args: ReadonlyArray<string>,
          options: { encoding: "utf8"; timeout: number },
        ) => string
@@ -2882,7 +3690,7 @@ index a9e2dff6..9db72bf4 100644
  
      expect(readPathFromLoginShell("/opt/homebrew/bin/fish", execFile)).toBe("/a:/b");
      expect(execFile).toHaveBeenCalledTimes(1);
-@@ -63,8 +63,8 @@ describe("readPathFromLoginShell", () => {
+@@ -83,8 +83,8 @@ describe("readPathFromLoginShell", () => {
      expect(args).toHaveLength(2);
      expect(args?.[0]).toBe("-ilc");
      expect(args?.[1]).toContain("printenv PATH || true");
@@ -2893,7 +3701,7 @@ index a9e2dff6..9db72bf4 100644
      expect(options).toEqual({ encoding: "utf8", timeout: 5000 });
    });
  });
-@@ -111,12 +111,12 @@ describe("readEnvironmentFromLoginShell", () => {
+@@ -131,12 +131,12 @@ describe("readEnvironmentFromLoginShell", () => {
        ) => string
      >(() =>
        [
@@ -2910,7 +3718,7 @@ index a9e2dff6..9db72bf4 100644
        ].join("\n"),
      );
  
-@@ -136,11 +136,11 @@ describe("readEnvironmentFromLoginShell", () => {
+@@ -156,11 +156,11 @@ describe("readEnvironmentFromLoginShell", () => {
        ) => string
      >(() =>
        [
@@ -2926,7 +3734,7 @@ index a9e2dff6..9db72bf4 100644
        ].join("\n"),
      );
  
-@@ -157,7 +157,7 @@ describe("readEnvironmentFromLoginShell", () => {
+@@ -177,7 +177,7 @@ describe("readEnvironmentFromLoginShell", () => {
          options: { encoding: "utf8"; timeout: number },
        ) => string
      >(() =>
@@ -2935,7 +3743,7 @@ index a9e2dff6..9db72bf4 100644
          "\n",
        ),
      );
-@@ -205,7 +205,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+@@ -225,7 +225,7 @@ describe("readEnvironmentFromWindowsShell", () => {
        ) => string
      >(
        () =>
@@ -2944,7 +3752,7 @@ index a9e2dff6..9db72bf4 100644
      );
  
      expect(readEnvironmentFromWindowsShell(["PATH"], execFile)).toEqual({
-@@ -227,7 +227,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+@@ -247,7 +247,7 @@ describe("readEnvironmentFromWindowsShell", () => {
        ) => string
      >(
        () =>
@@ -2953,7 +3761,7 @@ index a9e2dff6..9db72bf4 100644
      );
  
      expect(readEnvironmentFromWindowsShell(["FNM_DIR"], execFile)).toEqual({
-@@ -242,7 +242,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+@@ -262,7 +262,7 @@ describe("readEnvironmentFromWindowsShell", () => {
          args: ReadonlyArray<string>,
          options: { encoding: "utf8"; timeout: number },
        ) => string
@@ -2962,7 +3770,7 @@ index a9e2dff6..9db72bf4 100644
  
      expect(readEnvironmentFromWindowsShell(["PATH"], { loadProfile: true }, execFile)).toEqual({
        PATH: "C:\\Tools",
-@@ -266,7 +266,7 @@ describe("readEnvironmentFromWindowsShell", () => {
+@@ -286,7 +286,7 @@ describe("readEnvironmentFromWindowsShell", () => {
        if (file === "pwsh.exe") {
          throw new Error("spawn pwsh.exe ENOENT");
        }
@@ -2972,12 +3780,12 @@ index a9e2dff6..9db72bf4 100644
  
      expect(readEnvironmentFromWindowsShell(["PATH"], execFile)).toEqual({
 diff --git a/packages/shared/src/shell.ts b/packages/shared/src/shell.ts
-index c88ccc10..c0cbd306 100644
+index 5eab78b8..fcae6b41 100644
 --- a/packages/shared/src/shell.ts
 +++ b/packages/shared/src/shell.ts
-@@ -4,8 +4,8 @@ import { execFileSync } from "node:child_process";
- import { accessSync, constants, statSync } from "node:fs";
- import { extname, join } from "node:path";
+@@ -11,8 +11,8 @@ import * as Path from "effect/Path";
+ import { HostProcessEnvironment, HostProcessPlatform } from "./hostProcess.ts";
+ import * as Context from "effect/Context";
  
 -const PATH_CAPTURE_START = "__T3CODE_PATH_START__";
 -const PATH_CAPTURE_END = "__T3CODE_PATH_END__";
@@ -2986,7 +3794,7 @@ index c88ccc10..c0cbd306 100644
  const SHELL_ENV_NAME_PATTERN = /^[A-Z0-9_]+$/;
  const WINDOWS_PATH_DELIMITER = ";";
  const POSIX_PATH_DELIMITER = ":";
-@@ -119,11 +119,11 @@ export function mergePathEntries(
+@@ -237,11 +237,11 @@ export function mergePathEntries(
  }
  
  function envCaptureStart(name: string): string {
@@ -3001,7 +3809,7 @@ index c88ccc10..c0cbd306 100644
  
  function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {
 diff --git a/packages/ssh/src/tunnel.ts b/packages/ssh/src/tunnel.ts
-index 029b7644..2d60c485 100644
+index a7f0d68c..c2d8aee0 100644
 --- a/packages/ssh/src/tunnel.ts
 +++ b/packages/ssh/src/tunnel.ts
 @@ -461,8 +461,8 @@ exit 1
@@ -3054,10 +3862,10 @@ index 029b7644..2d60c485 100644
  if [ -f "$LOG_FILE" ]; then
    tail -n 80 "$LOG_FILE" 2>/dev/null || true
 diff --git a/scripts/build-desktop-artifact.test.ts b/scripts/build-desktop-artifact.test.ts
-index 8dc23484..8754b719 100644
+index 8135f7e2..a58162c0 100644
 --- a/scripts/build-desktop-artifact.test.ts
 +++ b/scripts/build-desktop-artifact.test.ts
-@@ -141,11 +141,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
+@@ -272,11 +272,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
            ConfigProvider.layer(
              ConfigProvider.fromEnv({
                env: {
@@ -3075,10 +3883,82 @@ index 8dc23484..8754b719 100644
              }),
            ),
 diff --git a/scripts/build-desktop-artifact.ts b/scripts/build-desktop-artifact.ts
-index 4d63a11d..6f1e94ac 100644
+index 6b519b1d..6f1e94ac 100644
 --- a/scripts/build-desktop-artifact.ts
 +++ b/scripts/build-desktop-artifact.ts
-@@ -255,7 +255,7 @@ interface StagePackageJson {
+@@ -1,8 +1,6 @@
+ #!/usr/bin/env node
+ 
+ import { fromYaml } from "@t3tools/shared/schemaYaml";
+-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+ import rootPackageJson from "../package.json" with { type: "json" };
+ import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
+ import serverPackageJson from "../apps/server/package.json" with { type: "json" };
+@@ -38,19 +36,11 @@ const WorkspaceConfig = Schema.Struct({
+ });
+ type WorkspaceConfig = typeof WorkspaceConfig.Type;
+ 
+-const StageWorkspaceConfig = Schema.Struct({
+-  supportedArchitectures: Schema.Struct({
+-    os: Schema.Array(Schema.String),
+-    cpu: Schema.Array(Schema.String),
+-  }),
+-});
+-
+ const RepoRoot = Effect.service(Path.Path).pipe(
+   Effect.flatMap((path) => path.fromFileUrl(new URL("..", import.meta.url))),
+ );
+ const encodeJsonString = Schema.encodeEffect(Schema.UnknownFromJsonString);
+ const decodeWorkspaceConfig = Schema.decodeEffect(fromYaml(WorkspaceConfig));
+-const encodeStageWorkspaceConfig = Schema.encodeEffect(fromYaml(StageWorkspaceConfig));
+ 
+ const readWorkspaceConfig = Effect.fn("readWorkspaceConfig")(function* () {
+   const fs = yield* FileSystem.FileSystem;
+@@ -111,14 +101,14 @@ function detectHostBuildPlatform(hostPlatform: string): typeof BuildPlatform.Typ
+   return undefined;
+ }
+ 
+-const getDefaultArch = Effect.fn("getDefaultArch")(function* (platform: typeof BuildPlatform.Type) {
++function getDefaultArch(platform: typeof BuildPlatform.Type): typeof BuildArch.Type {
+   const config = PLATFORM_CONFIG[platform];
+   if (!config) {
+     return "x64";
+   }
+ 
+-  return yield* getDefaultBuildArch(platform, config);
+-});
++  return getDefaultBuildArch(platform, process.arch, process.env, config);
++}
+ 
+ class BuildScriptError extends Data.TaggedError("BuildScriptError")<{
+   readonly message: string;
+@@ -208,21 +198,13 @@ const resolveGitCommitHash = Effect.fn("resolveGitCommitHash")(function* (repoRo
+ const resolvePythonForNodeGyp = Effect.fn("resolvePythonForNodeGyp")(function* () {
+   const fs = yield* FileSystem.FileSystem;
+   const path = yield* Path.Path;
+-  const hostPlatform = yield* HostProcessPlatform;
+-  const env = yield* Config.all({
+-    configuredPython: Config.string("npm_config_python").pipe(
+-      Config.orElse(() => Config.string("PYTHON")),
+-      Config.option,
+-    ),
+-    localAppData: Config.string("LOCALAPPDATA").pipe(Config.option),
+-  });
+-  const configured = Option.getOrUndefined(env.configuredPython);
++  const configured = process.env.npm_config_python ?? process.env.PYTHON;
+   if (configured && (yield* fs.exists(configured))) {
+     return configured;
+   }
+ 
+-  if (hostPlatform === "win32") {
+-    const localAppData = Option.getOrUndefined(env.localAppData);
++  if (process.platform === "win32") {
++    const localAppData = process.env.LOCALAPPDATA;
+     if (localAppData) {
+       for (const version of ["Python313", "Python312", "Python311", "Python310"]) {
+         const candidate = path.join(localAppData, "Programs", "Python", version, "python.exe");
+@@ -273,7 +255,7 @@ interface StagePackageJson {
    readonly name: string;
    readonly version: string;
    readonly buildVersion: string;
@@ -3087,7 +3967,55 @@ index 4d63a11d..6f1e94ac 100644
    readonly private: true;
    readonly packageManager: string;
    readonly description: string;
-@@ -307,17 +307,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
+@@ -290,47 +272,6 @@ interface StagePackageJson {
+   };
+ }
+ 
+-export const STAGE_INSTALL_ARGS = ["install", "--prod"] as const;
+-export const DESKTOP_ASAR_UNPACK = ["node_modules/@ff-labs/fff-bin-*/**/*"] as const;
+-
+-export function resolveFffNativeDependencies(
+-  platform: typeof BuildPlatform.Type,
+-  arch: typeof BuildArch.Type,
+-  version: string,
+-): Record<string, string> {
+-  const architectures = arch === "universal" ? (["arm64", "x64"] as const) : [arch];
+-
+-  if (platform === "mac") {
+-    return Object.fromEntries(
+-      architectures.map((architecture) => [`@ff-labs/fff-bin-darwin-${architecture}`, version]),
+-    );
+-  }
+-
+-  if (platform === "win") {
+-    return Object.fromEntries(
+-      architectures.map((architecture) => [`@ff-labs/fff-bin-win32-${architecture}`, version]),
+-    );
+-  }
+-
+-  return Object.fromEntries(
+-    architectures.flatMap((architecture) =>
+-      ["gnu", "musl"].map((libc) => [`@ff-labs/fff-bin-linux-${architecture}-${libc}`, version]),
+-    ),
+-  );
+-}
+-
+-export function createStageWorkspaceConfig(
+-  platform: typeof BuildPlatform.Type,
+-  arch: typeof BuildArch.Type,
+-): typeof StageWorkspaceConfig.Type {
+-  return {
+-    supportedArchitectures: {
+-      os: [platform === "mac" ? "darwin" : platform === "win" ? "win32" : "linux"],
+-      cpu: arch === "universal" ? ["arm64", "x64"] : [arch],
+-    },
+-  };
+-}
+-
+ export function createStagePnpmConfig(
+   patchedDependencies: Record<string, string>,
+   dependencies: Record<string, unknown>,
+@@ -366,17 +307,17 @@ const AzureTrustedSigningOptionsConfig = Config.all({
  });
  
  const BuildEnvConfig = Config.all({
@@ -3116,16 +4044,90 @@ index 4d63a11d..6f1e94ac 100644
  });
  
  const MockUpdateServerPortSchema = Schema.NumberFromString.check(
-@@ -632,7 +632,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
-     }
-   | undefined {
-   const rawRepo =
--    process.env.T3CODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
+@@ -407,23 +348,21 @@ export const resolveBuildOptions = Effect.fn("resolveBuildOptions")(function* (
+   const path = yield* Path.Path;
+   const repoRoot = yield* RepoRoot;
+   const env = yield* BuildEnvConfig;
+-  const hostPlatform = yield* HostProcessPlatform;
+ 
+   const platform = mergeOptions(
+     input.platform,
+     env.platform,
+-    detectHostBuildPlatform(hostPlatform),
++    detectHostBuildPlatform(process.platform),
+   );
+ 
+   if (!platform) {
+     return yield* new BuildScriptError({
+-      message: `Unsupported host platform '${hostPlatform}'.`,
++      message: `Unsupported host platform '${process.platform}'.`,
+     });
+   }
+ 
+   const target = mergeOptions(input.target, env.target, PLATFORM_CONFIG[platform].defaultTarget);
+-  const defaultArch = yield* getDefaultArch(platform);
+-  const arch = mergeOptions(input.arch, env.arch, defaultArch);
++  const arch = mergeOptions(input.arch, env.arch, getDefaultArch(platform));
+   const version = mergeOptions(input.buildVersion, env.version, undefined);
+   const releaseDir = resolveBooleanFlag(input.mockUpdates, env.mockUpdates)
+     ? "release-mock"
+@@ -683,18 +622,19 @@ export function resolveDesktopRuntimeDependencies(
+   return resolveCatalogDependencies(runtimeDependencies, catalog, "apps/desktop");
+ }
+ 
+-export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
+-  updateChannel: "latest" | "nightly",
+-) {
+-  const env = yield* Config.all({
+-    updateRepository: Config.string("T3CODE_DESKTOP_UPDATE_REPOSITORY").pipe(Config.option),
+-    githubRepository: Config.string("GITHUB_REPOSITORY").pipe(Config.option),
+-  });
+-  const rawRepo = (
+-    Option.getOrUndefined(env.updateRepository)?.trim() ||
+-    Option.getOrUndefined(env.githubRepository)?.trim() ||
+-    ""
+-  ).trim();
++function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
++  | {
++      readonly provider: "github";
++      readonly owner: string;
++      readonly repo: string;
++      readonly releaseType: "release" | "prerelease";
++      readonly channel?: "nightly";
++    }
++  | undefined {
++  const rawRepo =
 +    process.env.MODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
-     process.env.GITHUB_REPOSITORY?.trim() ||
-     "";
++    process.env.GITHUB_REPOSITORY?.trim() ||
++    "";
    if (!rawRepo) return undefined;
-@@ -716,7 +716,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+ 
+   const [owner, repo, ...rest] = rawRepo.split("/");
+@@ -707,7 +647,7 @@ export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig"
+     releaseType: updateChannel === "nightly" ? "prerelease" : "release",
+     ...(updateChannel === "nightly" ? { channel: "nightly" as const } : {}),
+   };
+-});
++}
+ 
+ export function resolveDesktopUpdateChannel(version: string): "latest" | "nightly" {
+   return /-nightly\.\d{8}\.\d+$/.test(version) ? "nightly" : "latest";
+@@ -751,13 +691,12 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+     appId: "com.t3tools.t3code",
+     productName: resolveDesktopProductName(version),
+     artifactName: "T3-Code-${version}-${arch}.${ext}",
+-    asarUnpack: [...DESKTOP_ASAR_UNPACK],
+     directories: {
+       buildResources: "apps/desktop/resources",
+     },
+   };
+   const updateChannel = resolveDesktopUpdateChannel(version);
+-  const publishConfig = yield* resolveGitHubPublishConfig(updateChannel);
++  const publishConfig = resolveGitHubPublishConfig(updateChannel);
+   if (publishConfig) {
+     buildConfig.publish = [publishConfig];
+   } else if (mockUpdates) {
+@@ -777,7 +716,7 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
        protocols: [
          {
            name: "T3 Code",
@@ -3134,7 +4136,7 @@ index 4d63a11d..6f1e94ac 100644
          },
        ],
      };
-@@ -725,12 +725,12 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
+@@ -786,12 +725,12 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
    if (platform === "linux") {
      buildConfig.linux = {
        target: [target],
@@ -3149,7 +4151,40 @@ index 4d63a11d..6f1e94ac 100644
          },
        },
      };
-@@ -900,10 +900,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+@@ -841,7 +780,6 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   const repoRoot = yield* RepoRoot;
+   const path = yield* Path.Path;
+   const fs = yield* FileSystem.FileSystem;
+-  const hostPlatform = yield* HostProcessPlatform;
+   const workspaceConfig = yield* readWorkspaceConfig();
+   const workspaceCatalog = workspaceConfig.catalog ?? {};
+   const workspaceOverrides = workspaceConfig.overrides ?? {};
+@@ -908,12 +846,12 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+ 
+   if (!options.skipBuild) {
+     yield* Effect.log("[desktop-artifact] Building desktop/server/web artifacts...");
+-    const spawnCommand = yield* resolveSpawnCommand("vp", ["run", "build:desktop"]);
+     yield* runCommand(
+-      ChildProcess.make(spawnCommand.command, spawnCommand.args, {
++      ChildProcess.make({
+         cwd: repoRoot,
+-        shell: spawnCommand.shell,
+-      }),
++        // Windows needs shell mode to resolve .cmd shims (e.g. vp.cmd).
++        shell: process.platform === "win32",
++      })`vp run build:desktop`,
+       { label: "vp run build:desktop", verbose: options.verbose },
+     );
+   }
+@@ -959,18 +897,13 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   const stageDependencies = {
+     ...resolvedServerDependencies,
+     ...resolvedDesktopRuntimeDependencies,
+-    ...resolveFffNativeDependencies(
+-      options.platform,
+-      options.arch,
+-      serverPackageJson.dependencies["@ff-labs/fff-node"],
+-    ),
    };
    const stagePnpmConfig = createStagePnpmConfig(workspacePatchedDependencies, stageDependencies);
    const stagePackageJson: StagePackageJson = {
@@ -3162,7 +4197,92 @@ index 4d63a11d..6f1e94ac 100644
      private: true,
      packageManager: rootPackageJson.packageManager,
      description: "T3 Code desktop build",
-@@ -1025,54 +1025,54 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+@@ -994,30 +927,21 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+ 
+   const stagePackageJsonString = yield* encodeJsonString(stagePackageJson);
+   yield* fs.writeFileString(path.join(stageAppDir, "package.json"), `${stagePackageJsonString}\n`);
+-  const stageWorkspaceConfig = createStageWorkspaceConfig(options.platform, options.arch);
+-  const stageWorkspaceConfigString = yield* encodeStageWorkspaceConfig(stageWorkspaceConfig);
+-  yield* fs.writeFileString(
+-    path.join(stageAppDir, "pnpm-workspace.yaml"),
+-    stageWorkspaceConfigString,
+-  );
+ 
+   if (Object.keys(workspacePatchedDependencies).length > 0) {
+     yield* fs.copy(path.join(repoRoot, "patches"), path.join(stageAppDir, "patches"));
+   }
+ 
+   yield* Effect.log("[desktop-artifact] Installing staged production dependencies...");
+-  const installCommand = yield* resolveSpawnCommand("vp", [...STAGE_INSTALL_ARGS]);
+   yield* runCommand(
+-    ChildProcess.make(installCommand.command, installCommand.args, {
++    ChildProcess.make({
+       cwd: stageAppDir,
+-      shell: installCommand.shell,
+-    }),
+-    { label: "vp install --prod", verbose: options.verbose },
++      // Windows needs shell mode to resolve .cmd shims (e.g. vp.cmd).
++      shell: process.platform === "win32",
++    })`vp install --prod --no-optional`,
++    { label: "vp install --prod --no-optional", verbose: options.verbose },
+   );
+ 
+-  // electron-builder treats several set-but-empty variables (e.g. CSC_LINK="")
+-  // as enabled, so copy the host env and scrub empty values instead of relying
+-  // on `extendEnv` merging.
+   const buildEnv: NodeJS.ProcessEnv = {
+     ...process.env,
+   };
+@@ -1035,7 +959,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+     delete buildEnv.APPLE_API_ISSUER;
+   }
+ 
+-  if (hostPlatform === "win32") {
++  if (process.platform === "win32") {
+     const python = yield* resolvePythonForNodeGyp();
+     if (python) {
+       buildEnv.PYTHON = python;
+@@ -1046,7 +970,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   }
+   if (options.verbose) {
+     buildEnv.DEBUG =
+-      buildEnv.DEBUG === undefined
++      buildEnv.DEBUG === undefined || buildEnv.DEBUG === ""
+         ? "electron-builder,electron-builder:*"
+         : `${buildEnv.DEBUG},electron-builder,electron-builder:*`;
+   }
+@@ -1054,26 +978,13 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
+   yield* Effect.log(
+     `[desktop-artifact] Building ${options.platform}/${options.target} (arch=${options.arch}, version=${appVersion})...`,
+   );
+-  const builderArgs = [
+-    "exec",
+-    "--filter",
+-    "@t3tools/desktop",
+-    "--",
+-    "electron-builder",
+-    "--projectDir",
+-    stageAppDir,
+-    platformConfig.cliFlag,
+-    `--${options.arch}`,
+-    "--publish",
+-    "never",
+-  ];
+-  const builderCommand = yield* resolveSpawnCommand("vp", builderArgs, { env: buildEnv });
+   yield* runCommand(
+-    ChildProcess.make(builderCommand.command, builderCommand.args, {
++    ChildProcess.make({
+       cwd: repoRoot,
+       env: buildEnv,
+-      shell: builderCommand.shell,
+-    }),
++      // Windows needs shell mode to resolve .cmd shims.
++      shell: process.platform === "win32",
++    })`vp exec --filter @t3tools/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
+     {
+       label: `vp exec --filter @t3tools/desktop -- electron-builder --projectDir ${stageAppDir} ${platformConfig.cliFlag} --${options.arch} --publish never`,
+       verbose: options.verbose,
+@@ -1114,54 +1025,54 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
  
  const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
    platform: Flag.choice("platform", BuildPlatform.literals).pipe(
@@ -3386,10 +4506,10 @@ index f6df387e..bbe3dfe3 100644
          assert.equal(env.VITE_WS_URL, "ws://localhost:13773");
        }),
 diff --git a/scripts/dev-runner.ts b/scripts/dev-runner.ts
-index 3c53d45d..2cd00dab 100644
+index 36c5aa41..912f8a04 100644
 --- a/scripts/dev-runner.ts
 +++ b/scripts/dev-runner.ts
-@@ -29,7 +29,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
+@@ -31,7 +31,7 @@ const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
  const DEV_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::1", "::"] as const;
  
  export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
@@ -3398,7 +4518,7 @@ index 3c53d45d..2cd00dab 100644
  );
  
  const MODE_ARGS = {
-@@ -87,8 +87,8 @@ const optionalUrlConfig = (name: string): Config.Config<URL | undefined> =>
+@@ -89,8 +89,8 @@ const optionalUrlConfig = (name: string): Config.Config<URL | undefined> =>
    );
  
  const OffsetConfig = Config.all({
@@ -3409,7 +4529,7 @@ index 3c53d45d..2cd00dab 100644
  });
  
  export function resolveOffset(config: {
-@@ -97,11 +97,11 @@ export function resolveOffset(config: {
+@@ -99,11 +99,11 @@ export function resolveOffset(config: {
  }): { readonly offset: number; readonly source: string } {
    if (config.portOffset !== undefined) {
      if (config.portOffset < 0) {
@@ -3423,7 +4543,7 @@ index 3c53d45d..2cd00dab 100644
      };
    }
  
-@@ -111,11 +111,11 @@ export function resolveOffset(config: {
+@@ -113,11 +113,11 @@ export function resolveOffset(config: {
    }
  
    if (/^\d+$/.test(seed)) {
@@ -3437,7 +4557,7 @@ index 3c53d45d..2cd00dab 100644
  }
  
  function resolveBaseDir(baseDir: string | undefined): Effect.Effect<string, never, Path.Path> {
-@@ -170,57 +170,57 @@ export function createDevRunnerEnv({
+@@ -172,57 +172,57 @@ export function createDevRunnerEnv({
        VITE_DEV_SERVER_URL:
          devUrl?.toString() ??
          `http://${isDesktopMode ? DESKTOP_DEV_LOOPBACK_HOST : "localhost"}:${webPort}`,
@@ -3513,7 +4633,7 @@ index 3c53d45d..2cd00dab 100644
      }
  
      return output;
-@@ -396,7 +396,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
+@@ -398,7 +398,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
        Effect.mapError(
          (cause) =>
            new DevRunnerError({
@@ -3522,7 +4642,7 @@ index 3c53d45d..2cd00dab 100644
              cause,
            }),
        ),
-@@ -438,7 +438,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
+@@ -441,7 +441,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
          : "";
  
      yield* Effect.logInfo(
@@ -3531,7 +4651,7 @@ index 3c53d45d..2cd00dab 100644
      );
  
      if (input.dryRun) {
-@@ -483,32 +483,32 @@ const devRunnerCli = Command.make("dev-runner", {
+@@ -490,32 +490,32 @@ const devRunnerCli = Command.make("dev-runner", {
      Argument.withDescription("Development mode to run."),
    ),
    t3Home: Flag.string("home-dir").pipe(

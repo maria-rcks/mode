@@ -1,7 +1,7 @@
-From 19eb42a55013d605935c200925964ebccddfa70a Mon Sep 17 00:00:00 2001
+From 9e4bb4f96314718e9bd92427a5154c619fbb3062 Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:33:52 -0400
-Subject: [PATCH 23/34] style(time): use compact relative timestamps
+Subject: [PATCH 23/38] style(time): use compact relative timestamps
 
 ---
  apps/web/src/components/CommandPalette.logic.test.ts |  6 +++---
@@ -75,10 +75,10 @@ index 4ad08db0..e62fadd3 100644
          </span>
        ) : null}
 diff --git a/apps/web/src/components/Sidebar.logic.test.ts b/apps/web/src/components/Sidebar.logic.test.ts
-index f2323729..9b9117df 100644
+index c0bc066d..eb9c002f 100644
 --- a/apps/web/src/components/Sidebar.logic.test.ts
 +++ b/apps/web/src/components/Sidebar.logic.test.ts
-@@ -611,8 +611,8 @@ describe("formatSidebarThreadTimeLabel", () => {
+@@ -630,8 +630,8 @@ describe("formatSidebarThreadTimeLabel", () => {
      expect(formatSidebarThreadTimeLabel("2026-03-09T10:06:00.000Z")).toBe("24m");
    });
  

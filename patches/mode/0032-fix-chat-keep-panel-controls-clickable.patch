@@ -1,0 +1,48 @@
+From 6a92ee58a03c360c804e34584b03e2b033ae3408 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 17:14:49 -0400
+Subject: [PATCH 32/38] fix(chat): keep panel controls clickable
+
+---
+ apps/web/src/components/ChatView.browser.tsx         | 2 ++
+ apps/web/src/components/chat/PanelLayoutControls.tsx | 4 +++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index 5dc46d7f..57c9b49e 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -2145,6 +2145,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expect(
+         window.getComputedStyle(panelLayoutControls).getPropertyValue("-webkit-app-region"),
+       ).toBe("no-drag");
++      expect(window.getComputedStyle(panelLayoutControls).pointerEvents).toBe("auto");
+       expect(chatHeader.classList.contains("drag-region")).toBe(false);
+       expect(chatHeader.contains(panelLayoutControls)).toBe(true);
+       expect(window.innerWidth - panelLayoutControls.getBoundingClientRect().right).toBe(12);
+@@ -2214,6 +2215,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expect(
+         window.getComputedStyle(openRightPanelToggle).getPropertyValue("-webkit-app-region"),
+       ).toBe("no-drag");
++      expect(window.getComputedStyle(openPanelLayoutControls).pointerEvents).toBe("auto");
+       expect(maximizeRect.width).toBe(28);
+       expect(maximizeRect.height).toBe(28);
+       expect(maximizeRect.top).toBe(initialTerminalRect.top);
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index 3b7fbf4a..94d49037 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -35,7 +35,9 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+ }: PanelLayoutControlsProps) {
+   return (
+     <div
+-      className={cn("workspace-titlebar-controls z-50 gap-1 [-webkit-app-region:no-drag]")}
++      className={cn(
++        "pointer-events-auto workspace-titlebar-controls z-50 gap-1 [-webkit-app-region:no-drag]",
++      )}
+       data-panel-layout-controls
+     >
+       {rightPanelOpen ? (
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,75 @@
+From 039b65f55daf1faf6043f43b73c2dc57f50b80a5 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 17:45:00 -0400
+Subject: [PATCH 34/38] fix(chat): scope fading topbar to chat column
+
+---
+ apps/web/src/components/ChatView.browser.tsx | 22 ++++++++++++++++++++
+ apps/web/src/components/ChatView.tsx         |  4 ++--
+ 2 files changed, 24 insertions(+), 2 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index a8843bf0..8491461c 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -2202,6 +2202,14 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       );
+       const maximizeRect = maximizeButton.getBoundingClientRect();
+       const rightPanelTabbarRect = rightPanelTabbar.getBoundingClientRect();
++      const inlineRightPanel = await waitForElement(
++        () => document.querySelector<HTMLElement>('[data-preview-panel-mode="inline"]'),
++        "Unable to find inline right panel.",
++      );
++      const chatColumn = await waitForElement(
++        () => document.querySelector<HTMLElement>('[data-chat-column-maximized-away="false"]'),
++        "Unable to find chat column.",
++      );
+       const openPanelLayoutControls = await waitForElement(
+         () => document.querySelector<HTMLElement>("[data-panel-layout-controls]"),
+         "Unable to find open panel layout controls.",
+@@ -2216,6 +2224,20 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         "Unable to find open panel right panel toggle.",
+       );
+       expect(document.querySelector('button[aria-label="Add panel surface"]')).toBeNull();
++      expect(inlineRightPanel.getBoundingClientRect().top).toBe(
++        chatColumn.getBoundingClientRect().top,
++      );
++      expect(inlineRightPanel.getBoundingClientRect().left).toBeCloseTo(
++        chatColumn.getBoundingClientRect().right,
++        1,
++      );
++      expect(chatHeader.getBoundingClientRect().right).toBeCloseTo(
++        inlineRightPanel.getBoundingClientRect().left,
++        1,
++      );
++      expect(visibleChildrenRightEdge(chatHeaderActions)).toBeLessThanOrEqual(
++        inlineRightPanel.getBoundingClientRect().left - 8,
++      );
+       expect(rightPanelTabbarRect.height).toBe(52);
+       expect(rightPanelTabbarRect.top).toBe(chatHeader.getBoundingClientRect().top);
+       expect(chatHeader.contains(openPanelLayoutControls)).toBe(false);
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 4cc20f27..502b46b9 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -4928,7 +4928,7 @@ export default function ChatView(props: ChatViewProps) {
+       {inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
+       <div
+         className={cn(
+-          "flex min-h-0 min-w-0 flex-col overflow-x-hidden",
++          "relative flex min-h-0 min-w-0 flex-col overflow-x-hidden",
+           rightPanelMaximized ? "w-0 flex-none" : "flex-1",
+         )}
+         data-chat-column-maximized-away={rightPanelMaximized ? "true" : "false"}
+@@ -4941,7 +4941,7 @@ export default function ChatView(props: ChatViewProps) {
+             : {})}
+           data-chat-header
+           reserveTitleBarControlInset={reserveTitleBarControlInset && !inlineRightPanelOwnsTitleBar}
+-          viewportFixed={topBarViewportFixed}
++          viewportFixed={topBarViewportFixed && !inlineRightPanelOwnsTitleBar}
+         >
+           <ChatHeader
+             activeThreadEnvironmentId={activeThread.environmentId}
+-- 
+2.50.1 (Apple Git-155)
+

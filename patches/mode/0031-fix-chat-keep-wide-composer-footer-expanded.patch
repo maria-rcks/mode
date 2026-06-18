@@ -1,0 +1,23 @@
+From c92d0988f6652613066d805260d2759605f88579 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 14:18:43 -0400
+Subject: [PATCH 31/38] fix(chat): keep wide composer footer expanded
+
+---
+ apps/web/src/components/composerFooterLayout.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/apps/web/src/components/composerFooterLayout.ts b/apps/web/src/components/composerFooterLayout.ts
+index ae5fd566..7e808c22 100644
+--- a/apps/web/src/components/composerFooterLayout.ts
++++ b/apps/web/src/components/composerFooterLayout.ts
+@@ -1,5 +1,5 @@
+ export const COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX = 620;
+-export const COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX = 780;
++export const COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX = 700;
+ export const COMPOSER_PRIMARY_ACTIONS_COMPACT_BREAKPOINT_PX =
+   COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX;
+ 
+-- 
+2.50.1 (Apple Git-155)
+

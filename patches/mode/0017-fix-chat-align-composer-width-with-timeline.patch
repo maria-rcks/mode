@@ -1,14 +1,13 @@
-From cc0ed774930f010ac2bcae2b22ec7e76a901b20a Mon Sep 17 00:00:00 2001
+From 69a48c097c2c4a5e576fa927166578158a19956e Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 02:41:09 -0400
-Subject: [PATCH 17/34] fix(chat): align composer width with timeline
+Subject: [PATCH 17/38] fix(chat): align composer width with timeline
 
 ---
  apps/web/src/components/BranchToolbar.tsx            | 2 +-
- apps/web/src/components/ChatView.tsx                 | 2 +-
  apps/web/src/components/chat/ChatComposer.tsx        | 3 ++-
  apps/web/src/components/chat/ComposerBannerStack.tsx | 2 +-
- 4 files changed, 5 insertions(+), 4 deletions(-)
+ 3 files changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/apps/web/src/components/BranchToolbar.tsx b/apps/web/src/components/BranchToolbar.tsx
 index 27c5c311..0191f3ee 100644
@@ -23,24 +22,11 @@ index 27c5c311..0191f3ee 100644
        {isMobile ? (
          <MobileRunContextSelector
            envLocked={envLocked}
-diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index 5e3ec0b7..aa6c761a 100644
---- a/apps/web/src/components/ChatView.tsx
-+++ b/apps/web/src/components/ChatView.tsx
-@@ -4128,7 +4128,7 @@ export default function ChatView(props: ChatViewProps) {
-         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-           {shouldUseStartupDraftLayout ? (
-             <div className="flex min-h-0 flex-1 items-center justify-center px-[calc(env(safe-area-inset-left)+0.75rem)] py-10 pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:px-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]">
--              <div className="w-full max-w-208">
-+              <div className="w-full max-w-3xl">
-                 {activeProject ? (
-                   <StartupDraftProjectSelector
-                     activeProject={activeProject}
 diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
-index b6a7c7fd..29163e09 100644
+index fbdb8df6..71ca6fd1 100644
 --- a/apps/web/src/components/chat/ChatComposer.tsx
 +++ b/apps/web/src/components/chat/ChatComposer.tsx
-@@ -1989,7 +1989,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2020,7 +2020,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
      <form
        ref={composerFormRef}
        onSubmit={submitComposer}
@@ -49,7 +35,7 @@ index b6a7c7fd..29163e09 100644
        data-chat-composer-form="true"
      >
        <div
-@@ -2374,6 +2374,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2446,6 +2446,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                    modelOptionsByInstance={modelOptionsByInstance}
                    terminalOpen={terminalOpen}
                    open={isComposerModelPickerOpen}

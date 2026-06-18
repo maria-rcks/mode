@@ -1,11 +1,10 @@
-From 72650a4e299ac42d13a47172919193ef552fe631 Mon Sep 17 00:00:00 2001
+From 2338f5ade2f1b6204b309e56ab1275fdae6762c6 Mon Sep 17 00:00:00 2001
 From: maria-rcks <maria@kuuro.net>
 Date: Sun, 14 Jun 2026 01:49:24 -0400
-Subject: [PATCH 15/34] fix(chat): open latest project draft by default
+Subject: [PATCH 15/38] fix(chat): open latest project draft by default
 
 ---
- apps/web/src/components/ChatView.tsx          |  3 +-
- .../src/components/NoActiveThreadState.tsx    | 45 --------------
+ .../src/components/NoActiveThreadState.tsx    | 43 -------------
  apps/web/src/hooks/useHandleNewThread.ts      | 28 ++++++++-
  apps/web/src/lib/chatThreadActions.test.ts    | 39 ++++++++++++
  apps/web/src/lib/chatThreadActions.ts         | 18 ++++--
@@ -13,36 +12,15 @@ Subject: [PATCH 15/34] fix(chat): open latest project draft by default
  apps/web/src/lib/threadSort.ts                | 23 +++++++
  apps/web/src/routes/_chat.index.tsx           | 54 ++++++++++++++++-
  apps/web/src/routes/_chat.tsx                 | 13 +++-
- 9 files changed, 223 insertions(+), 60 deletions(-)
+ 8 files changed, 222 insertions(+), 56 deletions(-)
  delete mode 100644 apps/web/src/components/NoActiveThreadState.tsx
 
-diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
-index 342a9632..0f941482 100644
---- a/apps/web/src/components/ChatView.tsx
-+++ b/apps/web/src/components/ChatView.tsx
-@@ -152,7 +152,6 @@ import { MessagesTimeline } from "./chat/MessagesTimeline";
- import { ChatHeader } from "./chat/ChatHeader";
- import { normalizeRuntimeModeForProvider } from "./chat/runtimeModePresentation";
- import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
--import { NoActiveThreadState } from "./NoActiveThreadState";
- import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
- import { ProviderStatusBanner } from "./chat/ProviderStatusBanner";
- import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
-@@ -3840,7 +3839,7 @@ export default function ChatView(props: ChatViewProps) {
- 
-   // Empty state: no active thread
-   if (!activeThread) {
--    return <NoActiveThreadState />;
-+    return null;
-   }
- 
-   return (
 diff --git a/apps/web/src/components/NoActiveThreadState.tsx b/apps/web/src/components/NoActiveThreadState.tsx
 deleted file mode 100644
-index a2a801a3..00000000
+index c874ee58..00000000
 --- a/apps/web/src/components/NoActiveThreadState.tsx
 +++ /dev/null
-@@ -1,45 +0,0 @@
+@@ -1,43 +0,0 @@
 -import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 -import { SidebarInset, SidebarTrigger } from "./ui/sidebar";
 -import { isElectron } from "../env";
@@ -55,13 +33,11 @@ index a2a801a3..00000000
 -        <header
 -          className={cn(
 -            "border-b border-border px-3 sm:px-5",
--            isElectron
--              ? "drag-region flex h-[52px] items-center wco:h-[env(titlebar-area-height)]"
--              : "py-2 sm:py-3",
+-            isElectron ? "workspace-topbar drag-region" : "workspace-topbar",
 -          )}
 -        >
 -          {isElectron ? (
--            <span className="text-xs text-muted-foreground/50 wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]">
+-            <span className="text-xs text-muted-foreground/50 wco:pr-[var(--workspace-native-controls-inset)]">
 -              No active thread
 -            </span>
 -          ) : (
@@ -440,10 +416,10 @@ index 896f66b3..3e1ab0be 100644
  
  export const Route = createFileRoute("/_chat/")({
 diff --git a/apps/web/src/routes/_chat.tsx b/apps/web/src/routes/_chat.tsx
-index 3ccb2e7f..019b49bb 100644
+index f28c80f0..eba1a7b9 100644
 --- a/apps/web/src/routes/_chat.tsx
 +++ b/apps/web/src/routes/_chat.tsx
-@@ -18,8 +18,14 @@ import { useServerKeybindings } from "~/rpc/serverState";
+@@ -23,8 +23,14 @@ import { useServerKeybindings } from "~/rpc/serverState";
  function ChatRouteGlobalShortcuts() {
    const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
    const selectedThreadKeysSize = useThreadSelectionStore((state) => state.selectedThreadKeys.size);
@@ -460,7 +436,7 @@ index 3ccb2e7f..019b49bb 100644
    const keybindings = useServerKeybindings();
    const terminalOpen = useTerminalUiStateStore((state) =>
      routeThreadRef
-@@ -54,6 +60,7 @@ function ChatRouteGlobalShortcuts() {
+@@ -69,6 +75,7 @@ function ChatRouteGlobalShortcuts() {
          void startNewLocalThreadFromContext({
            activeDraftThread,
            activeThread,
@@ -468,7 +444,7 @@ index 3ccb2e7f..019b49bb 100644
            defaultProjectRef,
            defaultThreadEnvMode: resolveSidebarNewThreadEnvMode({
              defaultEnvMode: appSettings.defaultThreadEnvMode,
-@@ -69,6 +76,7 @@ function ChatRouteGlobalShortcuts() {
+@@ -84,6 +91,7 @@ function ChatRouteGlobalShortcuts() {
          void startNewThreadFromContext({
            activeDraftThread,
            activeThread,
@@ -476,7 +452,7 @@ index 3ccb2e7f..019b49bb 100644
            defaultProjectRef,
            defaultThreadEnvMode: resolveSidebarNewThreadEnvMode({
              defaultEnvMode: appSettings.defaultThreadEnvMode,
-@@ -85,6 +93,7 @@ function ChatRouteGlobalShortcuts() {
+@@ -144,6 +152,7 @@ function ChatRouteGlobalShortcuts() {
    }, [
      activeDraftThread,
      activeThread,

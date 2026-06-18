@@ -1,0 +1,137 @@
+From ebe1d9442cde8140f9b5c07ddff00275c72be8f3 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 17:35:08 -0400
+Subject: [PATCH 33/38] fix(chat): keep topbar actions clear of panel controls
+
+---
+ apps/web/src/components/ChatView.browser.tsx | 21 ++++++++++++++++++++
+ apps/web/src/components/ChatView.tsx         |  5 ++++-
+ apps/web/src/components/chat/ChatHeader.tsx  |  8 +-------
+ 3 files changed, 26 insertions(+), 8 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index 57c9b49e..a8843bf0 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -1227,6 +1227,15 @@ async function waitForElement<T extends Element>(
+   return element;
+ }
+ 
++function visibleChildrenRightEdge(element: Element): number {
++  const rightEdges = Array.from(element.children)
++    .map((child) => child.getBoundingClientRect())
++    .filter((rect) => rect.width > 0 && rect.height > 0)
++    .map((rect) => rect.right);
++  if (rightEdges.length === 0) return element.getBoundingClientRect().right;
++  return Math.max(...rightEdges);
++}
++
+ async function waitForURL(
+   router: ReturnType<typeof getRouter>,
+   predicate: (pathname: string) => boolean,
+@@ -2137,6 +2146,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         () => document.querySelector<HTMLElement>("[data-panel-layout-controls]"),
+         "Unable to find panel layout controls.",
+       );
++      const chatHeaderActions = await waitForElement(
++        () => document.querySelector<HTMLElement>("[data-chat-header-actions]"),
++        "Unable to find chat header actions.",
++      );
+       expect(chatHeader.getBoundingClientRect().height).toBe(52);
+       expect(panelLayoutControls.getBoundingClientRect().height).toBe(52);
+       expect(panelLayoutControls.getBoundingClientRect().top).toBe(
+@@ -2149,6 +2162,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expect(chatHeader.classList.contains("drag-region")).toBe(false);
+       expect(chatHeader.contains(panelLayoutControls)).toBe(true);
+       expect(window.innerWidth - panelLayoutControls.getBoundingClientRect().right).toBe(12);
++      expect(
++        panelLayoutControls.getBoundingClientRect().left -
++          visibleChildrenRightEdge(chatHeaderActions),
++      ).toBeGreaterThanOrEqual(8);
+       const initialTerminalRect = terminalToggle.getBoundingClientRect();
+       const initialRightPanelRect = rightPanelToggle.getBoundingClientRect();
+       const initialControlRects = [initialTerminalRect, initialRightPanelRect];
+@@ -2216,6 +2233,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         window.getComputedStyle(openRightPanelToggle).getPropertyValue("-webkit-app-region"),
+       ).toBe("no-drag");
+       expect(window.getComputedStyle(openPanelLayoutControls).pointerEvents).toBe("auto");
++      expect(
++        openPanelLayoutControls.getBoundingClientRect().left -
++          visibleChildrenRightEdge(rightPanelTabList),
++      ).toBeGreaterThanOrEqual(8);
+       expect(maximizeRect.width).toBe(28);
+       expect(maximizeRect.height).toBe(28);
+       expect(maximizeRect.top).toBe(initialTerminalRect.top);
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 8389a289..4cc20f27 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -4867,6 +4867,7 @@ export default function ChatView(props: ChatViewProps) {
+       onToggleRightPanelMaximized={toggleRightPanelMaximized}
+     />
+   );
++  const chatTopBarControlInsetClassName = rightPanelOpen ? "pr-28" : "pr-20";
+   let rightPanelContent: ReactNode = null;
+   if (activeThreadRef && activeRightPanelSurface?.kind === "preview") {
+     rightPanelContent = (
+@@ -4935,6 +4936,9 @@ export default function ChatView(props: ChatViewProps) {
+         {/* Top bar */}
+         <FadingTopBar
+           chrome={!inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
++          {...(!inlineRightPanelOwnsTitleBar
++            ? { contentClassName: chatTopBarControlInsetClassName }
++            : {})}
+           data-chat-header
+           reserveTitleBarControlInset={reserveTitleBarControlInset && !inlineRightPanelOwnsTitleBar}
+           viewportFixed={topBarViewportFixed}
+@@ -4957,7 +4961,6 @@ export default function ChatView(props: ChatViewProps) {
+             onAddProjectScript={saveProjectScript}
+             onUpdateProjectScript={updateProjectScript}
+             onDeleteProjectScript={deleteProjectScript}
+-            rightPanelOpen={rightPanelOpen}
+           />
+         </FadingTopBar>
+ 
+diff --git a/apps/web/src/components/chat/ChatHeader.tsx b/apps/web/src/components/chat/ChatHeader.tsx
+index db694644..5c7c6f98 100644
+--- a/apps/web/src/components/chat/ChatHeader.tsx
++++ b/apps/web/src/components/chat/ChatHeader.tsx
+@@ -14,7 +14,6 @@ import ProjectScriptsControl, { type NewProjectScriptInput } from "../ProjectScr
+ import { SidebarTrigger } from "../ui/sidebar";
+ import { OpenInPicker } from "./OpenInPicker";
+ import { usePrimaryEnvironmentId } from "../../environments/primary/context";
+-import { cn } from "~/lib/utils";
+ 
+ interface ChatHeaderProps {
+   activeThreadEnvironmentId: EnvironmentId;
+@@ -32,7 +31,6 @@ interface ChatHeaderProps {
+   onAddProjectScript: (input: NewProjectScriptInput) => Promise<void>;
+   onUpdateProjectScript: (scriptId: string, input: NewProjectScriptInput) => Promise<void>;
+   onDeleteProjectScript: (scriptId: string) => Promise<void>;
+-  rightPanelOpen: boolean;
+ }
+ 
+ export function shouldShowOpenInPicker(input: {
+@@ -63,7 +61,6 @@ export const ChatHeader = memo(function ChatHeader({
+   onAddProjectScript,
+   onUpdateProjectScript,
+   onDeleteProjectScript,
+-  rightPanelOpen,
+ }: ChatHeaderProps) {
+   const primaryEnvironmentId = usePrimaryEnvironmentId();
+   const showOpenInPicker = shouldShowOpenInPicker({
+@@ -91,10 +88,7 @@ export const ChatHeader = memo(function ChatHeader({
+       </div>
+       <div
+         data-chat-header-actions
+-        className={cn(
+-          "flex min-w-0 flex-wrap items-center justify-start gap-2 sm:shrink-0 sm:justify-end @3xl/header-actions:gap-3",
+-          rightPanelOpen ? "pr-0" : "pr-16",
+-        )}
++        className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:shrink-0 sm:justify-end @3xl/header-actions:gap-3"
+       >
+         {activeProjectScripts && (
+           <ProjectScriptsControl
+-- 
+2.50.1 (Apple Git-155)
+

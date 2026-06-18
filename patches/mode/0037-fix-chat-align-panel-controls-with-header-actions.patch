@@ -1,0 +1,65 @@
+From 98a4e777b78b104066154176782541692c52b22c Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 20:04:19 -0400
+Subject: [PATCH 37/38] fix(chat): align panel controls with header actions
+
+---
+ apps/web/src/components/ChatView.browser.tsx       | 14 +++++++++++++-
+ .../src/components/chat/PanelLayoutControls.tsx    |  2 +-
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index 66437190..55276bf2 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -2158,6 +2158,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         () => document.querySelector<HTMLElement>("[data-chat-header-actions]"),
+         "Unable to find chat header actions.",
+       );
++      const headerActionButton = await waitForElement(
++        () => chatHeaderActions.querySelector<HTMLElement>('[data-slot="button"]'),
++        "Unable to find a chat header action button.",
++      );
+       expect(chatHeader.getBoundingClientRect().height).toBe(52);
+       expect(panelLayoutControls.getBoundingClientRect().height).toBe(52);
+       expect(panelLayoutControls.getBoundingClientRect().top).toBe(
+@@ -2184,6 +2188,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expect(initialControlRects.every((rect) => rect.top === initialControlRects[0]?.top)).toBe(
+         true,
+       );
++      expect(initialTerminalRect.top).toBeCloseTo(
++        headerActionButton.getBoundingClientRect().top,
++        1,
++      );
+       expectFramedControl(terminalToggle);
+       expectFramedControl(rightPanelToggle);
+       expect(initialRightPanelRect.left - initialTerminalRect.right).toBe(4);
+@@ -2274,7 +2282,11 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expectFramedControl(openRightPanelToggle);
+       expect(maximizeRect.width).toBe(24);
+       expect(maximizeRect.height).toBe(24);
+-      expect(maximizeRect.top).toBe(initialTerminalRect.top);
++      expect(maximizeRect.top).toBeCloseTo(headerActionButton.getBoundingClientRect().top, 1);
++      expect(openTerminalToggle.getBoundingClientRect().top).toBeCloseTo(
++        headerActionButton.getBoundingClientRect().top,
++        1,
++      );
+       expect(initialTerminalRect.left - maximizeRect.right).toBe(4);
+       expect(openTerminalToggle.getBoundingClientRect().left).toBeCloseTo(
+         initialTerminalRect.left,
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index 398d9e75..afb3150c 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -38,7 +38,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+   return (
+     <div
+       className={cn(
+-        "pointer-events-auto workspace-titlebar-controls z-50 gap-1 [-webkit-app-region:no-drag]",
++        "pointer-events-auto workspace-titlebar-controls z-50 items-start gap-1 pt-3 [-webkit-app-region:no-drag]",
+       )}
+       data-panel-layout-controls
+     >
+-- 
+2.50.1 (Apple Git-155)
+

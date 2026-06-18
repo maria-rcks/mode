@@ -1,0 +1,433 @@
+From da844985f6d05e0e52ab7266bb540077185cc605 Mon Sep 17 00:00:00 2001
+From: maria-rcks <maria@kuuro.net>
+Date: Wed, 17 Jun 2026 20:45:37 -0400
+Subject: [PATCH 38/38] fix(chat): unify panel control spacing
+
+---
+ apps/web/src/components/ChatView.browser.tsx  |  93 ++++++------
+ apps/web/src/components/ChatView.tsx          |  15 +-
+ apps/web/src/components/chat/ChatHeader.tsx   |   5 +-
+ .../components/chat/PanelLayoutControls.tsx   | 133 ++++++++++--------
+ 4 files changed, 137 insertions(+), 109 deletions(-)
+
+diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
+index 55276bf2..b561b8b3 100644
+--- a/apps/web/src/components/ChatView.browser.tsx
++++ b/apps/web/src/components/ChatView.browser.tsx
+@@ -1228,14 +1228,25 @@ async function waitForElement<T extends Element>(
+ }
+ 
+ function visibleChildrenRightEdge(element: Element): number {
+-  const rightEdges = Array.from(element.children)
+-    .map((child) => child.getBoundingClientRect())
+-    .filter((rect) => rect.width > 0 && rect.height > 0)
+-    .map((rect) => rect.right);
++  const rightEdges = visibleChildRects(element).map((rect) => rect.right);
+   if (rightEdges.length === 0) return element.getBoundingClientRect().right;
+   return Math.max(...rightEdges);
+ }
+ 
++function visibleChildRects(element: Element): DOMRect[] {
++  return Array.from(element.children)
++    .map((child) => child.getBoundingClientRect())
++    .filter((rect) => rect.width > 0 && rect.height > 0);
++}
++
++function expectUniformVisibleChildGaps(element: HTMLElement): void {
++  const rects = visibleChildRects(element);
++  expect(rects.length).toBeGreaterThan(1);
++  const expectedGap = Number.parseFloat(window.getComputedStyle(element).columnGap);
++  const gaps = rects.slice(1).map((rect, index) => rect.left - rects[index]!.right);
++  expect(gaps.every((gap) => Math.abs(gap - expectedGap) <= 1)).toBe(true);
++}
++
+ function expectFramedControl(element: HTMLElement): void {
+   const styles = window.getComputedStyle(element);
+   expect(styles.borderTopStyle).toBe("solid");
+@@ -2163,9 +2174,10 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         "Unable to find a chat header action button.",
+       );
+       expect(chatHeader.getBoundingClientRect().height).toBe(52);
+-      expect(panelLayoutControls.getBoundingClientRect().height).toBe(52);
+-      expect(panelLayoutControls.getBoundingClientRect().top).toBe(
+-        chatHeader.getBoundingClientRect().top,
++      expect(panelLayoutControls.getBoundingClientRect().height).toBe(24);
++      expect(panelLayoutControls.getBoundingClientRect().top).toBeCloseTo(
++        headerActionButton.getBoundingClientRect().top,
++        1,
+       );
+       expect(
+         window.getComputedStyle(panelLayoutControls).getPropertyValue("-webkit-app-region"),
+@@ -2173,11 +2185,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expect(window.getComputedStyle(panelLayoutControls).pointerEvents).toBe("auto");
+       expect(chatHeader.classList.contains("drag-region")).toBe(false);
+       expect(chatHeader.contains(panelLayoutControls)).toBe(true);
+-      expect(window.innerWidth - panelLayoutControls.getBoundingClientRect().right).toBe(12);
+-      expect(
+-        panelLayoutControls.getBoundingClientRect().left -
+-          visibleChildrenRightEdge(chatHeaderActions),
+-      ).toBeGreaterThanOrEqual(8);
++      expectUniformVisibleChildGaps(chatHeaderActions);
+       const initialTerminalRect = terminalToggle.getBoundingClientRect();
+       const initialRightPanelRect = rightPanelToggle.getBoundingClientRect();
+       const initialControlRects = [initialTerminalRect, initialRightPanelRect];
+@@ -2194,14 +2202,16 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       );
+       expectFramedControl(terminalToggle);
+       expectFramedControl(rightPanelToggle);
+-      expect(initialRightPanelRect.left - initialTerminalRect.right).toBe(4);
++      expect(initialRightPanelRect.left - initialTerminalRect.right).toBeGreaterThanOrEqual(0);
++      expect(initialRightPanelRect.left - initialTerminalRect.right).toBeLessThanOrEqual(1);
+ 
+       document.documentElement.classList.add("wco");
+-      expect(panelLayoutControls.getBoundingClientRect().height).toBe(52);
+-      expect(panelLayoutControls.getBoundingClientRect().top).toBe(
+-        chatHeader.getBoundingClientRect().top,
++      expect(panelLayoutControls.getBoundingClientRect().height).toBe(24);
++      expect(panelLayoutControls.getBoundingClientRect().top).toBeCloseTo(
++        headerActionButton.getBoundingClientRect().top,
++        1,
+       );
+-      expect(window.innerWidth - panelLayoutControls.getBoundingClientRect().right).toBe(12);
++      expectUniformVisibleChildGaps(chatHeaderActions);
+       document.documentElement.classList.remove("wco");
+ 
+       rightPanelToggle.click();
+@@ -2282,20 +2292,14 @@ describe("ChatView timeline estimator parity (full app)", () => {
+       expectFramedControl(openRightPanelToggle);
+       expect(maximizeRect.width).toBe(24);
+       expect(maximizeRect.height).toBe(24);
++      const openTerminalRect = openTerminalToggle.getBoundingClientRect();
++      const openRightPanelRect = openRightPanelToggle.getBoundingClientRect();
+       expect(maximizeRect.top).toBeCloseTo(headerActionButton.getBoundingClientRect().top, 1);
+-      expect(openTerminalToggle.getBoundingClientRect().top).toBeCloseTo(
+-        headerActionButton.getBoundingClientRect().top,
+-        1,
+-      );
+-      expect(initialTerminalRect.left - maximizeRect.right).toBe(4);
+-      expect(openTerminalToggle.getBoundingClientRect().left).toBeCloseTo(
+-        initialTerminalRect.left,
+-        1,
+-      );
+-      expect(openRightPanelToggle.getBoundingClientRect().left).toBeCloseTo(
+-        initialRightPanelRect.left,
+-        1,
+-      );
++      expect(openTerminalRect.top).toBeCloseTo(headerActionButton.getBoundingClientRect().top, 1);
++      expect(openTerminalRect.left - maximizeRect.right).toBeGreaterThanOrEqual(0);
++      expect(openTerminalRect.left - maximizeRect.right).toBeLessThanOrEqual(1);
++      expect(openRightPanelRect.left - openTerminalRect.right).toBeGreaterThanOrEqual(0);
++      expect(openRightPanelRect.left - openTerminalRect.right).toBeLessThanOrEqual(1);
+ 
+       useRightPanelStore.getState().openFile(THREAD_REF, "components.json");
+       const fileTabIcon = await waitForElement(
+@@ -2330,16 +2334,25 @@ describe("ChatView timeline estimator parity (full app)", () => {
+         expect(
+           document.querySelector<HTMLButtonElement>('button[aria-label="Restore panel size"]'),
+         ).not.toBeNull();
+-        expect(
+-          document
+-            .querySelector<HTMLButtonElement>('button[aria-label="Toggle terminal drawer"]')
+-            ?.getBoundingClientRect().left,
+-        ).toBeCloseTo(initialTerminalRect.left, 1);
+-        expect(
+-          document
+-            .querySelector<HTMLButtonElement>('button[aria-label="Toggle right panel"]')
+-            ?.getBoundingClientRect().left,
+-        ).toBeCloseTo(initialRightPanelRect.left, 1);
++        const restoreButton = document.querySelector<HTMLButtonElement>(
++          'button[aria-label="Restore panel size"]',
++        );
++        const terminalButton = document.querySelector<HTMLButtonElement>(
++          'button[aria-label="Toggle terminal drawer"]',
++        );
++        const rightPanelButton = document.querySelector<HTMLButtonElement>(
++          'button[aria-label="Toggle right panel"]',
++        );
++        expect(restoreButton).not.toBeNull();
++        expect(terminalButton).not.toBeNull();
++        expect(rightPanelButton).not.toBeNull();
++        const restoreRect = restoreButton!.getBoundingClientRect();
++        const terminalRect = terminalButton!.getBoundingClientRect();
++        const rightPanelRect = rightPanelButton!.getBoundingClientRect();
++        expect(terminalRect.left - restoreRect.right).toBeGreaterThanOrEqual(0);
++        expect(terminalRect.left - restoreRect.right).toBeLessThanOrEqual(1);
++        expect(rightPanelRect.left - terminalRect.right).toBeGreaterThanOrEqual(0);
++        expect(rightPanelRect.left - terminalRect.right).toBeLessThanOrEqual(1);
+       });
+     } finally {
+       await mounted.cleanup();
+diff --git a/apps/web/src/components/ChatView.tsx b/apps/web/src/components/ChatView.tsx
+index 502b46b9..8d0dc2f1 100644
+--- a/apps/web/src/components/ChatView.tsx
++++ b/apps/web/src/components/ChatView.tsx
+@@ -4852,8 +4852,9 @@ export default function ChatView(props: ChatViewProps) {
+       {branchToolbar}
+     </div>
+   );
+-  const panelLayoutControls = (
++  const renderPanelLayoutControls = (placement: "inline" | "titlebar") => (
+     <PanelLayoutControls
++      placement={placement}
+       terminalAvailable={Boolean(activeProject)}
+       terminalOpen={Boolean(terminalUiState.terminalOpen)}
+       terminalShortcutLabel={terminalToggleShortcutLabel}
+@@ -4867,7 +4868,8 @@ export default function ChatView(props: ChatViewProps) {
+       onToggleRightPanelMaximized={toggleRightPanelMaximized}
+     />
+   );
+-  const chatTopBarControlInsetClassName = rightPanelOpen ? "pr-28" : "pr-20";
++  const inlinePanelLayoutControls = renderPanelLayoutControls("inline");
++  const titlebarPanelLayoutControls = renderPanelLayoutControls("titlebar");
+   let rightPanelContent: ReactNode = null;
+   if (activeThreadRef && activeRightPanelSurface?.kind === "preview") {
+     rightPanelContent = (
+@@ -4925,7 +4927,7 @@ export default function ChatView(props: ChatViewProps) {
+       {isElectron && activeThreadRef ? (
+         <PreviewAutomationOwner threadRef={activeThreadRef} visible={previewPanelOpen} />
+       ) : null}
+-      {inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
++      {inlineRightPanelOwnsTitleBar ? titlebarPanelLayoutControls : null}
+       <div
+         className={cn(
+           "relative flex min-h-0 min-w-0 flex-col overflow-x-hidden",
+@@ -4935,10 +4937,6 @@ export default function ChatView(props: ChatViewProps) {
+       >
+         {/* Top bar */}
+         <FadingTopBar
+-          chrome={!inlineRightPanelOwnsTitleBar ? panelLayoutControls : null}
+-          {...(!inlineRightPanelOwnsTitleBar
+-            ? { contentClassName: chatTopBarControlInsetClassName }
+-            : {})}
+           data-chat-header
+           reserveTitleBarControlInset={reserveTitleBarControlInset && !inlineRightPanelOwnsTitleBar}
+           viewportFixed={topBarViewportFixed && !inlineRightPanelOwnsTitleBar}
+@@ -4961,6 +4959,9 @@ export default function ChatView(props: ChatViewProps) {
+             onAddProjectScript={saveProjectScript}
+             onUpdateProjectScript={updateProjectScript}
+             onDeleteProjectScript={deleteProjectScript}
++            {...(!inlineRightPanelOwnsTitleBar
++              ? { trailingActions: inlinePanelLayoutControls }
++              : {})}
+           />
+         </FadingTopBar>
+ 
+diff --git a/apps/web/src/components/chat/ChatHeader.tsx b/apps/web/src/components/chat/ChatHeader.tsx
+index 5c7c6f98..e4d8cd18 100644
+--- a/apps/web/src/components/chat/ChatHeader.tsx
++++ b/apps/web/src/components/chat/ChatHeader.tsx
+@@ -6,7 +6,7 @@ import {
+   type ThreadId,
+ } from "@t3tools/contracts";
+ import { scopeThreadRef } from "@t3tools/client-runtime";
+-import { memo } from "react";
++import { memo, type ReactNode } from "react";
+ import GitActionsControl from "../GitActionsControl";
+ import { type DraftId } from "~/composerDraftStore";
+ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+@@ -31,6 +31,7 @@ interface ChatHeaderProps {
+   onAddProjectScript: (input: NewProjectScriptInput) => Promise<void>;
+   onUpdateProjectScript: (scriptId: string, input: NewProjectScriptInput) => Promise<void>;
+   onDeleteProjectScript: (scriptId: string) => Promise<void>;
++  trailingActions?: ReactNode;
+ }
+ 
+ export function shouldShowOpenInPicker(input: {
+@@ -61,6 +62,7 @@ export const ChatHeader = memo(function ChatHeader({
+   onAddProjectScript,
+   onUpdateProjectScript,
+   onDeleteProjectScript,
++  trailingActions,
+ }: ChatHeaderProps) {
+   const primaryEnvironmentId = usePrimaryEnvironmentId();
+   const showOpenInPicker = shouldShowOpenInPicker({
+@@ -115,6 +117,7 @@ export const ChatHeader = memo(function ChatHeader({
+             {...(draftId ? { draftId } : {})}
+           />
+         )}
++        {trailingActions}
+       </div>
+     </div>
+   );
+diff --git a/apps/web/src/components/chat/PanelLayoutControls.tsx b/apps/web/src/components/chat/PanelLayoutControls.tsx
+index afb3150c..eae31f99 100644
+--- a/apps/web/src/components/chat/PanelLayoutControls.tsx
++++ b/apps/web/src/components/chat/PanelLayoutControls.tsx
+@@ -3,6 +3,7 @@ import { memo } from "react";
+ 
+ import { cn } from "~/lib/utils";
+ 
++import { Group, GroupSeparator } from "../ui/group";
+ import { Toggle } from "../ui/toggle";
+ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+ 
+@@ -20,6 +21,7 @@ interface PanelLayoutControlsProps {
+   onToggleTerminal: () => void;
+   onToggleRightPanel: () => void;
+   onToggleRightPanelMaximized: () => void;
++  placement?: "inline" | "titlebar";
+ }
+ 
+ export const PanelLayoutControls = memo(function PanelLayoutControls({
+@@ -34,88 +36,97 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
+   onToggleTerminal,
+   onToggleRightPanel,
+   onToggleRightPanelMaximized,
++  placement = "titlebar",
+ }: PanelLayoutControlsProps) {
+   return (
+     <div
+       className={cn(
+-        "pointer-events-auto workspace-titlebar-controls z-50 items-start gap-1 pt-3 [-webkit-app-region:no-drag]",
++        "pointer-events-auto z-50 [-webkit-app-region:no-drag]",
++        placement === "titlebar" &&
++          "workspace-titlebar-controls items-start pt-3 [-webkit-app-region:no-drag]",
+       )}
+       data-panel-layout-controls
+     >
+-      {rightPanelOpen ? (
++      <Group aria-label="Panel layout controls" className="shrink-0">
++        {rightPanelOpen ? (
++          <>
++            <Tooltip>
++              <TooltipTrigger
++                render={
++                  <Toggle
++                    className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
++                    pressed={rightPanelMaximized}
++                    onPressedChange={onToggleRightPanelMaximized}
++                    aria-label={rightPanelMaximized ? "Restore panel size" : "Maximize panel"}
++                    variant="outline"
++                    size="xs"
++                    disabled={!canMaximizeRightPanel}
++                  >
++                    {rightPanelMaximized ? (
++                      <Minimize2Icon className="size-3.5" />
++                    ) : (
++                      <Maximize2Icon className="size-3.5" />
++                    )}
++                  </Toggle>
++                }
++              />
++              <TooltipPopup side="bottom">
++                {canMaximizeRightPanel
++                  ? rightPanelMaximized
++                    ? "Restore panel size"
++                    : "Maximize panel"
++                  : "Panel maximization is unavailable at this width"}
++              </TooltipPopup>
++            </Tooltip>
++            <GroupSeparator />
++          </>
++        ) : null}
+         <Tooltip>
+           <TooltipTrigger
+             render={
+               <Toggle
+                 className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+-                pressed={rightPanelMaximized}
+-                onPressedChange={onToggleRightPanelMaximized}
+-                aria-label={rightPanelMaximized ? "Restore panel size" : "Maximize panel"}
++                pressed={terminalOpen}
++                onPressedChange={onToggleTerminal}
++                aria-label="Toggle terminal drawer"
+                 variant="outline"
+                 size="xs"
+-                disabled={!canMaximizeRightPanel}
++                disabled={!terminalAvailable}
+               >
+-                {rightPanelMaximized ? (
+-                  <Minimize2Icon className="size-3.5" />
+-                ) : (
+-                  <Maximize2Icon className="size-3.5" />
+-                )}
++                <PanelBottomIcon className="size-3.5" />
+               </Toggle>
+             }
+           />
+           <TooltipPopup side="bottom">
+-            {canMaximizeRightPanel
+-              ? rightPanelMaximized
+-                ? "Restore panel size"
+-                : "Maximize panel"
+-              : "Panel maximization is unavailable at this width"}
++            {terminalAvailable
++              ? `Toggle terminal drawer${terminalShortcutLabel ? ` (${terminalShortcutLabel})` : ""}`
++              : "Terminal drawer is unavailable"}
+           </TooltipPopup>
+         </Tooltip>
+-      ) : null}
+-      <Tooltip>
+-        <TooltipTrigger
+-          render={
+-            <Toggle
+-              className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+-              pressed={terminalOpen}
+-              onPressedChange={onToggleTerminal}
+-              aria-label="Toggle terminal drawer"
+-              variant="outline"
+-              size="xs"
+-              disabled={!terminalAvailable}
+-            >
+-              <PanelBottomIcon className="size-3.5" />
+-            </Toggle>
+-          }
+-        />
+-        <TooltipPopup side="bottom">
+-          {terminalAvailable
+-            ? `Toggle terminal drawer${terminalShortcutLabel ? ` (${terminalShortcutLabel})` : ""}`
+-            : "Terminal drawer is unavailable"}
+-        </TooltipPopup>
+-      </Tooltip>
+-      <Tooltip>
+-        <TooltipTrigger
+-          render={
+-            <Toggle
+-              className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
+-              pressed={rightPanelOpen}
+-              onPressedChange={onToggleRightPanel}
+-              aria-label="Toggle right panel"
+-              variant="outline"
+-              size="xs"
+-              disabled={!rightPanelAvailable}
+-            >
+-              <PanelRightIcon className="size-3.5" />
+-            </Toggle>
+-          }
+-        />
+-        <TooltipPopup side="bottom">
+-          {rightPanelAvailable
+-            ? `Toggle right panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}`
+-            : "Right panel is unavailable"}
+-        </TooltipPopup>
+-      </Tooltip>
++        <GroupSeparator />
++        <Tooltip>
++          <TooltipTrigger
++            render={
++              <Toggle
++                className={PANEL_LAYOUT_TOGGLE_CLASS_NAME}
++                pressed={rightPanelOpen}
++                onPressedChange={onToggleRightPanel}
++                aria-label="Toggle right panel"
++                variant="outline"
++                size="xs"
++                disabled={!rightPanelAvailable}
++              >
++                <PanelRightIcon className="size-3.5" />
++              </Toggle>
++            }
++          />
++          <TooltipPopup side="bottom">
++            {rightPanelAvailable
++              ? `Toggle right panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}`
++              : "Right panel is unavailable"}
++          </TooltipPopup>
++        </Tooltip>
++      </Group>
+     </div>
+   );
+ });
+-- 
+2.50.1 (Apple Git-155)
+

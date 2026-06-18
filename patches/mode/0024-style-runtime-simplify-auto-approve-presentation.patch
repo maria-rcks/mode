@@ -1,7 +1,7 @@
-From b80ce424ac67e56d62ef5b59e1a4230fb52503ae Mon Sep 17 00:00:00 2001
+From d626bb1230134ac6aa27482efd09e9153b1fbe1d Mon Sep 17 00:00:00 2001
 From: Mode Bot <mode-bot@example.invalid>
 Date: Mon, 15 Jun 2026 20:34:09 -0400
-Subject: [PATCH 24/34] style(runtime): simplify auto-approve presentation
+Subject: [PATCH 24/38] style(runtime): simplify auto-approve presentation
 
 ---
  .../src/features/threads/NewTaskDraftScreen.tsx  |  4 ++--
@@ -13,10 +13,10 @@ Subject: [PATCH 24/34] style(runtime): simplify auto-approve presentation
  6 files changed, 37 insertions(+), 14 deletions(-)
 
 diff --git a/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx b/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
-index d59275b0..666c1b90 100644
+index de95e364..376bee25 100644
 --- a/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
 +++ b/apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
-@@ -216,11 +216,11 @@ export function NewTaskDraftScreen(props: {
+@@ -209,11 +209,11 @@ export function NewTaskDraftScreen(props: {
            flow.runtimeMode === "approval-required"
              ? "Approve actions"
              : flow.runtimeMode === "auto-accept-edits"
@@ -31,7 +31,7 @@ index d59275b0..666c1b90 100644
          ].map((option) => {
            const value = option.id.replace("options:runtime:", "");
 diff --git a/apps/mobile/src/features/threads/ThreadComposer.tsx b/apps/mobile/src/features/threads/ThreadComposer.tsx
-index aa7d0332..eb28f744 100644
+index 7d383538..ba2e54db 100644
 --- a/apps/mobile/src/features/threads/ThreadComposer.tsx
 +++ b/apps/mobile/src/features/threads/ThreadComposer.tsx
 @@ -523,11 +523,11 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
@@ -49,10 +49,10 @@ index aa7d0332..eb28f744 100644
          ].map((option) => {
            const value = option.id.replace("options:runtime:", "");
 diff --git a/apps/web/src/components/ChatView.browser.tsx b/apps/web/src/components/ChatView.browser.tsx
-index db5910de..54442aa4 100644
+index 8dd8ba1f..5dc46d7f 100644
 --- a/apps/web/src/components/ChatView.browser.tsx
 +++ b/apps/web/src/components/ChatView.browser.tsx
-@@ -3772,7 +3772,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
+@@ -4470,7 +4470,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
          "Ask before commands and file changes",
        );
  
@@ -62,10 +62,10 @@ index db5910de..54442aa4 100644
        expect((await waitForSelectItemContainingText("Full access")).textContent).toContain(
          "Allow commands and edits without prompts",
 diff --git a/apps/web/src/components/chat/ChatComposer.tsx b/apps/web/src/components/chat/ChatComposer.tsx
-index 29163e09..9293d43f 100644
+index 71ca6fd1..74d68bde 100644
 --- a/apps/web/src/components/chat/ChatComposer.tsx
 +++ b/apps/web/src/components/chat/ChatComposer.tsx
-@@ -103,7 +103,11 @@ import {
+@@ -107,7 +107,11 @@ import {
  import { formatProviderSkillDisplayName } from "../../providerSkillPresentation";
  import { searchProviderSkills } from "../../providerSkillSearch";
  import { useMediaQuery } from "../../hooks/useMediaQuery";
@@ -78,7 +78,7 @@ index 29163e09..9293d43f 100644
  
  const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES / (1024 * 1024))}MB`;
  
-@@ -182,7 +186,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+@@ -186,7 +190,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                className={cn(
                  "shrink-0 whitespace-nowrap px-2 sm:px-3",
                  props.interactionMode === "plan"
@@ -87,7 +87,7 @@ index 29163e09..9293d43f 100644
                    : "text-muted-foreground/70 hover:text-foreground/80",
                )}
                size="sm"
-@@ -220,7 +224,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+@@ -224,7 +228,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                <SelectTrigger
                  variant="ghost"
                  size="sm"
@@ -96,7 +96,7 @@ index 29163e09..9293d43f 100644
                  aria-label="Runtime mode"
                />
              }
-@@ -264,7 +268,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
+@@ -268,7 +272,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                    className={cn(
                      "shrink-0 whitespace-nowrap px-2 sm:px-3",
                      props.planSidebarOpen
@@ -105,7 +105,7 @@ index 29163e09..9293d43f 100644
                        : "text-muted-foreground/70 hover:text-foreground/80",
                    )}
                    size="sm"
-@@ -2306,9 +2310,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
+@@ -2378,9 +2382,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                  ? "connecting"
                                  : "disconnected"
                              }`
